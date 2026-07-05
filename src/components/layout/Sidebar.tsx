@@ -37,7 +37,7 @@ export function Sidebar() {
     { key: 'teklifler', label: 'Teklifler', icon: <FileText size={13} /> },
     { key: 'kampanyalar', label: 'Kampanyalar', icon: <Megaphone size={13} /> },
     { key: 'raporlar', label: 'Raporlar', icon: <BarChart3 size={13} /> },
-    { key: 'raporlar-billing', label: 'Gelir & Faturalar', icon: <Coins size={13} />, isMock: true, route: 'raporlar' },
+    { key: 'finans', label: 'Gelir & Faturalar', icon: <Coins size={13} /> },
     { key: 'dashboard-maintenance', label: 'Bakım & Arıza', icon: <Wrench size={13} />, isMock: true, route: 'dashboard' },
     { key: 'medya-kutuphanesi', label: 'Medya Kütüphanesi', icon: <Image size={13} /> },
     { key: 'dashboard-competitor', label: 'Rakip Analizi', icon: <Eye size={13} />, isMock: true, route: 'dashboard' },
