@@ -12,6 +12,7 @@ type RouteType =
   | 'medya-kutuphanesi' 
   | 'raporlar' 
   | 'finans'
+  | 'bildirimler'
   | 'ai-assistant' 
   | 'ayarlar'
   | 'design-system';

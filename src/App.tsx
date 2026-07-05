@@ -16,6 +16,7 @@ import { Sozlesmeler } from '@/pages/Sozlesmeler';
 import { MedyaKutuphanesi } from '@/pages/MedyaKutuphanesi';
 import { Raporlar } from '@/pages/Raporlar';
 import { Finans } from '@/pages/Finans';
+import { Bildirimler } from '@/pages/Bildirimler';
 import { AiAssistant } from '@/pages/AiAssistant';
 import { Ayarlar } from '@/pages/Ayarlar';
 import { DesignSystemDemo } from '@/pages/DesignSystemDemo';
@@ -47,6 +48,8 @@ function AppContent() {
         return <Raporlar />;
       case 'finans':
         return <Finans />;
+      case 'bildirimler':
+        return <Bildirimler />;
       case 'ai-assistant':
         return <AiAssistant />;
       case 'ayarlar':

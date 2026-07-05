@@ -19,7 +19,8 @@ import {
   Settings,
   Sparkles,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Bell
 } from 'lucide-react';
 
 export function Sidebar() {
@@ -38,6 +39,7 @@ export function Sidebar() {
     { key: 'kampanyalar', label: 'Kampanyalar', icon: <Megaphone size={13} /> },
     { key: 'raporlar', label: 'Raporlar', icon: <BarChart3 size={13} /> },
     { key: 'finans', label: 'Gelir & Faturalar', icon: <Coins size={13} /> },
+    { key: 'bildirimler', label: 'Bildirim & Görev', icon: <Bell size={13} /> },
     { key: 'dashboard-maintenance', label: 'Bakım & Arıza', icon: <Wrench size={13} />, isMock: true, route: 'dashboard' },
     { key: 'medya-kutuphanesi', label: 'Medya Kütüphanesi', icon: <Image size={13} /> },
     { key: 'dashboard-competitor', label: 'Rakip Analizi', icon: <Eye size={13} />, isMock: true, route: 'dashboard' },
