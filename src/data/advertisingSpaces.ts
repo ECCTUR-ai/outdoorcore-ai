@@ -1,4 +1,5 @@
 export interface AdvertisingSpace {
+  id: string;
   code: string;
   name: string;
   location: string;
@@ -7,6 +8,7 @@ export interface AdvertisingSpace {
   traffic: number;
   status: 'dolu' | 'bos' | 'teklif' | 'bakim' | 'yakinda';
   client: string;
+  companyId?: string;
   startDate?: string;
   endDate?: string;
   price: string;
@@ -30,6 +32,7 @@ export interface AdvertisingSpace {
 
 export const advertisingSpaces: AdvertisingSpace[] = [
   {
+    id: 'SPC-0001',
     code: 'SG-001',
     name: 'Giriş LED Ekran',
     location: 'İç Hatlar - Giriş',
@@ -38,6 +41,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     traffic: 28000,
     status: 'dolu',
     client: 'Samsung Electronics',
+    companyId: 'CMP-0001',
     agency: 'Mindshare',
     startDate: '01 Mar 2025',
     endDate: '31 May 2025',
@@ -59,6 +63,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop&q=60'
   },
   {
+    id: 'SPC-0021',
     code: 'SG-002',
     name: 'Check-in Önü LED',
     location: 'İç Hatlar - Check-in',
@@ -84,6 +89,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&auto=format&fit=crop&q=60'
   },
   {
+    id: 'SPC-0003',
     code: 'SG-003',
     name: 'Pasaport Kontrol Üstü',
     location: 'Dış Hatlar - Güvenlik',
@@ -92,6 +98,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     traffic: 19800,
     status: 'dolu',
     client: 'Turkcell',
+    companyId: 'CMP-0002',
     agency: 'Starcom',
     startDate: '01 Oca 2025',
     endDate: '30 Haz 2025',
@@ -113,6 +120,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=600&auto=format&fit=crop&q=60'
   },
   {
+    id: 'SPC-0004',
     code: 'SG-004',
     name: 'Duty Free Yanı Lightbox',
     location: 'Dış Hatlar - Duty Free',
@@ -121,6 +129,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     traffic: 15000,
     status: 'teklif',
     client: 'LC Waikiki',
+    companyId: 'CMP-0004',
     agency: 'OMD',
     price: '₺1.250.000',
     visibility: 'Orta-Yüksek',
@@ -139,6 +148,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=600&auto=format&fit=crop&q=60'
   },
   {
+    id: 'SPC-0045',
     code: 'SG-005',
     name: 'Yürüyen Bant Yanı',
     location: 'İç Hatlar - Bagaj',
@@ -147,6 +157,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     traffic: 17300,
     status: 'dolu',
     client: 'Mercedes-Benz',
+    companyId: 'CMP-0005',
     agency: 'Wavemaker',
     startDate: '10 Nis 2025',
     endDate: '10 Tem 2025',
@@ -168,6 +179,7 @@ export const advertisingSpaces: AdvertisingSpace[] = [
     image: 'https://images.unsplash.com/photo-1540959733332-eab4deceeaf7?w=600&auto=format&fit=crop&q=60'
   },
   {
+    id: 'SPC-0006',
     code: 'SG-006',
     name: 'Bagaj Alım Salonu LED',
     location: 'İç Hatlar - Bagaj',

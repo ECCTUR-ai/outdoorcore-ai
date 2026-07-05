@@ -19,6 +19,7 @@ import {
   History,
   FolderOpen
 } from 'lucide-react';
+import { EntityLink } from './EntityLink';
 
 interface ContractDetailPanelProps {
   contract: Contract;
@@ -45,7 +46,7 @@ export function ContractDetailPanel({ contract }: ContractDetailPanelProps) {
             {contract.contractNo}
           </span>
           <h4 className="text-sm font-black text-white leading-tight uppercase truncate max-w-[200px]">{contract.clientName}</h4>
-          <span className="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider block">{contract.campaignName} Kampanyası</span>
+          <span className="text-[8.5px] text-slate-550 font-bold uppercase tracking-wider block">{contract.campaignName} Kampanyası</span>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <ContractStatusBadge status={contract.status} />
@@ -113,7 +114,7 @@ export function ContractDetailPanel({ contract }: ContractDetailPanelProps) {
             </div>
             <div className="space-y-0.5 col-span-2 border-t border-white/3 pt-2">
               <span>Sözleşme Notu:</span>
-              <span className="text-slate-400 block italic">{contract.notes[0] || 'Not eklenmemiş.'}</span>
+              <span className="text-slate-450 block italic">{contract.notes[0] || 'Not eklenmemiş.'}</span>
             </div>
           </div>
         )}
@@ -192,6 +193,25 @@ export function ContractDetailPanel({ contract }: ContractDetailPanelProps) {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Global Linked References */}
+      <div className="space-y-2.5 border-t border-white/5 pt-4">
+        <Label>Modüller Arası Bağlı Kayıtlar</Label>
+        <div className="flex flex-wrap gap-2.5">
+          {contract.companyId && (
+            <EntityLink type="company" id={contract.companyId} label={`Firma: ${contract.clientName}`} />
+          )}
+          {contract.proposalId && (
+            <EntityLink type="offer" id={contract.proposalId} label={`Teklif: ${contract.proposalId}`} />
+          )}
+          {contract.reservationId && (
+            <EntityLink type="reservation" id={contract.reservationId} label={`Rezervasyon: ${contract.reservationId}`} />
+          )}
+          {contract.campaignId && (
+            <EntityLink type="campaign" id={contract.campaignId} label={`Kampanya: ${contract.campaignId}`} />
+          )}
+        </div>
       </div>
 
       {/* AI Risk Analysis Suggestions block */}

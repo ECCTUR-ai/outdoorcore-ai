@@ -29,6 +29,17 @@ export function Rezervasyonlar() {
   const [selectedSpaceCode, setSelectedSpaceCode] = useState<string>('SG-001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reservationId = params.get('reservationId');
+    if (reservationId) {
+      const found = reservations.find(r => r.id === reservationId);
+      if (found) {
+        setSelectedSpaceCode(found.spaceCode);
+      }
+    }
+  }, []);
+
   // Filters state mockup values
   const [search, setSearch] = useState('');
   const [clientFilter, setClientFilter] = useState('');

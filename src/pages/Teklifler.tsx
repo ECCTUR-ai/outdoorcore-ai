@@ -24,8 +24,16 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Teklifler() {
-  const [selectedOfferId, setSelectedOfferId] = useState<string>('o1');
+  const [selectedOfferId, setSelectedOfferId] = useState<string>('OFF-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const offerId = params.get('offerId');
+    if (offerId && offers.some(o => o.id === offerId)) {
+      setSelectedOfferId(offerId);
+    }
+  }, []);
 
   // Selected offer lookup
   const selectedOffer = offers.find(o => o.id === selectedOfferId) || offers[0];

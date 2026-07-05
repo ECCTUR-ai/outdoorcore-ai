@@ -15,6 +15,7 @@ import {
   FileEdit,
   FolderOpen
 } from 'lucide-react';
+import { EntityLink } from './EntityLink';
 
 interface ReservationDetailProps {
   reservation: Reservation;
@@ -30,7 +31,7 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
             {reservation.spaceCode}
           </span>
           <h4 className="text-sm font-black text-white leading-tight uppercase truncate max-w-[200px]">{reservation.clientName}</h4>
-          <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">{reservation.spaceName}</span>
+          <span className="text-[8px] text-slate-550 font-bold uppercase tracking-wider block">{reservation.spaceName}</span>
         </div>
         <Badge variant={reservation.status === 'Aktif' ? 'success' : 'primary'}>
           {reservation.status}
@@ -79,6 +80,28 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
               </span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Global Linked References */}
+      <div className="space-y-2.5 border-t border-white/5 pt-4">
+        <Label>Modüller Arası Bağlı Kayıtlar</Label>
+        <div className="flex flex-wrap gap-2.5">
+          {reservation.companyId && (
+            <EntityLink type="company" id={reservation.companyId} label={`Firma: ${reservation.clientName}`} />
+          )}
+          {reservation.spaceId && (
+            <EntityLink type="space" id={reservation.spaceId} label={`Alan: ${reservation.spaceCode}`} />
+          )}
+          {reservation.offerId && (
+            <EntityLink type="offer" id={reservation.offerId} label={`Teklif: ${reservation.offerId}`} />
+          )}
+          {reservation.contractId && (
+            <EntityLink type="contract" id={reservation.contractId} label={`Sözleşme: ${reservation.contractId}`} />
+          )}
+          {reservation.campaignId && (
+            <EntityLink type="campaign" id={reservation.campaignId} label={`Kampanya: ${reservation.campaignId}`} />
+          )}
         </div>
       </div>
 

@@ -22,8 +22,16 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function FirmalarMarkalar() {
-  const [selectedId, setSelectedId] = useState<string>('c1');
+  const [selectedId, setSelectedId] = useState<string>('CMP-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const companyId = params.get('companyId');
+    if (companyId && companies.some(c => c.id === companyId)) {
+      setSelectedId(companyId);
+    }
+  }, []);
 
   // Selected company lookup model
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];

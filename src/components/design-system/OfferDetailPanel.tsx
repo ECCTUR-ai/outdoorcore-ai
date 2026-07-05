@@ -16,6 +16,8 @@ import {
   BookOpen
 } from 'lucide-react';
 
+import { EntityLink } from './EntityLink';
+
 interface OfferDetailPanelProps {
   offer: Offer;
 }
@@ -30,7 +32,7 @@ export function OfferDetailPanel({ offer }: OfferDetailPanelProps) {
             Teklif: #{offer.id}
           </span>
           <h4 className="text-sm font-black text-white leading-tight uppercase truncate max-w-[200px]">{offer.clientName}</h4>
-          <span className="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider block truncate max-w-[200px]">{offer.campaignName}</span>
+          <span className="text-[8.5px] text-slate-550 font-bold uppercase tracking-wider block truncate max-w-[200px]">{offer.campaignName}</span>
         </div>
         <Badge variant={offer.priority === 'Yüksek' ? 'danger' : 'warning'}>
           {offer.priority} Öncelik
@@ -68,15 +70,40 @@ export function OfferDetailPanel({ offer }: OfferDetailPanelProps) {
           Önerilen Reklam Alanları
         </h5>
         <div className="space-y-1.5">
-          {offer.spacesList.map(code => (
-            <div 
-              key={code} 
-              className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[10px]"
-            >
-              <span className="text-white font-black">#{code}</span>
-              <span className="text-[8px] text-slate-500 font-black uppercase">LED Ekran</span>
-            </div>
-          ))}
+          {offer.spacesList.map((code, idx) => {
+            const mappedId = offer.spaceIds?.[idx] || 'SPC-0001';
+            return (
+              <div 
+                key={code} 
+                className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[10px]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-black">#{code}</span>
+                  <EntityLink type="space" id={mappedId} label="Detay" />
+                </div>
+                <span className="text-[8px] text-slate-500 font-black uppercase">LED Ekran</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Global Linked References */}
+      <div className="space-y-2.5 border-t border-white/5 pt-4">
+        <Label>Modüller Arası Bağlı Kayıtlar</Label>
+        <div className="flex flex-wrap gap-2.5">
+          {offer.companyId && (
+            <EntityLink type="company" id={offer.companyId} label={`Firma: ${offer.clientName}`} />
+          )}
+          {offer.contractId && (
+            <EntityLink type="contract" id={offer.contractId} label={`Sözleşme: ${offer.contractId}`} />
+          )}
+          {offer.reservationId && (
+            <EntityLink type="reservation" id={offer.reservationId} label={`Rezervasyon: ${offer.reservationId}`} />
+          )}
+          {offer.campaignId && (
+            <EntityLink type="campaign" id={offer.campaignId} label={`Kampanya: ${offer.campaignId}`} />
+          )}
         </div>
       </div>
 

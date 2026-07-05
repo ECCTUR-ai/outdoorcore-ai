@@ -6,9 +6,8 @@ export interface FinancialAccount {
   totalDebt: string;
   totalCollected: string;
   balance: string;
-  riskScore: number; // 0-10 scale
+  riskScore: number;
   crmTier: 'VIP' | 'Gold' | 'Silver' | 'Standard';
-  // Detail Specifics
   totalContracts: string;
   totalInvoicesCount: number;
   invoices: Array<{ id: string; invoiceNo: string; date: string; amount: string; status: 'Ödendi' | 'Bekliyor' | 'Gecikti' | 'İptal' }>;
@@ -16,6 +15,9 @@ export interface FinancialAccount {
   paymentPlan: Array<{ installment: string; dueDate: string; amount: string; status: 'Ödendi' | 'Bekliyor' | 'Gecikti' }>;
   receipts: Array<{ id: string; name: string; date: string; size: string }>;
   notes: string[];
+  // Global Relations
+  companyId?: string;
+  linkedContractIds?: string[];
 }
 
 export interface CashFlowPoint {
@@ -44,7 +46,7 @@ export interface UpcomingPayment {
 export const financeData = {
   accounts: [
     {
-      id: 'fa1',
+      id: 'CMP-0001',
       name: 'Samsung Electronics',
       logo: 'S',
       logoUrl: '/logos/samsung.svg',
@@ -56,13 +58,13 @@ export const financeData = {
       totalContracts: '₺87.500.000',
       totalInvoicesCount: 12,
       invoices: [
-        { id: 'inv1', invoiceNo: 'INV-2025-00101', date: '01 Mar 2025', amount: '₺30.000.000', status: 'Ödendi' },
-        { id: 'inv2', invoiceNo: 'INV-2025-00124', date: '15 May 2025', amount: '₺30.000.000', status: 'Ödendi' },
-        { id: 'inv3', invoiceNo: 'INV-2025-00145', date: '15 Tem 2025', amount: '₺27.500.000', status: 'Bekliyor' }
+        { id: 'INV-0001', invoiceNo: 'INV-2025-00101', date: '01 Mar 2025', amount: '₺30.000.000', status: 'Ödendi' },
+        { id: 'INV-0002', invoiceNo: 'INV-2025-00124', date: '15 May 2025', amount: '₺30.000.000', status: 'Ödendi' },
+        { id: 'INV-0003', invoiceNo: 'INV-2025-00145', date: '15 Tem 2025', amount: '₺27.500.000', status: 'Bekliyor' }
       ],
       collections: [
-        { id: 'col1', date: '15 Mar 2025', amount: '₺30.000.000', method: 'Havale / Banka' },
-        { id: 'col2', date: '17 May 2025', amount: '₺30.000.000', method: 'Havale / Banka' }
+        { id: 'PAY-0001', date: '15 Mar 2025', amount: '₺30.000.000', method: 'Havale / Banka' },
+        { id: 'PAY-0002', date: '17 May 2025', amount: '₺30.000.000', method: 'Havale / Banka' }
       ],
       paymentPlan: [
         { installment: '1. Taksit', dueDate: '15 Mar 2025', amount: '₺30.000.000', status: 'Ödendi' },
@@ -76,10 +78,12 @@ export const financeData = {
       notes: [
         'Müşteri ödemeleri düzenli olarak takvimde yapmaktadır.',
         'VIP risk profili atanmıştır, tahsilat gecikme riski bulunmamaktadır.'
-      ]
+      ],
+      companyId: 'CMP-0001',
+      linkedContractIds: ['CON-0001']
     },
     {
-      id: 'fa2',
+      id: 'CMP-0002',
       name: 'Turkcell',
       logo: 'T',
       logoUrl: '/logos/turkcell.svg',
@@ -91,11 +95,11 @@ export const financeData = {
       totalContracts: '₺65.000.000',
       totalInvoicesCount: 6,
       invoices: [
-        { id: 'inv4', invoiceNo: 'INV-2025-00112', date: '15 Oca 2025', amount: '₺35.000.000', status: 'Ödendi' },
-        { id: 'inv5', invoiceNo: 'INV-2025-00130', date: '15 Nis 2025', amount: '₺30.000.000', status: 'Gecikti' }
+        { id: 'INV-0004', invoiceNo: 'INV-2025-00112', date: '15 Oca 2025', amount: '₺35.000.000', status: 'Ödendi' },
+        { id: 'INV-0005', invoiceNo: 'INV-2025-00130', date: '15 Nis 2025', amount: '₺30.000.000', status: 'Gecikti' }
       ],
       collections: [
-        { id: 'col3', date: '17 Oca 2025', amount: '₺35.000.000', method: 'EFT / Banka' }
+        { id: 'PAY-0003', date: '17 Oca 2025', amount: '₺35.000.000', method: 'EFT / Banka' }
       ],
       paymentPlan: [
         { installment: '1. Taksit', dueDate: '15 Oca 2025', amount: '₺35.000.000', status: 'Ödendi' },
@@ -107,10 +111,12 @@ export const financeData = {
       notes: [
         '2. Taksit ödemesi 80 gün gecikmiştir. Risk merkezi uyarı veriyor.',
         'Finans yetkilisi Ahmet Demir ile ihtarname süreci görüşülüyor.'
-      ]
+      ],
+      companyId: 'CMP-0002',
+      linkedContractIds: ['CON-0002']
     },
     {
-      id: 'fa3',
+      id: 'CMP-0003',
       name: 'Türk Hava Yolları',
       logo: 'T',
       logoUrl: '/logos/thy.svg',
@@ -122,12 +128,12 @@ export const financeData = {
       totalContracts: '₺120.000.000',
       totalInvoicesCount: 2,
       invoices: [
-        { id: 'inv6', invoiceNo: 'INV-2025-00095', date: '01 Oca 2025', amount: '₺60.000.000', status: 'Ödendi' },
-        { id: 'inv7', invoiceNo: 'INV-2025-00110', date: '01 Haz 2025', amount: '₺60.000.000', status: 'Ödendi' }
+        { id: 'INV-0006', invoiceNo: 'INV-2025-00095', date: '01 Oca 2025', amount: '₺60.000.000', status: 'Ödendi' },
+        { id: 'INV-0007', invoiceNo: 'INV-2025-00110', date: '01 Haz 2025', amount: '₺60.000.000', status: 'Ödendi' }
       ],
       collections: [
-        { id: 'col4', date: '02 Oca 2025', amount: '₺60.000.000', method: 'Banka Transfer' },
-        { id: 'col5', date: '05 Haz 2025', amount: '₺60.000.000', method: 'Banka Transfer' }
+        { id: 'PAY-0004', date: '02 Oca 2025', amount: '₺60.000.000', method: 'Banka Transfer' },
+        { id: 'PAY-0005', date: '05 Haz 2025', amount: '₺60.000.000', method: 'Banka Transfer' }
       ],
       paymentPlan: [
         { installment: '1. Taksit', dueDate: '01 Oca 2025', amount: '₺60.000.000', status: 'Ödendi' },
@@ -139,10 +145,12 @@ export const financeData = {
       ],
       notes: [
         'En istikrarlı cari hesap. Tüm ödemeler vaktinde tamamlanmıştır.'
-      ]
+      ],
+      companyId: 'CMP-0003',
+      linkedContractIds: ['CON-0003']
     },
     {
-      id: 'fa4',
+      id: 'CMP-0005',
       name: 'Mercedes-Benz Türkiye',
       logo: 'M',
       logoUrl: '/logos/mercedes.svg',
@@ -154,7 +162,7 @@ export const financeData = {
       totalContracts: '₺45.000.000',
       totalInvoicesCount: 4,
       invoices: [
-        { id: 'inv8', invoiceNo: 'INV-2025-00142', date: '15 Haz 2025', amount: '₺7.900.000', status: 'Bekliyor' }
+        { id: 'INV-0008', invoiceNo: 'INV-2025-00142', date: '15 Haz 2025', amount: '₺7.900.000', status: 'Bekliyor' }
       ],
       collections: [],
       paymentPlan: [
@@ -163,13 +171,15 @@ export const financeData = {
       receipts: [],
       notes: [
         'Sözleşme imza aşamasında olduğundan fatura beklemededir.'
-      ]
+      ],
+      companyId: 'CMP-0005',
+      linkedContractIds: ['CON-0004']
     },
     {
-      id: 'fa5',
-      name: 'Pegasus Airlines',
-      logo: 'P',
-      logoUrl: '/logos/pegasus.svg',
+      id: 'CMP-0004',
+      name: 'LC Waikiki',
+      logo: 'L',
+      logoUrl: '/logos/lcwaikiki.svg',
       totalDebt: '₺18.000.000',
       totalCollected: '₺15.750.000',
       balance: '₺2.250.000',
@@ -178,7 +188,7 @@ export const financeData = {
       totalContracts: '₺18.000.000',
       totalInvoicesCount: 4,
       invoices: [
-        { id: 'inv9', invoiceNo: 'INV-2025-00155', date: '10 Tem 2025', amount: '₺2.250.000', status: 'Bekliyor' }
+        { id: 'INV-0009', invoiceNo: 'INV-2025-00155', date: '10 Tem 2025', amount: '₺2.250.000', status: 'Bekliyor' }
       ],
       collections: [],
       paymentPlan: [
@@ -187,7 +197,9 @@ export const financeData = {
       receipts: [],
       notes: [
         'Peşinat ödemeleri vaktinde yapılmıştır, son taksit takvimdedir.'
-      ]
+      ],
+      companyId: 'CMP-0004',
+      linkedContractIds: ['CON-0005']
     }
   ] as FinancialAccount[],
 

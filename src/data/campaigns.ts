@@ -20,7 +20,6 @@ export interface Campaign {
   aiScore: number;
   logo: string;
   logoUrl?: string;
-  // Detail Specifics
   proposalId: string;
   contractId: string;
   reservationId: string;
@@ -28,18 +27,20 @@ export interface Campaign {
   creativeAgency: string;
   creativeFiles: CreativeFile[];
   aiAnalysisNotes: string[];
-  // Performance numbers
   impressions: string;
   reach: string;
   frequency: number;
   airtimeHours: number;
   bestSpace: string;
   riskySpace: string;
+  // Global Relations
+  companyId?: string;
+  spaceIds?: string[];
 }
 
 export const campaigns: Campaign[] = [
   {
-    id: 'cmp1',
+    id: 'CAM-0001',
     clientName: 'Samsung Electronics',
     campaignName: 'Galaxy AI Lansmanı',
     status: 'Aktif',
@@ -53,9 +54,9 @@ export const campaigns: Campaign[] = [
     aiScore: 9.4,
     logo: 'S',
     logoUrl: '/logos/samsung.svg',
-    proposalId: 'OF-00021',
-    contractId: 'OC-2025-00124',
-    reservationId: 'RS-00125',
+    proposalId: 'OFF-0001',
+    contractId: 'CON-0001',
+    reservationId: 'RSV-0001',
     mediaAgency: 'Mindshare',
     creativeAgency: 'Publicis',
     creativeFiles: [
@@ -75,10 +76,12 @@ export const campaigns: Campaign[] = [
     frequency: 1.48,
     airtimeHours: 684,
     bestSpace: 'SG-001',
-    riskySpace: 'SG-021'
+    riskySpace: 'SG-021',
+    companyId: 'CMP-0001',
+    spaceIds: ['SPC-0001', 'SPC-0021', 'SPC-0045']
   },
   {
-    id: 'cmp2',
+    id: 'CAM-0002',
     clientName: 'Turkcell',
     campaignName: 'Yaz İletişim Kampanyası',
     status: 'Aktif',
@@ -92,9 +95,9 @@ export const campaigns: Campaign[] = [
     aiScore: 8.8,
     logo: 'T',
     logoUrl: '/logos/turkcell.svg',
-    proposalId: 'OF-00034',
-    contractId: 'OC-2025-00130',
-    reservationId: 'RS-00132',
+    proposalId: 'OFF-0003',
+    contractId: 'CON-0002',
+    reservationId: 'RSV-0002',
     mediaAgency: 'Starcom',
     creativeAgency: 'Rafineri',
     creativeFiles: [
@@ -109,10 +112,12 @@ export const campaigns: Campaign[] = [
     frequency: 1.35,
     airtimeHours: 420,
     bestSpace: 'SG-003',
-    riskySpace: 'SG-017'
+    riskySpace: 'SG-017',
+    companyId: 'CMP-0002',
+    spaceIds: ['SPC-0003', 'SPC-0017']
   },
   {
-    id: 'cmp3',
+    id: 'CAM-0003',
     clientName: 'Türk Hava Yolları',
     campaignName: 'Global Miles',
     status: 'Planlandı',
@@ -126,9 +131,9 @@ export const campaigns: Campaign[] = [
     aiScore: 9.1,
     logo: 'T',
     logoUrl: '/logos/thy.svg',
-    proposalId: 'OF-00010',
-    contractId: 'OC-2025-00110',
-    reservationId: 'RS-00112',
+    proposalId: 'OFF-0002',
+    contractId: 'CON-0003',
+    reservationId: 'RSV-0003',
     mediaAgency: 'Starcom',
     creativeAgency: 'Publicis',
     creativeFiles: [
@@ -142,10 +147,12 @@ export const campaigns: Campaign[] = [
     frequency: 0,
     airtimeHours: 0,
     bestSpace: 'SG-003',
-    riskySpace: '-'
+    riskySpace: '-',
+    companyId: 'CMP-0003',
+    spaceIds: ['SPC-0001', 'SPC-0003', 'SPC-0021']
   },
   {
-    id: 'cmp4',
+    id: 'CAM-0004',
     clientName: 'Mercedes-Benz Türkiye',
     campaignName: 'EQ Serisi Lansmanı',
     status: 'Onay Bekliyor',
@@ -159,9 +166,9 @@ export const campaigns: Campaign[] = [
     aiScore: 8.9,
     logo: 'M',
     logoUrl: '/logos/mercedes.svg',
-    proposalId: 'OF-00045',
-    contractId: 'OC-2025-00142',
-    reservationId: 'RS-00140',
+    proposalId: 'OFF-0004',
+    contractId: 'CON-0004',
+    reservationId: 'RSV-0005',
     mediaAgency: 'Wavemaker',
     creativeAgency: 'Publicis',
     creativeFiles: [
@@ -175,10 +182,12 @@ export const campaigns: Campaign[] = [
     frequency: 0,
     airtimeHours: 0,
     bestSpace: '-',
-    riskySpace: 'SG-045'
+    riskySpace: 'SG-045',
+    companyId: 'CMP-0005',
+    spaceIds: ['SPC-0045']
   },
   {
-    id: 'cmp5',
+    id: 'CAM-0005',
     clientName: 'LC Waikiki',
     campaignName: 'Yaz Koleksiyonu',
     status: 'Aktif',
@@ -192,9 +201,9 @@ export const campaigns: Campaign[] = [
     aiScore: 8.1,
     logo: 'L',
     logoUrl: '/logos/lcwaikiki.svg',
-    proposalId: 'OF-00004',
-    contractId: 'OC-2025-00105',
-    reservationId: 'RS-00108',
+    proposalId: 'OFF-0005',
+    contractId: 'CON-0005',
+    reservationId: 'RSV-0004',
     mediaAgency: 'OMD',
     creativeAgency: 'Rafineri',
     creativeFiles: [
@@ -208,38 +217,9 @@ export const campaigns: Campaign[] = [
     frequency: 1.25,
     airtimeHours: 240,
     bestSpace: 'SG-006',
-    riskySpace: 'SG-004'
-  },
-  {
-    id: 'cmp6',
-    clientName: 'Garanti BBVA',
-    campaignName: 'Seyahat Kartı Kampanyası',
-    status: 'Tamamlandı',
-    startDate: '01 May 2025',
-    endDate: '31 May 2025',
-    budget: '₺4.800.000',
-    spacesList: ['SG-010', 'SG-023'],
-    successRate: 99,
-    creativesCount: 7,
-    aiScore: 9.0,
-    logo: 'G',
-    logoUrl: '/logos/garanti.svg',
-    proposalId: 'OF-00018',
-    contractId: 'OC-2025-00108',
-    reservationId: 'RS-00110',
-    mediaAgency: 'Mindshare',
-    creativeAgency: 'Publicis',
-    creativeFiles: [
-      { name: 'garanti-miles-spot.mp4', type: 'Video MP4', uploadDate: '20 Nis 2025', status: 'Onaylandı' }
-    ],
-    aiAnalysisNotes: [
-      'Kampanya başarıyla tamamlandı. Hedeflenen seyahat kartı başvuru sayısında artış raporlandı.'
-    ],
-    impressions: '2.100.000',
-    reach: '1.450.000',
-    frequency: 1.55,
-    airtimeHours: 744,
-    bestSpace: 'SG-010',
-    riskySpace: '-'
+    riskySpace: 'SG-004',
+    companyId: 'CMP-0004',
+    spaceIds: ['SPC-0004', 'SPC-0006']
   }
 ];
+export const campaignsList = campaigns; // alias

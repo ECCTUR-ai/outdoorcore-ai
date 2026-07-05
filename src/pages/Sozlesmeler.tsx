@@ -26,8 +26,16 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Sozlesmeler() {
-  const [selectedContractId, setSelectedContractId] = useState<string>('ct1');
+  const [selectedContractId, setSelectedContractId] = useState<string>('CON-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const contractId = params.get('contractId');
+    if (contractId && contracts.some(c => c.id === contractId)) {
+      setSelectedContractId(contractId);
+    }
+  }, []);
 
   // Selected contract lookup
   const selectedContract = contracts.find(c => c.id === selectedContractId) || contracts[0];

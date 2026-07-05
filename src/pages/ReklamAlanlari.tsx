@@ -34,6 +34,17 @@ export function ReklamAlanlari() {
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const spaceId = params.get('spaceId');
+    if (spaceId) {
+      const found = advertisingSpaces.find(s => s.id === spaceId);
+      if (found) {
+        setSelectedCode(found.code);
+      }
+    }
+  }, []);
+
   // Selected space model lookup
   const selectedSpace = advertisingSpaces.find(s => s.code === selectedCode) || advertisingSpaces[0];
 

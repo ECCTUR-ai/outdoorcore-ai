@@ -23,9 +23,9 @@ export interface Contract {
   endDate: string;
   daysLeft: number;
   status: 'Aktif' | 'İmza Bekleyen' | 'Yenileme Bekleyen' | 'Süresi Dolmuş' | 'Riskli';
-  progress: number; // percentage of duration elapsed
+  progress: number;
   crmTier: 'VIP' | 'Gold' | 'Silver' | 'Standard';
-  aiRiskScore: number; // scale 0-10, lower is better risk, higher is risky
+  aiRiskScore: number;
   mediaAgency: string;
   campaignName: string;
   proposalId: string;
@@ -36,11 +36,15 @@ export interface Contract {
   history: ContractHistory[];
   aiRiskAnalysis: string[];
   notes: string[];
+  // Global Relations
+  companyId?: string;
+  offerId?: string;
+  campaignId?: string;
 }
 
 export const contracts: Contract[] = [
   {
-    id: 'ct1',
+    id: 'CON-0001',
     contractNo: 'OC-2025-00124',
     clientName: 'Samsung Electronics',
     logo: 'S',
@@ -55,8 +59,8 @@ export const contracts: Contract[] = [
     aiRiskScore: 2.1,
     mediaAgency: 'Mindshare',
     campaignName: 'Galaxy AI',
-    proposalId: 'OF-00021',
-    reservationId: 'RS-00125',
+    proposalId: 'OFF-0001',
+    reservationId: 'RSV-0001',
     spacesList: ['SG-001', 'SG-021', 'SG-045'],
     filesList: ['Sozlesme_Galaxy_AI.pdf', 'Ek-1_Teknik_Sartname.pdf', 'Signed_Signature_Page.pdf'],
     installments: [
@@ -80,10 +84,13 @@ export const contracts: Contract[] = [
     notes: [
       'Ödeme vadeleri vaktinde yapılıyor, tahsilat riski bulunmuyor.',
       'Müşteri yenilemede %10 bütçe artışına sıcak bakıyor.'
-    ]
+    ],
+    companyId: 'CMP-0001',
+    offerId: 'OFF-0001',
+    campaignId: 'CAM-0001'
   },
   {
-    id: 'ct2',
+    id: 'CON-0002',
     contractNo: 'OC-2025-00130',
     clientName: 'Turkcell',
     logo: 'T',
@@ -98,8 +105,8 @@ export const contracts: Contract[] = [
     aiRiskScore: 7.8,
     mediaAgency: 'Starcom',
     campaignName: 'Yaz İletişim',
-    proposalId: 'OF-00034',
-    reservationId: 'RS-00132',
+    proposalId: 'OFF-0003',
+    reservationId: 'RSV-0002',
     spacesList: ['SG-003', 'SG-017'],
     filesList: ['Sozlesme_Turkcell_Yaz.pdf'],
     installments: [
@@ -116,10 +123,13 @@ export const contracts: Contract[] = [
     ],
     notes: [
       'Ödeme gecikmesi için finans ekibi bilgilendirildi, ihtarname hazırlandı.'
-    ]
+    ],
+    companyId: 'CMP-0002',
+    offerId: 'OFF-0003',
+    campaignId: 'CAM-0002'
   },
   {
-    id: 'ct3',
+    id: 'CON-0003',
     contractNo: 'OC-2025-00110',
     clientName: 'Türk Hava Yolları',
     logo: 'T',
@@ -134,8 +144,8 @@ export const contracts: Contract[] = [
     aiRiskScore: 1.5,
     mediaAgency: 'Starcom',
     campaignName: 'Widen Your World',
-    proposalId: 'OF-00010',
-    reservationId: 'RS-00112',
+    proposalId: 'OFF-0002',
+    reservationId: 'RSV-0003',
     spacesList: ['SG-003', 'SG-012', 'SG-045', 'SG-067'],
     filesList: ['THY_Global_Sözlesme_2025.pdf'],
     installments: [
@@ -153,10 +163,13 @@ export const contracts: Contract[] = [
     ],
     notes: [
       'Gelecek yıl için havalimanı dev LED ekranlarındaki opsiyon süreleri uzatıldı.'
-    ]
+    ],
+    companyId: 'CMP-0003',
+    offerId: 'OFF-0002',
+    campaignId: 'CAM-0003'
   },
   {
-    id: 'ct4',
+    id: 'CON-0004',
     contractNo: 'OC-2025-00142',
     clientName: 'Mercedes-Benz Türkiye',
     logo: 'M',
@@ -171,8 +184,8 @@ export const contracts: Contract[] = [
     aiRiskScore: 3.4,
     mediaAgency: 'Wavemaker',
     campaignName: 'EQ Serisi',
-    proposalId: 'OF-00045',
-    reservationId: 'RS-00140',
+    proposalId: 'OFF-0004',
+    reservationId: 'RSV-0005',
     spacesList: ['SG-005', 'SG-045'],
     filesList: ['Taslak_Sozlesme_Mercedes.pdf'],
     installments: [
@@ -185,13 +198,16 @@ export const contracts: Contract[] = [
     ],
     notes: [
       'Ajans aracılığıyla sözleşme evrakları kuryeyle gönderildi.'
-    ]
+    ],
+    companyId: 'CMP-0005',
+    offerId: 'OFF-0004',
+    campaignId: 'CAM-0004'
   },
   {
-    id: 'ct5',
+    id: 'CON-0005',
     contractNo: 'OC-2025-00155',
-    clientName: 'Pegasus Airlines',
-    logo: 'P',
+    clientName: 'LC Waikiki',
+    logo: 'L',
     value: '₺4.500.000',
     valueNumeric: 4500000,
     startDate: '01 Nis 2025',
@@ -201,12 +217,12 @@ export const contracts: Contract[] = [
     progress: 75,
     crmTier: 'Standard',
     aiRiskScore: 5.2,
-    mediaAgency: 'Mindshare',
+    mediaAgency: 'OMD',
     campaignName: 'Yurt Dışı İndirim',
-    proposalId: 'OF-00055',
-    reservationId: 'RS-00156',
+    proposalId: 'OFF-0005',
+    reservationId: 'RSV-0004',
     spacesList: [],
-    filesList: ['Pegasus_Yurtdisi_2025.pdf'],
+    filesList: ['LCW_Yurtdisi_2025.pdf'],
     installments: [
       { id: 'i9', installment: 'Peşinat', dueDate: '10 Nis 2025', status: 'Ödendi', amount: '₺2.250.000' },
       { id: 'i10', installment: 'Kapanış', dueDate: '15 Tem 2025', status: 'Bekliyor', amount: '₺2.250.000' }
@@ -218,6 +234,10 @@ export const contracts: Contract[] = [
     ],
     notes: [
       'Kombinasyon teklifleri talep ettiler, yenilemede dijital billboard eklenecek.'
-    ]
+    ],
+    companyId: 'CMP-0004',
+    offerId: 'OFF-0005',
+    campaignId: 'CAM-0005'
   }
 ];
+export const contractsList = contracts; // alias

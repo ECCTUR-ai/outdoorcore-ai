@@ -14,6 +14,8 @@ import {
   Mail,
   AlertTriangle
 } from 'lucide-react';
+import { EntityLink } from './EntityLink';
+import { Label } from './Form';
 
 interface AccountDetailPanelProps {
   account: FinancialAccount;
@@ -125,7 +127,7 @@ export function AccountDetailPanel({ account }: AccountDetailPanelProps) {
             </div>
             <div className="space-y-0.5 col-span-2 border-t border-white/3 pt-2">
               <span>Cari Finans Notu:</span>
-              <span className="text-slate-450 block italic">{account.notes[0] || 'Not eklenmemiş.'}</span>
+              <span className="text-slate-455 block italic">{account.notes[0] || 'Not eklenmemiş.'}</span>
             </div>
           </div>
         )}
@@ -162,7 +164,7 @@ export function AccountDetailPanel({ account }: AccountDetailPanelProps) {
                 </div>
               ))
             ) : (
-              <span className="text-[9.5px] text-slate-550 italic block">Tahsilat kaydı bulunmuyor.</span>
+              <span className="text-[9.5px] text-slate-555 italic block">Tahsilat kaydı bulunmuyor.</span>
             )}
           </div>
         )}
@@ -191,7 +193,7 @@ export function AccountDetailPanel({ account }: AccountDetailPanelProps) {
             {account.receipts.length > 0 ? (
               account.receipts.map(rec => (
                 <div key={rec.id} className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[9.5px] hover:bg-white/5 duration-100">
-                  <span className="text-slate-300 font-bold truncate max-w-[150px]">{rec.name}</span>
+                  <span className="text-slate-350 font-bold truncate max-w-[150px]">{rec.name}</span>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-slate-550 font-bold text-[8px]">{rec.size}</span>
                     <span className="text-[7.5px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-black uppercase">PDF</span>
@@ -203,6 +205,25 @@ export function AccountDetailPanel({ account }: AccountDetailPanelProps) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Global Linked References */}
+      <div className="space-y-2.5 border-t border-white/5 pt-4">
+        <Label>Modüller Arası Bağlı Kayıtlar</Label>
+        <div className="flex flex-wrap gap-2.5">
+          {account.companyId && (
+            <EntityLink type="company" id={account.companyId} label={`Firma Kartı`} />
+          )}
+          {account.linkedContractIds?.map(cId => (
+            <EntityLink key={cId} type="contract" id={cId} label={`Sözleşme: ${cId}`} />
+          ))}
+          {account.invoices.map(inv => (
+            <EntityLink key={inv.id} type="invoice" id={inv.id} label={`Fatura: ${inv.invoiceNo}`} />
+          ))}
+          {account.collections.map(col => (
+            <EntityLink key={col.id} type="payment" id={col.id} label={`Makbuz: ${col.id}`} />
+          ))}
+        </div>
       </div>
 
       {/* AI Risk Alarm warnings */}

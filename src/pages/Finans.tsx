@@ -37,8 +37,29 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Finans() {
-  const [selectedAccountId, setSelectedAccountId] = useState<string>('fa1');
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('CMP-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const companyId = params.get('companyId');
+    const invoiceId = params.get('invoiceId');
+    const paymentId = params.get('paymentId');
+
+    if (companyId && financeData.accounts.some(a => a.id === companyId)) {
+      setSelectedAccountId(companyId);
+    } else if (invoiceId) {
+      const found = financeData.accounts.find(a => a.invoices.some(inv => inv.id === invoiceId));
+      if (found) {
+        setSelectedAccountId(found.id);
+      }
+    } else if (paymentId) {
+      const found = financeData.accounts.find(a => a.collections.some(col => col.id === paymentId));
+      if (found) {
+        setSelectedAccountId(found.id);
+      }
+    }
+  }, []);
 
   // Selected account lookup
   const selectedAccount = financeData.accounts.find(a => a.id === selectedAccountId) || financeData.accounts[0];

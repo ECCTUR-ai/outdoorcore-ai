@@ -17,6 +17,12 @@ export interface Company {
   aiScore: number;
   logo: string;
   logoUrl?: string;
+  // Relationship mappings
+  linkedOfferIds?: string[];
+  linkedContractIds?: string[];
+  linkedReservationIds?: string[];
+  linkedCampaignIds?: string[];
+  linkedInvoiceIds?: string[];
   // Detail Panel specifics
   headquarters: string;
   website: string;
@@ -40,7 +46,7 @@ export interface Company {
 
 export const companies: Company[] = [
   {
-    id: 'c1',
+    id: 'CMP-0001',
     name: 'Samsung Electronics',
     sector: 'Elektronik',
     city: 'İstanbul',
@@ -53,6 +59,11 @@ export const companies: Company[] = [
     aiScore: 9.4,
     logo: 'S',
     logoUrl: '/logos/samsung.svg',
+    linkedOfferIds: ['OFF-0001'],
+    linkedContractIds: ['CON-0001'],
+    linkedReservationIds: ['RSV-0001'],
+    linkedCampaignIds: ['CAM-0001'],
+    linkedInvoiceIds: ['INV-0001', 'INV-0002'],
     headquarters: 'İstanbul (Merkez)',
     website: 'www.samsung.com/tr',
     phone: '+90 212 366 3000',
@@ -89,7 +100,7 @@ export const companies: Company[] = [
     ]
   },
   {
-    id: 'c2',
+    id: 'CMP-0002',
     name: 'Turkcell',
     sector: 'Telekomünikasyon',
     city: 'İstanbul',
@@ -102,6 +113,11 @@ export const companies: Company[] = [
     aiScore: 9.1,
     logo: 'T',
     logoUrl: '/logos/turkcell.svg',
+    linkedOfferIds: ['OFF-0003'],
+    linkedContractIds: ['CON-0002'],
+    linkedReservationIds: ['RSV-0002'],
+    linkedCampaignIds: ['CAM-0002'],
+    linkedInvoiceIds: ['INV-0003'],
     headquarters: 'İstanbul (Merkez)',
     website: 'www.turkcell.com.tr',
     phone: '+90 212 313 1000',
@@ -132,7 +148,7 @@ export const companies: Company[] = [
     ]
   },
   {
-    id: 'c3',
+    id: 'CMP-0003',
     name: 'Türk Hava Yolları',
     sector: 'Ulaşım',
     city: 'İstanbul',
@@ -145,6 +161,11 @@ export const companies: Company[] = [
     aiScore: 9.6,
     logo: 'T',
     logoUrl: '/logos/thy.svg',
+    linkedOfferIds: ['OFF-0002'],
+    linkedContractIds: ['CON-0003'],
+    linkedReservationIds: ['RSV-0003'],
+    linkedCampaignIds: ['CAM-0003'],
+    linkedInvoiceIds: ['INV-0004'],
     headquarters: 'İstanbul (Merkez)',
     website: 'www.turkishairlines.com',
     phone: '+90 212 463 6300',
@@ -175,7 +196,7 @@ export const companies: Company[] = [
     ]
   },
   {
-    id: 'c4',
+    id: 'CMP-0004',
     name: 'LC Waikiki',
     sector: 'Perakende & Tekstil',
     city: 'İstanbul',
@@ -188,6 +209,11 @@ export const companies: Company[] = [
     aiScore: 8.5,
     logo: 'L',
     logoUrl: '/logos/lcwaikiki.svg',
+    linkedOfferIds: [],
+    linkedContractIds: ['CON-0005'],
+    linkedReservationIds: [],
+    linkedCampaignIds: ['CAM-0005'],
+    linkedInvoiceIds: [],
     headquarters: 'İstanbul (Merkez)',
     website: 'www.lcwaikiki.com',
     phone: '+90 212 657 5555',
@@ -218,7 +244,7 @@ export const companies: Company[] = [
     ]
   },
   {
-    id: 'c5',
+    id: 'CMP-0005',
     name: 'Mercedes-Benz Türkiye',
     sector: 'Otomotiv',
     city: 'İstanbul',
@@ -231,6 +257,11 @@ export const companies: Company[] = [
     aiScore: 8.9,
     logo: 'M',
     logoUrl: '/logos/mercedes.svg',
+    linkedOfferIds: [],
+    linkedContractIds: ['CON-0004'],
+    linkedReservationIds: [],
+    linkedCampaignIds: ['CAM-0004'],
+    linkedInvoiceIds: [],
     headquarters: 'İstanbul (Merkez)',
     website: 'www.mercedes-benz.com.tr',
     phone: '+90 212 867 3000',
@@ -261,7 +292,7 @@ export const companies: Company[] = [
     ]
   },
   {
-    id: 'c6',
+    id: 'CMP-0006',
     name: 'Pegasus Airlines',
     sector: 'Ulaşım',
     city: 'İstanbul',
@@ -274,6 +305,11 @@ export const companies: Company[] = [
     aiScore: 7.2,
     logo: 'P',
     logoUrl: '/logos/pegasus.svg',
+    linkedOfferIds: [],
+    linkedContractIds: [],
+    linkedReservationIds: [],
+    linkedCampaignIds: [],
+    linkedInvoiceIds: [],
     headquarters: 'İstanbul (Merkez)',
     website: 'www.flypgs.com',
     phone: '+90 216 560 7000',

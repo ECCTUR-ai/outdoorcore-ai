@@ -29,8 +29,16 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Kampanyalar() {
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('cmp1');
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('CAM-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const campaignId = params.get('campaignId');
+    if (campaignId && campaigns.some(c => c.id === campaignId)) {
+      setSelectedCampaignId(campaignId);
+    }
+  }, []);
 
   // Selected campaign lookup
   const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId) || campaigns[0];

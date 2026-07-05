@@ -27,9 +27,39 @@ import { Button } from '@/components/design-system/Button';
 
 export function Bildirimler() {
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [highlightedEntity, setHighlightedEntity] = useState<{ type: 'task' | 'notification'; id: string } | null>(null);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const taskId = params.get('taskId');
+    const notificationId = params.get('notificationId');
+    if (taskId) {
+      setHighlightedEntity({ type: 'task', id: taskId });
+    } else if (notificationId) {
+      setHighlightedEntity({ type: 'notification', id: notificationId });
+    }
+  }, []);
 
   return (
     <div className="space-y-6 select-none pb-12">
+      {highlightedEntity && (
+        <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-between text-left animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <span className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+              <Sparkles size={16} />
+            </span>
+            <div className="space-y-0.5">
+              <h4 className="text-xs font-black text-white uppercase tracking-wider">Odaklanmış Kayıt Detayı Yüklendi</h4>
+              <p className="text-[10px] text-slate-400 font-semibold leading-normal">
+                {highlightedEntity.type === 'task' ? 'Görev' : 'Bildirim'} referansı <strong>#{highlightedEntity.id}</strong> ile eşleşen operasyonel kayıtlar listelendi.
+              </p>
+            </div>
+          </div>
+          <Button variant="minimal" size="xs" onClick={() => setHighlightedEntity(null)}>
+            Temizle
+          </Button>
+        </div>
+      )}
       {/* Top Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm text-left">
         <div className="space-y-1">

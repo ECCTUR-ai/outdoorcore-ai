@@ -16,6 +16,7 @@ import {
   CalendarCheck,
   FolderOpen
 } from 'lucide-react';
+import { EntityLink } from './EntityLink';
 
 interface CampaignDetailPanelProps {
   campaign: Campaign;
@@ -109,15 +110,21 @@ export function CampaignDetailPanel({ campaign }: CampaignDetailPanelProps) {
           Yayın Reklam Alanları
         </h5>
         <div className="space-y-1.5">
-          {campaign.spacesList.map(code => (
-            <div 
-              key={code} 
-              className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[10px]"
-            >
-              <span className="text-white font-black">#{code}</span>
-              <span className="text-[8px] text-slate-500 font-bold uppercase">LED Ekran</span>
-            </div>
-          ))}
+          {campaign.spacesList.map((code, idx) => {
+            const mappedId = campaign.spaceIds?.[idx] || 'SPC-0001';
+            return (
+              <div 
+                key={code} 
+                className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[10px]"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-black">#{code}</span>
+                  <EntityLink type="space" id={mappedId} label="Detay" />
+                </div>
+                <span className="text-[8px] text-slate-550 font-bold uppercase">LED Ekran</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -142,6 +149,25 @@ export function CampaignDetailPanel({ campaign }: CampaignDetailPanelProps) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Global Linked References */}
+      <div className="space-y-2.5 border-t border-white/5 pt-4">
+        <Label>Modüller Arası Bağlı Kayıtlar</Label>
+        <div className="flex flex-wrap gap-2.5">
+          {campaign.companyId && (
+            <EntityLink type="company" id={campaign.companyId} label={`Firma: ${campaign.clientName}`} />
+          )}
+          {campaign.proposalId && (
+            <EntityLink type="offer" id={campaign.proposalId} label={`Teklif: ${campaign.proposalId}`} />
+          )}
+          {campaign.contractId && (
+            <EntityLink type="contract" id={campaign.contractId} label={`Sözleşme: ${campaign.contractId}`} />
+          )}
+          {campaign.reservationId && (
+            <EntityLink type="reservation" id={campaign.reservationId} label={`Rezervasyon: ${campaign.reservationId}`} />
+          )}
         </div>
       </div>
 

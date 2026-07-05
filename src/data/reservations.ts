@@ -13,6 +13,12 @@ export interface Reservation {
   creativeFiles: string[];
   aiRecommendation: string;
   daysLeft?: number;
+  // Global Relations
+  companyId?: string;
+  spaceId?: string;
+  offerId?: string;
+  contractId?: string;
+  campaignId?: string;
 }
 
 export interface Conflict {
@@ -28,7 +34,7 @@ export interface Conflict {
 
 export const reservations: Reservation[] = [
   {
-    id: 'r1',
+    id: 'RSV-0001',
     spaceCode: 'SG-001',
     spaceName: 'Giriş LED Ekran',
     location: 'İç Hatlar Giriş',
@@ -40,10 +46,15 @@ export const reservations: Reservation[] = [
     status: 'Aktif',
     budget: '₺2.450.000',
     creativeFiles: ['Galaxy_Fold_Launch_Video.mp4', 'Galaxy_Fold_Banner.jpg', 'specifications.pdf'],
-    aiRecommendation: 'Bu rezervasyon bitmeden 15 gün önce yeni teklif hazırlanması önerilir.'
+    aiRecommendation: 'Bu rezervasyon bitmeden 15 gün önce yeni teklif hazırlanması önerilir.',
+    companyId: 'CMP-0001',
+    spaceId: 'SPC-0001',
+    offerId: 'OFF-0001',
+    contractId: 'CON-0001',
+    campaignId: 'CAM-0001'
   },
   {
-    id: 'r2',
+    id: 'RSV-0002',
     spaceCode: 'SG-002',
     spaceName: 'Check-in Önü LED',
     location: 'İç Hatlar Check-in',
@@ -55,10 +66,15 @@ export const reservations: Reservation[] = [
     status: 'Aktif',
     budget: '₺850.000',
     creativeFiles: ['Turkcell_Pasaport_Video.mp4', 'banner.png'],
-    aiRecommendation: 'Kampanya bitiminden sonra LC Waikiki ile görüşülebilir; benzer alanlara ilgileri bulunuyor.'
+    aiRecommendation: 'Kampanya bitiminden sonra LC Waikiki ile görüşülebilir; benzer alanlara ilgileri bulunuyor.',
+    companyId: 'CMP-0002',
+    spaceId: 'SPC-0021',
+    offerId: 'OFF-0003',
+    contractId: 'CON-0002',
+    campaignId: 'CAM-0002'
   },
   {
-    id: 'r3',
+    id: 'RSV-0003',
     spaceCode: 'SG-003',
     spaceName: 'Pasaport Kontrol Üstü',
     location: 'Dış Hatlar Güvenlik',
@@ -70,10 +86,15 @@ export const reservations: Reservation[] = [
     status: 'Aktif',
     budget: '₺1.950.000',
     creativeFiles: ['THY_Global_Widen_Your_World.mp4', 'thy_banner.jpg'],
-    aiRecommendation: 'Temmuz dönemi için yenileme opsiyonu THY yetkililerine iletildi, yanıt bekleniyor.'
+    aiRecommendation: 'Temmuz dönemi için yenileme opsiyonu THY yetkililerine iletildi, yanıt bekleniyor.',
+    companyId: 'CMP-0003',
+    spaceId: 'SPC-0003',
+    offerId: 'OFF-0002',
+    contractId: 'CON-0003',
+    campaignId: 'CAM-0003'
   },
   {
-    id: 'r4',
+    id: 'RSV-0004',
     spaceCode: 'SG-004',
     spaceName: 'Duty Free Yanı Lightbox',
     location: 'Dış Hatlar Duty Free',
@@ -85,10 +106,15 @@ export const reservations: Reservation[] = [
     status: 'Aktif',
     budget: '₺450.000',
     creativeFiles: ['lcw_kids_print.pdf', 'lcw_kids_mockup.jpg'],
-    aiRecommendation: 'Kısa süreli bu baskılı alan boşalınca Mercedes-Benz ile dijital geçiş için görüşülebilir.'
+    aiRecommendation: 'Kısa süreli bu baskılı alan boşalınca Mercedes-Benz ile dijital geçiş için görüşülebilir.',
+    companyId: 'CMP-0004',
+    spaceId: 'SPC-0004',
+    offerId: 'OFF-0005',
+    contractId: 'CON-0005',
+    campaignId: 'CAM-0005'
   },
   {
-    id: 'r5',
+    id: 'RSV-0005',
     spaceCode: 'SG-005',
     spaceName: 'Yürüyen Bant Yanı LED',
     location: 'İç Hatlar Bagaj',
@@ -100,82 +126,12 @@ export const reservations: Reservation[] = [
     status: 'Yaklaşan',
     budget: '₺1.600.000',
     creativeFiles: ['AMG_Performance_Launch.mp4'],
-    aiRecommendation: 'Kreatif dosya formatı P3.91 LED Pitch standartlarına göre onaylandı.'
-  },
-  {
-    id: 'r6',
-    spaceCode: 'SG-010',
-    spaceName: 'Giden Yolcu Lobi LED',
-    location: 'İç Hatlar Giriş',
-    clientName: 'Pegasus Airlines',
-    agencyName: 'OMD',
-    startDate: '01 Tem 2025',
-    endDate: '15 Tem 2025',
-    durationDays: 15,
-    status: 'Yaklaşan',
-    budget: '₺1.100.000',
-    creativeFiles: ['Pegasus_BolBol.mp4'],
-    aiRecommendation: 'Sözleşme onayı bekleniyor. Kampanya başlangıcına 25 gün kaldı.'
-  },
-  {
-    id: 'r7',
-    spaceCode: 'SG-012',
-    spaceName: 'CIP Salonu Dijital Ekran',
-    location: 'Dış Hatlar Lobi',
-    clientName: 'Garanti BBVA',
-    agencyName: 'Mindshare',
-    startDate: '12 Tem 2025',
-    endDate: '30 Tem 2025',
-    durationDays: 18,
-    status: 'Yaklaşan',
-    budget: '₺980.000',
-    creativeFiles: ['Garanti_MilesSmiles.mp4'],
-    aiRecommendation: 'Yolcu akışının en yoğun olduğu CIP salonunda yüksek görünürlük skoruna sahip alan.'
-  },
-  {
-    id: 'r8',
-    spaceCode: 'SG-017',
-    spaceName: 'Duty Free Merkez Lightbox',
-    location: 'Dış Hatlar Duty Free',
-    clientName: 'Akbank',
-    agencyName: 'Publicis',
-    startDate: '01 Ağu 2025',
-    endDate: '15 Ağu 2025',
-    durationDays: 15,
-    status: 'Yaklaşan',
-    budget: '₺1.250.000',
-    creativeFiles: ['Akbank_Wings.pdf'],
-    aiRecommendation: 'Ağustos ayı yoğun dış hat trafiği için premium statüde kampanya.'
-  },
-  {
-    id: 'r9',
-    spaceCode: 'SG-018',
-    spaceName: 'Pasaport Çıkış Dijital Pano',
-    location: 'Dış Hatlar Çıkış',
-    clientName: 'Papara',
-    agencyName: 'OMD',
-    startDate: '15 Ağu 2025',
-    endDate: '30 Ağu 2025',
-    durationDays: 15,
-    status: 'Yaklaşan',
-    budget: '₺850.000',
-    creativeFiles: ['Papara_Card.mp4'],
-    aiRecommendation: 'Dijital format teslim süresi yaklaşıyor; hatırlatma e-postası tetiklenebilir.'
-  },
-  {
-    id: 'r10',
-    spaceCode: 'SG-023',
-    spaceName: 'Bagaj Alım Giriş LED',
-    location: 'İç Hatlar Bagaj',
-    clientName: 'Hepsiburada',
-    agencyName: 'Publicis',
-    startDate: '01 Eyl 2025',
-    endDate: '15 Eyl 2025',
-    durationDays: 15,
-    status: 'Yaklaşan',
-    budget: '₺1.400.000',
-    creativeFiles: ['Hepsiburada_Eylul.mp4'],
-    aiRecommendation: 'Güz dönemi okul lansmanı için ön rezerve durumunda.'
+    aiRecommendation: 'Kreatif dosya formatı P3.91 LED Pitch standartlarına göre onaylandı.',
+    companyId: 'CMP-0005',
+    spaceId: 'SPC-0045',
+    offerId: 'OFF-0004',
+    contractId: 'CON-0004',
+    campaignId: 'CAM-0004'
   }
 ];
 
@@ -201,3 +157,4 @@ export const conflicts: Conflict[] = [
     reason: '18 Ağu - 20 Ağu (2 Gün) Tarihleri arasında çakışma riski bulunuyor.'
   }
 ];
+export const reservationsList = reservations; // alias

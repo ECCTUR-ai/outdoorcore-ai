@@ -16,6 +16,8 @@ import {
   Folder 
 } from 'lucide-react';
 
+import { EntityLink } from './EntityLink';
+
 interface CompanyDetailPanelProps {
   company: Company;
 }
@@ -97,11 +99,11 @@ export function CompanyDetailPanel({ company }: CompanyDetailPanelProps) {
         </div>
         <div className="p-3 rounded-2xl bg-white/3 border border-white/5 space-y-0.5">
           <span className="text-[8.5px] text-slate-500 block uppercase tracking-wider">Kampanya</span>
-          <span className="text-white block text-xs font-black">{company.campaignsCount} adet</span>
+          <span className="text-white block text-xs font-black">{company.campaignsCount} ad.</span>
         </div>
         <div className="p-3 rounded-2xl bg-white/3 border border-white/5 space-y-0.5">
           <span className="text-[8.5px] text-slate-500 block uppercase tracking-wider">Aktif Alan</span>
-          <span className="text-slate-200 block text-xs font-black">{company.activeSpacesCount} pano</span>
+          <span className="text-slate-200 block text-xs font-black">{company.activeSpacesCount} pn.</span>
         </div>
       </div>
 
@@ -127,6 +129,25 @@ export function CompanyDetailPanel({ company }: CompanyDetailPanelProps) {
           <li>Haziran ayında boşalacak premium LED ekranlar öneriliyor.</li>
           <li>İç Hatlar Giriş LED ekranı Samsung için yüksek performans gösteriyor.</li>
         </ul>
+      </div>
+
+      {/* Global Linked References */}
+      <div className="space-y-2.5 border-t border-white/5 pt-4">
+        <Label>Modüller Arası Bağlı Kayıtlar</Label>
+        <div className="flex flex-wrap gap-2.5">
+          {company.linkedOfferIds?.map(id => (
+            <EntityLink key={id} type="offer" id={id} label={`Teklif: ${id}`} />
+          ))}
+          {company.linkedContractIds?.map(id => (
+            <EntityLink key={id} type="contract" id={id} label={`Sözleşme: ${id}`} />
+          ))}
+          {company.linkedReservationIds?.map(id => (
+            <EntityLink key={id} type="reservation" id={id} label={`Rezervasyon: ${id}`} />
+          ))}
+          {company.linkedCampaignIds?.map(id => (
+            <EntityLink key={id} type="campaign" id={id} label={`Kampanya: ${id}`} />
+          ))}
+        </div>
       </div>
 
       {/* Sub-Tabs selector widgets */}
