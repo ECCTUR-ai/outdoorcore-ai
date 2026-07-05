@@ -28,6 +28,7 @@ export function Sidebar() {
 
   const menuItems = [
     { key: 'dashboard', label: 'Genel Bakış', icon: <LayoutDashboard size={13} /> },
+    { key: 'ai-assistant', label: 'AI Copilot', icon: <Sparkles size={13} className="text-blue-400" /> },
     { key: 'dashboard-home', label: 'Ana Sayfa', icon: <Home size={13} />, isMock: true, route: 'dashboard' },
     { key: 'reklam-alanlari-inv', label: 'Envanter', icon: <Archive size={13} />, isMock: true, route: 'reklam-alanlari' },
     { key: 'alan-haritasi', label: 'Harita (Terminal)', icon: <Map size={13} /> },
@@ -113,7 +114,10 @@ export function Sidebar() {
 
       {/* AI Assistant Promo Card */}
       {!sidebarCollapsed && (
-        <div className="mx-3.5 mb-4 p-3.5 bg-gradient-to-br from-blue-950/20 to-indigo-950/30 border border-blue-500/10 rounded-2xl text-left select-none">
+        <button
+          onClick={() => setCurrentRoute('ai-assistant')}
+          className="mx-3.5 mb-4 p-3.5 bg-gradient-to-br from-blue-950/20 to-indigo-950/30 border border-blue-500/10 rounded-2xl text-left select-none hover:border-blue-500/35 transition-all cursor-pointer block"
+        >
           <div className="flex items-center justify-between">
             <span className="text-[9.5px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1">
               <Sparkles size={10} className="animate-pulse" />
@@ -124,7 +128,7 @@ export function Sidebar() {
           <p className="text-[9px] text-slate-400 mt-1.5 font-bold leading-normal">
             Akıllı öneriler ve veri analizi
           </p>
-        </div>
+        </button>
       )}
     </aside>
   );
