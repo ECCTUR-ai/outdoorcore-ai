@@ -1,0 +1,233 @@
+// src/repositories/reviewRepository.ts
+import { supabase } from '@/lib/supabase';
+import { Review, ReviewSource, Sentiment, ReviewStatus, ReviewPriority } from '@/types';
+import { normalizeReviewStatus } from '@/utils/statusHelper';
+
+export function mapReview(item: any): Review {
+  if (!item) {
+    return {
+      id: '',
+      guestName: '',
+      rating: 0,
+      comment: '',
+      date: '',
+      source: 'Google',
+      status: 'pending',
+      priority: 'low',
+      response: '',
+      respondedAt: '',
+      sentiment: 'neutral',
+      departments: [],
+      hotel: '',
+      managerNotes: '',
+      internalNotes: '',
+    };
+  }
+  return {
+    id: item.id,
+    guestName: item.guest_name || item.guestName || '',
+    rating: item.rating,
+    comment: item.review_text || item.comment || '',
+    date: item.review_date || item.date || item.created_at || '',
+    review_date: item.review_date || null,
+    travel_date: item.travel_date || null,
+    created_at: item.created_at || undefined,
+    metadata: item.metadata || null,
+    owner_response_text: item.owner_response_text || null,
+    owner_response_date: item.owner_response_date || null,
+    source: (item.platform?.toLowerCase() === 'booking' ? 'Booking' :
+             item.platform?.toLowerCase() === 'tripadvisor' ? 'TripAdvisor' :
+             (item.platform?.toLowerCase() === 'google' || item.platform?.toLowerCase() === 'google-maps' || item.platform?.toLowerCase() === 'google_maps' || item.platform?.toLowerCase() === 'google maps') ? 'Google' :
+             item.platform?.toLowerCase() === 'holidaycheck' ? 'HolidayCheck' :
+             item.platform?.toLowerCase() === 'hotels.com' ? 'Hotels.com' :
+             item.platform?.toLowerCase() === 'expedia' ? 'Expedia' :
+             item.platform?.toLowerCase() === 'airbnb' ? 'Airbnb' :
+             item.platform?.toLowerCase() === 'yelp' ? 'Yelp' :
+             item.platform || item.source || 'Google') as ReviewSource,
+    status: normalizeReviewStatus(item.status) as ReviewStatus,
+    priority: (item.priority || 'low').toLowerCase() as ReviewPriority,
+    response: item.ai_reply || item.response || '',
+    respondedAt: item.responded_at || item.respondedAt || item.updated_at || '',
+    sentiment: (item.sentiment || 'neutral').toLowerCase() as Sentiment,
+    departments: item.departments || [],
+    hotel: item.hotel_name || item.hotel || 'Demo Hotel',
+    managerNotes: item.notes || item.manager_notes || item.managerNotes || '',
+    internalNotes: item.internal_notes || item.internalNotes || '',
+    hotelId: item.hotel_id || item.hotelId,
+    organizationId: item.organization_id || item.organizationId,
+    platformReviewId: item.platform_review_id || item.platformReviewId || null,
+    google_reply_status: item.google_reply_status || null,
+    google_reply_published_at: item.google_reply_published_at || null,
+    google_reply_error: item.google_reply_error || null,
+    department_analysis: item.department_analysis || null,
+    quality_analysis: item.quality_analysis || null,
+    priority_analysis: item.priority_analysis || null,
+    aiAnalysis: item.ai_analysis || item.review_analysis ? {
+      sentiment: (item.sentiment || item.ai_analysis?.sentiment || item.review_analysis?.sentiment || 'neutral').toLowerCase() as Sentiment,
+      emotion: item.ai_analysis?.emotion || item.review_analysis?.emotion || '',
+      keyTopics: item.ai_analysis?.key_topics || item.review_analysis?.key_topics || item.ai_analysis?.keyTopics || [],
+      qualityScore: item.ai_analysis?.quality_score || item.review_analysis?.quality_score || item.ai_analysis?.qualityScore || 0,
+      sentimentScore: item.ai_analysis?.sentiment_score || item.review_analysis?.sentiment_score || item.ai_analysis?.sentimentScore || 0
+    } : undefined
+  };
+}
+
+export const reviewRepository = {
+  async getReviews(params?: {
+    hotelId?: string;
+    source?: ReviewSource;
+    sentiment?: Sentiment;
+    status?: ReviewStatus;
+    priority?: ReviewPriority;
+    search?: string;
+    rating?: number;
+    limit?: number;
+    offset?: number;
+    sortBy?: 'newest' | 'oldest';
+  }): Promise<{ reviews: Review[]; total: number }> {
+    if (!params || !params.hotelId) {
+      console.warn('[reviewRepository] Warning: getReviews called without hotelId parameter. Enforcing tenant isolation.');
+      return { reviews: [], total: 0 };
+    }
+
+    let query = supabase
+      .from('reviews')
+      .select('*', { count: 'exact' })
+      .eq('hotel_id', params.hotelId);
+
+    if (params.source) {
+      const srcLower = params.source.toLowerCase();
+      if (srcLower === 'booking') {
+        query = query.or('platform.eq.booking,platform.eq.Booking');
+      } else if (srcLower === 'tripadvisor') {
+        query = query.or('platform.eq.tripadvisor,platform.eq.TripAdvisor,platform.eq.Tripadvisor');
+      } else if (srcLower === 'google') {
+        query = query.or('platform.eq.google,platform.eq.Google,platform.eq.google-maps,platform.eq.google_maps,platform.eq.google maps');
+      } else if (srcLower === 'holidaycheck') {
+        query = query.or('platform.eq.holidaycheck,platform.eq.HolidayCheck');
+      } else if (srcLower === 'hotels.com' || srcLower === 'hotelscom') {
+        query = query.or('platform.eq.hotels.com,platform.eq.hotelscom');
+      } else {
+        query = query.eq('platform', params.source);
+      }
+    }
+    if (params.sentiment) {
+      query = query.eq('sentiment', params.sentiment);
+    }
+    if (params.status) {
+      const statusVal = normalizeReviewStatus(params.status);
+      if (statusVal === 'approved') {
+        query = query.or('status.eq.approved,status.eq.Approved,status.eq.published,status.eq.Published,status.eq.cevaplandi');
+      } else if (statusVal === 'draft') {
+        query = query.or('status.eq.draft,status.eq.Draft');
+      } else if (statusVal === 'archived') {
+        query = query.or('status.eq.archived,status.eq.Archived');
+      } else if (statusVal === 'manual_replied') {
+        query = query.or('status.eq.manual_replied,status.eq.manual-replied,status.eq.Manual_Replied');
+      } else if (statusVal === 'pending') {
+        query = query.or('status.eq.pending,status.eq.Pending,status.eq.pending_approval,status.eq.waiting_approval');
+      } else {
+        query = query.eq('status', params.status);
+      }
+    }
+    if (params.priority) {
+      query = query.eq('priority', params.priority);
+    }
+    if (params.rating) {
+      query = query.eq('rating', params.rating);
+    }
+    if (params.search) {
+      query = query.ilike('guest_name', `%${params.search}%`);
+    }
+
+    const limit = params.limit || 20;
+    const offset = params.offset || 0;
+    query = query.range(offset, offset + limit - 1);
+
+    const isAsc = params.sortBy === 'oldest';
+    const sortedQuery = query
+      .order('review_date', { ascending: isAsc, nullsFirst: false })
+      .order('created_at', { ascending: isAsc });
+    const response = await sortedQuery;
+
+    if (response.error) throw response.error;
+
+    const reviews = (response.data || []).map(mapReview);
+    return { reviews, total: response.count || 0 };
+  },
+
+  async getReviewById(id: string): Promise<Review> {
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return mapReview(data);
+  },
+
+  async submitResponse(id: string, responseText: string): Promise<Review> {
+    console.log(`[Repository submitResponse] reviewId: ${id}`);
+    const updateData: any = {
+      ai_reply: responseText,
+      status: 'approved',
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('reviews')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+    return await reviewRepository.getReviewById(id);
+  },
+
+  async saveResponseDraft(id: string, responseText: string): Promise<Review> {
+    console.log(`[Repository saveResponseDraft] reviewId: ${id}`);
+    const updateData: any = {
+      ai_reply: responseText,
+      status: 'draft',
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('reviews')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+    return await reviewRepository.getReviewById(id);
+  },
+
+  async updateReviewNotes(id: string, managerNotes: string, internalNotes: string): Promise<Review> {
+    console.log(`[Repository updateReviewNotes] reviewId: ${id}`);
+    const updateData: any = {
+      notes: managerNotes,
+      manager_notes: managerNotes,
+      internal_notes: internalNotes,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+      .from('reviews')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
+    return await reviewRepository.getReviewById(id);
+  },
+
+  async updateReviewStatus(id: string, status: ReviewStatus): Promise<Review> {
+    console.log(`[Repository updateReviewStatus] reviewId: ${id}, status: ${status}`);
+    const normalized = normalizeReviewStatus(status);
+    const { error } = await supabase
+      .from('reviews')
+      .update({ status: normalized, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+    return await reviewRepository.getReviewById(id);
+  }
+};
