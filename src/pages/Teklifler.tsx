@@ -88,7 +88,7 @@ export function Teklifler() {
       </div>
 
       {/* Upper Pipeline KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Fırsat"
           value="128"
@@ -148,7 +148,7 @@ export function Teklifler() {
       {/* Main Kanban Pipeline workspace grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Sol 9-Sütun: Kanban board scroll tracking + Bottom widget cards */}
-        <div className="lg:col-span-9 space-y-6 flex flex-col">
+        <div className="order-1 lg:order-none lg:col-span-9 space-y-6 flex flex-col">
           {/* Section 1: Horizontal scrollable Kanban pipeline */}
           <div className="w-full">
             <OfferPipeline 
@@ -167,7 +167,7 @@ export function Teklifler() {
         </div>
 
         {/* Sağ 3-Sütun: Sticky details panel */}
-        <div className="lg:col-span-3">
+        <div className="order-2 lg:order-none lg:col-span-3">
           <OfferDetailPanel 
             offer={selectedOffer}
           />

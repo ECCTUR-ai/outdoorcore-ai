@@ -92,7 +92,7 @@ export function AiAssistant() {
       </div>
 
       {/* KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <CopilotKpiCard
           title="Toplam Bağlı Kayıt"
           value="1.248"
@@ -143,7 +143,7 @@ export function AiAssistant() {
       {/* Main Grid layout splits */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 1. Sol panel: Conversation history & SuggestedPromptChips */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="order-2 lg:order-none lg:col-span-3 space-y-6">
           {/* Conversation history block */}
           <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-3.5 text-left">
             <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 text-slate-400">
@@ -172,7 +172,7 @@ export function AiAssistant() {
         </div>
 
         {/* 2. Orta alan: Chat / cevap ekranı */}
-        <div className="lg:col-span-6">
+        <div className="order-1 lg:order-none lg:col-span-6">
           <CopilotChat 
             onContextUpdate={(ctx) => setContext(ctx)} 
             onExecuteAction={handleExecuteAction}
@@ -182,7 +182,7 @@ export function AiAssistant() {
         </div>
 
         {/* 3. Sağ panel: Bağlam kartları ve bulunan kayıtlar */}
-        <div className="lg:col-span-3">
+        <div className="order-3 lg:order-none lg:col-span-3">
           <CopilotContextPanel 
             relatedEntities={context.relatedEntities}
             sourceModules={context.sourceModules}

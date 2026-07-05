@@ -56,7 +56,7 @@ export function AccountDetailPanel({ account }: AccountDetailPanelProps) {
   };
 
   return (
-    <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-6 text-left sticky top-[95px] max-h-[calc(100vh-130px)] overflow-y-auto select-none">
+    <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-6 text-left lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto select-none">
       {/* Header Profile Title */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3.5">

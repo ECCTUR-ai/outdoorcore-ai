@@ -108,7 +108,7 @@ export function Bildirimler() {
       </div>
 
       {/* Upper Pipeline KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Bildirim"
           value="148"
@@ -170,16 +170,16 @@ export function Bildirimler() {
 
       {/* Grid Layout: Timeline, Kanban */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4">
+        <div className="order-2 lg:order-none lg:col-span-4">
           <NotificationTimeline />
         </div>
-        <div className="lg:col-span-8">
+        <div className="order-1 lg:order-none lg:col-span-8">
           <TaskKanban />
         </div>
       </div>
 
       {/* Grid Layout: Schedules, Deadlines, Approvals */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <TodayCalendar />
         <DeadlineWidget />
         <ApprovalCenter />

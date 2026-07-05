@@ -91,7 +91,7 @@ export function Dashboard() {
   return (
     <div className="space-y-6 select-none pb-12">
       {/* 6 KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Reklam Alanı"
           value="150"
@@ -224,12 +224,12 @@ export function Dashboard() {
       </div>
 
       {/* Grid: Charts (Donuts & Monthly line charts) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
         {/* Alan Durumu Dağılımı Donut */}
         <DarkDashboardCard
           title="Alan Durumu Dağılımı"
           description="Reklam alanlarının kullanım payları"
-          className="lg:col-span-4"
+          className="md:col-span-1 lg:col-span-4"
         >
           <div className="flex items-center justify-between gap-2 h-44 text-left">
             <div className="w-1/2 h-full">
@@ -278,7 +278,7 @@ export function Dashboard() {
         <DarkDashboardCard
           title="Aylık Gelir"
           description="Aylara göre toplam kiralama hacmi (₺ Milyon)"
-          className="lg:col-span-4"
+          className="md:col-span-1 lg:col-span-4"
           headerActions={
             <div className="text-right">
               <span className="text-sm font-black text-emerald-450 leading-none block">₺14.75M</span>
@@ -311,7 +311,7 @@ export function Dashboard() {
         <DarkDashboardCard
           title="Gelir Dağılımı"
           description="Alan tiplerine göre yüzde dağılımları"
-          className="lg:col-span-4"
+          className="md:col-span-1 lg:col-span-4"
         >
           <div className="flex items-center justify-between gap-2 h-44 text-left">
             <div className="w-1/2 h-full">
@@ -390,7 +390,7 @@ export function Dashboard() {
           description="Satış süreçlerindeki potansiyel fırsatlar ve bütçeleri"
           className="lg:col-span-6"
         >
-          <div className="grid grid-cols-5 gap-3.5 pt-2 text-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3.5 pt-2 text-center">
             {pipelineSteps.map((step, idx) => (
               <div 
                 key={step.name} 
@@ -416,44 +416,46 @@ export function Dashboard() {
           description="Terminal genelinde yayında olan reklam kampanyaları"
           className="lg:col-span-8"
         >
-          <Table headers={['Alan Kodu', 'Alan Adı', 'Marka / Reklamveren', 'Başlangıç', 'Bitiş', 'Durum', 'İlerleme']}>
-            <TableRow>
-              <TableCell className="font-extrabold text-slate-500">SG-001</TableCell>
-              <TableCell className="font-black text-white">Giriş LED Ekran</TableCell>
-              <TableCell className="font-semibold text-slate-300">Turkcell</TableCell>
-              <TableCell>01 May 2025</TableCell>
-              <TableCell>31 May 2025</TableCell>
-              <TableCell>
-                <Badge variant="success">Aktif</Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden shrink-0">
-                    <div className="h-full bg-emerald-500 rounded-full w-full" />
+          <div className="overflow-x-auto select-none no-scrollbar">
+            <Table headers={['Alan Kodu', 'Alan Adı', 'Marka / Reklamveren', 'Başlangıç', 'Bitiş', 'Durum', 'İlerleme']}>
+              <TableRow>
+                <TableCell className="font-extrabold text-slate-500">SG-001</TableCell>
+                <TableCell className="font-black text-white">Giriş LED Ekran</TableCell>
+                <TableCell className="font-semibold text-slate-300">Turkcell</TableCell>
+                <TableCell>01 May 2025</TableCell>
+                <TableCell>31 May 2025</TableCell>
+                <TableCell>
+                  <Badge variant="success">Aktif</Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden shrink-0">
+                      <div className="h-full bg-emerald-500 rounded-full w-full" />
+                    </div>
+                    <span className="text-[9px] font-black text-white">%100</span>
                   </div>
-                  <span className="text-[9px] font-black text-white">%100</span>
-                </div>
-              </TableCell>
-            </TableRow>
-            <TableRow>
-              <TableCell className="font-extrabold text-slate-500">SG-021</TableCell>
-              <TableCell className="font-black text-white">Check-in Önü LED</TableCell>
-              <TableCell className="font-semibold text-slate-300">Samsung</TableCell>
-              <TableCell>01 Nis 2025</TableCell>
-              <TableCell>15 Haz 2025</TableCell>
-              <TableCell>
-                <Badge variant="success">Aktif</Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden shrink-0">
-                    <div className="h-full bg-emerald-500 rounded-full w-3/4" />
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-extrabold text-slate-500">SG-021</TableCell>
+                <TableCell className="font-black text-white">Check-in Önü LED</TableCell>
+                <TableCell className="font-semibold text-slate-300">Samsung</TableCell>
+                <TableCell>01 Nis 2025</TableCell>
+                <TableCell>15 Haz 2025</TableCell>
+                <TableCell>
+                  <Badge variant="success">Aktif</Badge>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden shrink-0">
+                      <div className="h-full bg-emerald-500 rounded-full w-3/4" />
+                    </div>
+                    <span className="text-[9px] font-black text-white">%75</span>
                   </div>
-                  <span className="text-[9px] font-black text-white">%75</span>
-                </div>
-              </TableCell>
-            </TableRow>
-          </Table>
+                </TableCell>
+              </TableRow>
+            </Table>
+          </div>
         </DarkDashboardCard>
 
         {/* Sağ Alt: Hızlı İşlemler */}

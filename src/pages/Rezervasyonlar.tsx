@@ -100,7 +100,7 @@ export function Rezervasyonlar() {
       </div>
 
       {/* Upper Reservation KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Rezervasyon"
           value="824"
@@ -160,7 +160,7 @@ export function Rezervasyonlar() {
       {/* Main CRM Timeline grid splits */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 1. Sol: Timeline Filters */}
-        <div className="lg:col-span-3">
+        <div className="order-2 lg:order-none lg:col-span-3">
           <ReservationFilters 
             search={search}
             setSearch={setSearch}
@@ -176,7 +176,7 @@ export function Rezervasyonlar() {
         </div>
 
         {/* 2. Orta: Large Gantt Timeline display */}
-        <div className="lg:col-span-6">
+        <div className="order-1 lg:order-none lg:col-span-6">
           <ReservationTimeline 
             selectedSpaceCode={selectedSpaceCode}
             onSelectSpaceCode={(code) => setSelectedSpaceCode(code)}
@@ -184,7 +184,7 @@ export function Rezervasyonlar() {
         </div>
 
         {/* 3. Sağ: Selected reservation detail card */}
-        <div className="lg:col-span-3">
+        <div className="order-3 lg:order-none lg:col-span-3">
           <ReservationDetail 
             reservation={selectedRes}
           />

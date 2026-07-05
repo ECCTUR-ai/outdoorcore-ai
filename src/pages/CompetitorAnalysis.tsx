@@ -53,7 +53,7 @@ export function CompetitorAnalysis() {
       </div>
 
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider">İzlenen Rakip</span>
           <div className="flex items-baseline gap-1 mt-3">
@@ -101,7 +101,7 @@ export function CompetitorAnalysis() {
       {/* Main Grid splits */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Sol Panel: Competitor Search List */}
-        <div className="lg:col-span-3 space-y-4">
+        <div className="order-2 lg:order-none lg:col-span-3 space-y-4">
           <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 text-slate-400">
               <Search size={12} />
@@ -149,7 +149,7 @@ export function CompetitorAnalysis() {
         </div>
 
         {/* Orta Panel: Competitor details grid */}
-        <div className="lg:col-span-6 space-y-4">
+        <div className="order-1 lg:order-none lg:col-span-6 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredCompetitors.map(comp => {
               const isSelected = selectedCompetitor.id === comp.id;
@@ -202,7 +202,7 @@ export function CompetitorAnalysis() {
         </div>
 
         {/* Sağ Panel: Side-by-Side Comparison */}
-        <div className="lg:col-span-3">
+        <div className="order-3 lg:order-none lg:col-span-3">
           <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-4 text-left">
             <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 text-slate-400">
               <Award size={12} />
@@ -258,7 +258,7 @@ export function CompetitorAnalysis() {
       </div>
 
       {/* Alt panel: Market charts and AI Pricing recommendations */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Pazar Grafikleri list */}
         <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-4">
           <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 text-slate-400">

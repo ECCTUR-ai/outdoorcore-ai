@@ -23,7 +23,7 @@ interface ReservationDetailProps {
 
 export function ReservationDetail({ reservation }: ReservationDetailProps) {
   return (
-    <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left sticky top-[95px] max-h-[calc(100vh-130px)] overflow-y-auto">
+    <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto">
       {/* Header Profile Title */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">

@@ -25,6 +25,8 @@ interface AppContextProps {
   setCurrentRoute: (route: RouteType) => void;
   sidebarCollapsed: boolean;
   setSidebarCollapsed: (val: boolean) => void;
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (val: boolean) => void;
   searchQuery: string;
   setSearchQuery: (val: string) => void;
   commandPaletteOpen: boolean;
@@ -40,6 +42,7 @@ const AppContext = createContext<AppContextProps | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentRoute, setCurrentRoute] = useState<RouteType>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -78,6 +81,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setCurrentRoute,
       sidebarCollapsed,
       setSidebarCollapsed,
+      mobileSidebarOpen,
+      setMobileSidebarOpen,
       searchQuery,
       setSearchQuery,
       commandPaletteOpen,

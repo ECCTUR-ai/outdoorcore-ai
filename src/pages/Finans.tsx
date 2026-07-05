@@ -114,7 +114,7 @@ export function Finans() {
       </div>
 
       {/* Upper Financial KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Ciro"
           value="₺684.5M"
@@ -177,7 +177,7 @@ export function Finans() {
       {/* Grid Layout: Accounts dock, main graphs, detail panel */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Sol Account list */}
-        <div className="lg:col-span-3">
+        <div className="order-2 lg:order-none lg:col-span-3">
           <AccountList 
             accounts={financeData.accounts}
             selectedId={selectedAccountId}
@@ -186,13 +186,13 @@ export function Finans() {
         </div>
 
         {/* Orta Nakit Akışı Area Chart & Donut */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="order-1 lg:order-none lg:col-span-5 space-y-6">
           <CashFlowChart />
           <CollectionDonut />
         </div>
 
         {/* Sağ Account detail panel */}
-        <div className="lg:col-span-4">
+        <div className="order-3 lg:order-none lg:col-span-4">
           <AccountDetailPanel account={selectedAccount} />
         </div>
       </div>

@@ -25,7 +25,7 @@ export function CopilotContextPanel({
   onExecuteAction 
 }: CopilotContextPanelProps) {
   return (
-    <div className="space-y-6 sticky top-[95px] max-h-[calc(100vh-130px)] overflow-y-auto pr-1">
+    <div className="space-y-6 lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto pr-1">
       {/* 1. Bulunan Kayıtlar */}
       <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-3.5 text-left">
         <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 text-slate-400 select-none">

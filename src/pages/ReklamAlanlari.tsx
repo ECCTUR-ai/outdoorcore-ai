@@ -113,7 +113,7 @@ export function ReklamAlanlari() {
       </div>
 
       {/* 5 KPI Cards Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <DarkKpiCard
           title="Toplam Alan"
           value="150"
@@ -163,7 +163,7 @@ export function ReklamAlanlari() {
       {/* Main Layout 3 Section Grid split */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Map & Table List */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="order-1 lg:order-none lg:col-span-8 space-y-6">
           {/* Section 1: Terminal Map Mock Card */}
           <DarkDashboardCard
             title="Alan Haritası"
@@ -350,7 +350,7 @@ export function ReklamAlanlari() {
         </div>
 
         {/* Right Side: Sticky Space Detail Panel */}
-        <div className="lg:col-span-4">
+        <div className="order-2 lg:order-none lg:col-span-4">
           <AdvertisingSpaceDetailPanel space={selectedSpace} />
         </div>
       </div>

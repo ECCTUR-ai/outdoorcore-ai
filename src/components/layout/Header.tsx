@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Bell, Mail, ChevronDown, Calendar, Search } from 'lucide-react';
+import { Bell, Mail, ChevronDown, Calendar, Search, Menu } from 'lucide-react';
 import { Avatar } from '../design-system/Avatar';
 import { Badge } from '../design-system/Badge';
 import { notificationsList } from '@/data/notifications';
 import { tasksList } from '@/data/tasks';
 
 export function Header() {
-  const { setCommandPaletteOpen } = useApp();
+  const { setCommandPaletteOpen, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
   const criticalCount = notificationsList.filter(n => n.status === 'critical').length;
@@ -15,19 +15,29 @@ export function Header() {
   const latestNotifs = notificationsList.slice(0, 10);
 
   return (
-    <header className="h-[75px] bg-[#0f172a]/60 backdrop-blur-md border-b border-white/5 px-6 flex items-center justify-between sticky top-0 z-30 select-none">
-      {/* Welcome Left section */}
-      <div className="text-left space-y-0.5">
-        <h1 className="text-xs font-black text-white uppercase tracking-wider m-0 leading-none">
-          Hoş geldiniz, Cemil Sezgin
-        </h1>
-        <p className="text-[9.5px] text-slate-500 font-bold uppercase tracking-wider m-0">
-          OutdoorCore AI Reklam Yönetim Paneli
-        </p>
+    <header className="h-[75px] bg-[#0f172a]/60 backdrop-blur-md border-b border-white/5 px-4 md:px-6 flex items-center justify-between sticky top-0 z-30 select-none">
+      {/* Welcome Left section with responsive hamburger */}
+      <div className="flex items-center min-w-0">
+        <button
+          onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          className="p-2 mr-2.5 rounded-lg bg-white/5 border border-white/5 text-slate-400 hover:text-white md:hidden cursor-pointer flex items-center justify-center shrink-0"
+          title="Menüyü Aç"
+        >
+          <Menu size={13} />
+        </button>
+        
+        <div className="text-left space-y-0.5 truncate leading-none">
+          <h1 className="text-[10px] md:text-xs font-black text-white uppercase tracking-wider m-0 leading-none truncate">
+            Cemil Sezgin
+          </h1>
+          <p className="hidden md:block text-[9.5px] text-slate-500 font-bold uppercase tracking-wider m-0">
+            OutdoorCore AI Reklam Yönetim Paneli
+          </p>
+        </div>
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3.5">
+      <div className="flex items-center gap-2 md:gap-3.5">
         {/* Quick Command Palette Button */}
         <button
           onClick={() => setCommandPaletteOpen(true)}
@@ -38,7 +48,7 @@ export function Header() {
         </button>
 
         {/* Date Selector range */}
-        <div className="flex items-center gap-2 px-3 h-9 bg-white/5 border border-white/5 rounded-xl text-slate-300 font-bold text-[9.5px] uppercase tracking-wider">
+        <div className="hidden md:flex items-center gap-2 px-3 h-9 bg-white/5 border border-white/5 rounded-xl text-slate-300 font-bold text-[9.5px] uppercase tracking-wider">
           <Calendar size={11} className="text-slate-400 shrink-0" />
           <span>01 Mayıs 2025 - 31 Mayıs 2025</span>
         </div>
@@ -70,26 +80,26 @@ export function Header() {
                 className="fixed inset-0 z-40" 
                 onClick={() => setShowNotifMenu(false)} 
               />
-              <div className="absolute right-0 mt-2 w-80 dark-glass-card border border-white/10 rounded-2xl shadow-2xl p-4.5 z-50 animate-scale-in">
-                <div className="flex justify-between items-center border-b border-white/5 pb-2.5 mb-3.5">
+              <div className="absolute right-0 mt-2 w-72 sm:w-80 dark-glass-card border border-white/10 rounded-2xl shadow-2xl p-4 z-50 animate-scale-in max-h-[400px] overflow-y-auto">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2.5 mb-3">
                   <h4 className="text-[10px] font-black text-white uppercase tracking-wider m-0">Canlı Bildirimler</h4>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     {criticalCount > 0 && (
-                      <span className="text-[7.5px] bg-rose-500/10 text-rose-450 border border-rose-500/10 px-1.5 py-0.2 rounded font-black uppercase tracking-wider">{criticalCount} Kritik</span>
+                      <span className="text-[7px] bg-rose-500/10 text-rose-450 border border-rose-500/10 px-1 py-0.2 rounded font-black uppercase tracking-wider">{criticalCount} Kritik</span>
                     )}
-                    <span className="text-[7.5px] bg-blue-500/10 text-blue-400 border border-blue-500/10 px-1.5 py-0.2 rounded font-black uppercase tracking-wider">{taskCount} Görev</span>
+                    <span className="text-[7px] bg-blue-500/10 text-blue-400 border border-blue-500/10 px-1 py-0.2 rounded font-black uppercase tracking-wider">{taskCount} Görev</span>
                   </div>
                 </div>
-                <div className="space-y-3 max-h-64 overflow-y-auto">
+                <div className="space-y-3">
                   {latestNotifs.map(n => (
                     <div key={n.id} className="text-left space-y-1 border-b border-white/5 pb-2.5 last:border-0 last:pb-0">
                       <div className="flex justify-between items-start gap-2">
-                        <span className="text-[10px] font-black text-white leading-tight uppercase">{n.category} | {n.company}</span>
-                        <span className="text-[8px] text-slate-500 font-bold shrink-0">{n.time}</span>
+                        <span className="text-[9px] font-black text-white leading-tight uppercase truncate">{n.category} | {n.company}</span>
+                        <span className="text-[7.5px] text-slate-500 font-bold shrink-0">{n.time}</span>
                       </div>
-                      <p className="text-[9.5px] text-slate-400 leading-normal font-semibold">{n.message}</p>
+                      <p className="text-[9px] text-slate-400 leading-normal font-semibold">{n.message}</p>
                       <div className="flex justify-between items-center mt-1">
-                        <span className="text-[7.5px] text-slate-500 font-black uppercase">Sorumlu: {n.user}</span>
+                        <span className="text-[7px] text-slate-500 font-black uppercase">Sorumlu: {n.user}</span>
                         <span className={`w-1.5 h-1.5 rounded-full ${
                           n.status === 'critical' ? 'bg-rose-500' :
                           n.status === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'
@@ -104,7 +114,7 @@ export function Header() {
         </div>
 
         {/* User Card Dropdown */}
-        <div className="flex items-center gap-2 border-l border-white/5 pl-3.5 shrink-0">
+        <div className="flex items-center gap-1.5 border-l border-white/5 pl-2.5 md:pl-3.5 shrink-0">
           <Avatar 
             name="Cemil Sezgin" 
             size="sm" 

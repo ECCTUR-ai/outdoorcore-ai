@@ -93,7 +93,7 @@ export function Kampanyalar() {
       </div>
 
       {/* Upper Pipeline KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Aktif Kampanya"
           value="68"
@@ -153,7 +153,7 @@ export function Kampanyalar() {
       {/* Main split grid layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 1. Sol: Filter & Company list */}
-        <div className="lg:col-span-3">
+        <div className="order-2 lg:order-none lg:col-span-3">
           <CampaignList 
             campaigns={campaigns}
             selectedId={selectedCampaignId}
@@ -162,7 +162,7 @@ export function Kampanyalar() {
         </div>
 
         {/* 2. Orta: Catalog Cards listing */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
           <div className="flex justify-between items-center px-1">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kampanya Portalı</span>
           </div>
@@ -179,7 +179,7 @@ export function Kampanyalar() {
         </div>
 
         {/* 3. Sağ: Sticky detail panel */}
-        <div className="lg:col-span-4">
+        <div className="order-3 lg:order-none lg:col-span-4">
           <CampaignDetailPanel 
             campaign={selectedCampaign}
           />

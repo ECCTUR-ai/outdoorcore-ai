@@ -86,7 +86,7 @@ export function Raporlar() {
       </div>
 
       {/* Upper Pipeline KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Ciro"
           value="₺684.5M"
@@ -147,13 +147,13 @@ export function Raporlar() {
       <ExecutiveSummaryCard />
 
       {/* Section 2 & 3 Grid: Charts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         <RevenueAnalytics />
         <SpacePerformanceChart />
       </div>
 
       {/* Section 4 & 5 Grid: CRM & Pipeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         <BrandPerformanceTable />
         <PipelineFunnel />
       </div>
@@ -169,7 +169,7 @@ export function Raporlar() {
       </div>
 
       {/* Section 8 & 9 Grid: Contracts & Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         <ContractAnalytics />
         <ReservationAnalytics />
       </div>

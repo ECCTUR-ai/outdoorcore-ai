@@ -86,7 +86,7 @@ export function FirmalarMarkalar() {
       </div>
 
       {/* Upper CRM KPI Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Firma"
           value="248"
@@ -145,7 +145,7 @@ export function FirmalarMarkalar() {
       {/* Main CRM split grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* 1. Sol: Filter & Company List scroll box */}
-        <div className="lg:col-span-3">
+        <div className="order-2 lg:order-none lg:col-span-3">
           <CompanyList 
             companies={companies}
             selectedId={selectedId}
@@ -154,7 +154,7 @@ export function FirmalarMarkalar() {
         </div>
 
         {/* 2. Orta: Company cards display catalog */}
-        <div className="lg:col-span-5 space-y-4">
+        <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
           <div className="flex justify-between items-center px-1">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Firma Kartları Portalı</span>
           </div>
@@ -171,7 +171,7 @@ export function FirmalarMarkalar() {
         </div>
 
         {/* 3. Sağ: Detailed sticky overview panel */}
-        <div className="lg:col-span-4">
+        <div className="order-3 lg:order-none lg:col-span-4">
           <CompanyDetailPanel company={selectedCompany} />
         </div>
       </div>

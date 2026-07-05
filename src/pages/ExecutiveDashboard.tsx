@@ -53,7 +53,7 @@ export function ExecutiveDashboard() {
       </div>
 
       {/* ÜST KPI Panel (8 Cards) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         {[
           { title: 'Toplam Ciro', val: '₺684.500.000', change: '▲ %14', desc: 'Son 12 ay' },
           { title: 'Net Kar', val: '₺248.500.000', change: '▲ %18', desc: 'Operasyonel kar' },

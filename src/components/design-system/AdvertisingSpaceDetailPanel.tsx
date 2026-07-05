@@ -23,7 +23,7 @@ interface AdvertisingSpaceDetailPanelProps {
 
 export function AdvertisingSpaceDetailPanel({ space }: AdvertisingSpaceDetailPanelProps) {
   return (
-    <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left sticky top-[95px] max-h-[calc(100vh-130px)] overflow-y-auto">
+    <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto">
       {/* Visual Placeholder card box */}
       <div className="relative h-40 w-full bg-slate-900 rounded-xl overflow-hidden border border-white/5 shadow-inner">
         {space.image ? (
