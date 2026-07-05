@@ -12,6 +12,7 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
+import { EntityLink } from './EntityLink';
 
 export function NotificationTimeline() {
   const getIcon = (category: string) => {
@@ -55,6 +56,29 @@ export function NotificationTimeline() {
             </div>
             
             <p className="text-slate-400 font-bold leading-normal">{n.message}</p>
+            
+            {/* Global Relation Entity Links */}
+            <div className="flex flex-wrap gap-1 mt-1 pb-1">
+              <span className="text-[7.5px] text-slate-500 font-extrabold flex items-center pr-1 uppercase">#{n.id}</span>
+              {n.companyId && (
+                <EntityLink type="company" id={n.companyId} label="Firma" />
+              )}
+              {n.linkId && (
+                <EntityLink 
+                  type={
+                    n.category === 'Sözleşme' ? 'contract' :
+                    n.category === 'Teklif' ? 'offer' :
+                    n.category === 'Kampanya' ? 'campaign' :
+                    n.category === 'Tahsilat' ? 'invoice' :
+                    n.category === 'Rezervasyon' ? 'reservation' :
+                    n.category === 'Bakım' ? 'space' : 'contract'
+                  } 
+                  id={n.linkId} 
+                  label={n.category} 
+                />
+              )}
+            </div>
+            
             <div className="text-[7.5px] text-slate-500 font-black uppercase tracking-wider block">Yetkili: {n.user}</div>
           </div>
         ))}

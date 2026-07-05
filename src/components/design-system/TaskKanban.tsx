@@ -2,8 +2,13 @@ import React from 'react';
 import { tasksList, TaskItem } from '@/data/tasks';
 import { Badge } from './Badge';
 import { Sparkles, Calendar, CheckSquare } from 'lucide-react';
+import { EntityLink } from './EntityLink';
 
-function TaskRowLogo({ task }: { task: TaskItem }) {
+interface TaskRowLogoProps {
+  task: TaskItem;
+}
+
+function TaskRowLogo({ task }: TaskRowLogoProps) {
   const [imageError, setImageError] = React.useState(false);
   if (task.logoUrl && !imageError) {
     return (
@@ -62,7 +67,30 @@ export function TaskKanban() {
                       </Badge>
                     </div>
 
-                    <p className="text-[9.5px] text-white font-extrabold leading-normal">{t.taskTitle}</p>
+                    <div className="space-y-0.5">
+                      <span className="text-[7.5px] font-extrabold text-slate-500 block uppercase">#{t.id}</span>
+                      <p className="text-[9.5px] text-white font-extrabold leading-normal">{t.taskTitle}</p>
+                    </div>
+
+                    {/* Relations badge references links */}
+                    <div className="flex flex-wrap gap-1 mt-1 pb-1">
+                      {t.companyId && (
+                        <EntityLink type="company" id={t.companyId} label="Firma" />
+                      )}
+                      {t.linkId && (
+                        <EntityLink 
+                          type={
+                            t.module === 'Sözleşme' ? 'contract' :
+                            t.module === 'Teklif' ? 'offer' :
+                            t.module === 'Kampanya' ? 'campaign' :
+                            t.module === 'Finans' ? 'invoice' :
+                            t.module === 'Rezervasyon' ? 'reservation' : 'contract'
+                          } 
+                          id={t.linkId} 
+                          label={t.module} 
+                        />
+                      )}
+                    </div>
 
                     <div className="flex items-center justify-between text-[8px] font-bold text-slate-500 pt-2 border-t border-white/3 leading-none">
                       <span className="uppercase tracking-wider flex items-center gap-0.5">

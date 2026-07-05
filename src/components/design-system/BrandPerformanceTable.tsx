@@ -2,6 +2,8 @@ import React from 'react';
 import { reportsData, BrandReportItem } from '@/data/reports';
 import { Table, TableRow, TableCell } from './Table';
 import { Award, Sparkles } from 'lucide-react';
+import { companies } from '@/data/companies';
+import { EntityLink } from './EntityLink';
 
 function BrandRowLogo({ item }: { item: BrandReportItem }) {
   const [imageError, setImageError] = React.useState(false);
@@ -33,25 +35,32 @@ export function BrandPerformanceTable() {
       </div>
 
       <Table headers={['Firma', 'Toplam Ciro', 'Aktif Kampanya', 'Toplam Alan', 'AI Skoru']}>
-        {sorted.map((item, idx) => (
-          <TableRow key={idx}>
-            <TableCell>
-              <div className="flex items-center gap-2.5">
-                <BrandRowLogo item={item} />
-                <span className="font-extrabold text-white">{item.name}</span>
-              </div>
-            </TableCell>
-            <TableCell className="font-black text-white">{item.totalRevenue}</TableCell>
-            <TableCell className="font-semibold text-slate-400">{item.activeCampaigns} adet</TableCell>
-            <TableCell className="font-bold text-slate-350">{item.totalSpaces} alan</TableCell>
-            <TableCell>
-              <span className="px-2 py-0.5 rounded-lg border border-blue-500/10 bg-blue-500/10 text-blue-400 text-[9.5px] font-black inline-flex items-center gap-1">
-                <Sparkles size={9} />
-                {item.aiScore}
-              </span>
-            </TableCell>
-          </TableRow>
-        ))}
+        {sorted.map((item, idx) => {
+          const matchingCompany = companies.find(c => c.name === item.name);
+          return (
+            <TableRow key={idx}>
+              <TableCell>
+                <div className="flex items-center gap-2.5">
+                  <BrandRowLogo item={item} />
+                  {matchingCompany?.id ? (
+                    <EntityLink type="company" id={matchingCompany.id} label={item.name} />
+                  ) : (
+                    <span className="font-extrabold text-white">{item.name}</span>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="font-black text-white">{item.totalRevenue}</TableCell>
+              <TableCell className="font-semibold text-slate-400">{item.activeCampaigns} adet</TableCell>
+              <TableCell className="font-bold text-slate-350">{item.totalSpaces} alan</TableCell>
+              <TableCell>
+                <span className="px-2 py-0.5 rounded-lg border border-blue-500/10 bg-blue-500/10 text-blue-400 text-[9.5px] font-black inline-flex items-center gap-1">
+                  <Sparkles size={9} />
+                  {item.aiScore}
+                </span>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </Table>
     </div>
   );

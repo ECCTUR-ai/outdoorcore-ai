@@ -3,16 +3,18 @@ import { Table, TableRow, TableCell } from './Table';
 import { Badge } from './Badge';
 import { FileText, Send } from 'lucide-react';
 import { Button } from './Button';
+import { financeData } from '@/data/finance';
+import { EntityLink } from './EntityLink';
 
 export function InvoiceTable() {
-  const invoices = [
-    { no: 'INV-2025-00101', client: 'Samsung Electronics', date: '01 Mar 2025', amount: '₺30.000.000', status: 'Ödendi' },
-    { no: 'INV-2025-00112', client: 'Turkcell', date: '15 Oca 2025', amount: '₺35.000.000', status: 'Ödendi' },
-    { no: 'INV-2025-00124', client: 'Samsung Electronics', date: '15 May 2025', amount: '₺30.000.000', status: 'Ödendi' },
-    { no: 'INV-2025-00130', client: 'Turkcell', date: '15 Nis 2025', amount: '₺30.000.000', status: 'Gecikti' },
-    { no: 'INV-2025-00142', client: 'Mercedes-Benz Türkiye', date: '15 Haz 2025', amount: '₺7.900.000', status: 'Bekliyor' },
-    { no: 'INV-2025-00155', client: 'Pegasus Airlines', date: '10 Tem 2025', amount: '₺2.250.000', status: 'Bekliyor' }
-  ];
+  // Flatten all invoices from accounts with company info
+  const allInvoices = financeData.accounts.flatMap(account => 
+    account.invoices.map(inv => ({
+      ...inv,
+      companyId: account.companyId,
+      client: account.name
+    }))
+  );
 
   return (
     <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-4 text-left overflow-x-auto select-none">
@@ -22,10 +24,18 @@ export function InvoiceTable() {
       </div>
 
       <Table headers={['Fatura No', 'Firma', 'Tarih', 'Tutar', 'Durum', 'Aksiyonlar']}>
-        {invoices.map((inv, idx) => (
-          <TableRow key={idx}>
-            <TableCell className="font-black text-white">{inv.no}</TableCell>
-            <TableCell className="font-extrabold text-slate-200">{inv.client}</TableCell>
+        {allInvoices.map((inv) => (
+          <TableRow key={inv.id}>
+            <TableCell className="font-black text-white">
+              <EntityLink type="invoice" id={inv.id} label={inv.invoiceNo} />
+            </TableCell>
+            <TableCell className="font-extrabold text-slate-200">
+              {inv.companyId ? (
+                <EntityLink type="company" id={inv.companyId} label={inv.client} />
+              ) : (
+                inv.client
+              )}
+            </TableCell>
             <TableCell className="font-semibold text-slate-400">{inv.date}</TableCell>
             <TableCell className="font-black text-white">{inv.amount}</TableCell>
             <TableCell>
@@ -35,7 +45,7 @@ export function InvoiceTable() {
             </TableCell>
             <TableCell>
               <div className="flex gap-1.5 items-center">
-                <Button variant="outline" size="xs" onClick={() => alert('Fatura PDF görüntüleniyor...')}>
+                <Button variant="outline" size="xs" onClick={() => alert(`${inv.invoiceNo} PDF görüntleniyor...`)}>
                   PDF
                 </Button>
                 <Button variant="minimal" size="xs" leftIcon={<Send size={10} />} onClick={() => alert('Fatura maili müşteriye gönderildi.')}>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Reservation } from '@/data/reservations';
 import { Table, TableRow, TableCell } from './Table';
 import { Badge } from './Badge';
+import { EntityLink } from './EntityLink';
 
 interface UpcomingReservationsProps {
   reservations: Reservation[];
@@ -23,8 +24,24 @@ export function UpcomingReservations({ reservations, onSelect }: UpcomingReserva
             onClick={() => onSelect(res.spaceCode)}
             className="cursor-pointer"
           >
-            <TableCell className="font-black text-white">{res.clientName}</TableCell>
-            <TableCell className="font-extrabold text-blue-400">#{res.spaceCode}</TableCell>
+            <TableCell className="font-black text-white">
+              {res.companyId ? (
+                <span onClick={(e) => e.stopPropagation()}>
+                  <EntityLink type="company" id={res.companyId} label={res.clientName} />
+                </span>
+              ) : (
+                res.clientName
+              )}
+            </TableCell>
+            <TableCell className="font-extrabold text-blue-400">
+              {res.spaceId ? (
+                <span onClick={(e) => e.stopPropagation()}>
+                  <EntityLink type="space" id={res.spaceId} label={res.spaceCode} />
+                </span>
+              ) : (
+                `#${res.spaceCode}`
+              )}
+            </TableCell>
             <TableCell>{res.location}</TableCell>
             <TableCell className="font-semibold text-slate-350">{res.startDate}</TableCell>
             <TableCell className="font-semibold text-slate-350">{res.endDate}</TableCell>
@@ -35,7 +52,13 @@ export function UpcomingReservations({ reservations, onSelect }: UpcomingReserva
             </TableCell>
             <TableCell className="font-bold text-slate-400">{res.durationDays} Gün</TableCell>
             <TableCell>
-              <span className="text-[10px] text-blue-400 font-black hover:underline uppercase tracking-wider">Detay</span>
+              {res.id ? (
+                <span onClick={(e) => e.stopPropagation()}>
+                  <EntityLink type="reservation" id={res.id} label="Rezerve" />
+                </span>
+              ) : (
+                <span className="text-[10px] text-blue-400 font-black hover:underline uppercase tracking-wider">Detay</span>
+              )}
             </TableCell>
           </TableRow>
         ))}

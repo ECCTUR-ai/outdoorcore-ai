@@ -1,6 +1,7 @@
 import React from 'react';
 import { financeData, FinancialAccount } from '@/data/finance';
 import { Award } from 'lucide-react';
+import { EntityLink } from './EntityLink';
 
 function TopRevenueRowLogo({ item }: { item: FinancialAccount }) {
   const [imageError, setImageError] = React.useState(false);
@@ -40,8 +41,12 @@ export function TopRevenueCompanies() {
             <div className="flex items-center gap-2 min-w-0">
               <TopRevenueRowLogo item={item} />
               <div className="space-y-0.5 truncate leading-none">
-                <span className="text-white font-extrabold block truncate leading-none">{item.name}</span>
-                <span className="text-[8px] text-slate-550 font-bold block mt-0.5 uppercase tracking-wide">{item.crmTier} Cari</span>
+                <span className="text-white font-extrabold block truncate leading-none mb-1">{item.name}</span>
+                {item.companyId ? (
+                  <EntityLink type="company" id={item.companyId} label="Finans Kartı" />
+                ) : (
+                  <span className="text-[8px] text-slate-550 font-bold block mt-0.5 uppercase tracking-wide">{item.crmTier} Cari</span>
+                )}
               </div>
             </div>
             <div className="text-right shrink-0 leading-none">
