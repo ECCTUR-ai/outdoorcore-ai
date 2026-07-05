@@ -9,7 +9,7 @@ export function Header() {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
   return (
-    <header className="h-[75px] bg-[#070913]/60 backdrop-blur-md border-b border-white/5 px-6 flex items-center justify-between sticky top-0 z-30 select-none">
+    <header className="h-[75px] bg-[#0f172a]/60 backdrop-blur-md border-b border-white/5 px-6 flex items-center justify-between sticky top-0 z-30 select-none">
       {/* Welcome Left section */}
       <div className="text-left space-y-0.5">
         <h1 className="text-xs font-black text-white uppercase tracking-wider m-0 leading-none">

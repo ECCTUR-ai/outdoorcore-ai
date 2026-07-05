@@ -46,7 +46,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`dark-sidebar-gradient border-r border-white/5 h-screen shrink-0 sticky top-0 flex flex-col justify-between transition-all duration-300 z-40 bg-[#060814] ${
+      className={`dark-sidebar-gradient border-r border-white/5 h-screen shrink-0 sticky top-0 flex flex-col justify-between transition-all duration-300 z-40 bg-[#08111f] ${
         sidebarCollapsed ? 'w-16' : 'w-64'
       }`}
     >

@@ -56,12 +56,12 @@ function AppContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 transition-colors duration-200 font-sans">
+    <div className="flex min-h-screen bg-[#08111f] text-slate-200 transition-colors duration-200 font-sans">
       {/* Navigation Sidebar */}
       <Sidebar />
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 bg-[#0f172a]">
         <Header />
         
         {/* Page Content area */}

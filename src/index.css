@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-input: rgba(255, 255, 255, 0.05);
-  --color-ring: #2563eb;
-  --color-background: #070913;
-  --color-foreground: #f1f5f9;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-input: rgba(255, 255, 255, 0.06);
+  --color-ring: #3b82f6;
+  --color-background: #0f172a;
+  --color-foreground: #f8fafc;
 
   --color-primary: #3b82f6;
   --color-primary-foreground: #ffffff;
-  --color-secondary: rgba(255, 255, 255, 0.06);
-  --color-secondary-foreground: #f1f5f9;
+  --color-secondary: rgba(255, 255, 255, 0.08);
+  --color-secondary-foreground: #f8fafc;
   --color-destructive: #f43f5e;
   --color-destructive-foreground: #ffffff;
-  --color-muted: rgba(255, 255, 255, 0.04);
+  --color-muted: rgba(255, 255, 255, 0.05);
   --color-muted-foreground: #94a3b8;
-  --color-accent: rgba(255, 255, 255, 0.05);
-  --color-accent-foreground: #f1f5f9;
-  --color-popover: #0b0f19;
-  --color-popover-foreground: #f1f5f9;
-  --color-card: rgba(15, 23, 42, 0.55);
-  --color-card-foreground: #f1f5f9;
+  --color-accent: rgba(255, 255, 255, 0.06);
+  --color-accent-foreground: #f8fafc;
+  --color-popover: #182235;
+  --color-popover-foreground: #f8fafc;
+  --color-card: #182235;
+  --color-card-foreground: #f8fafc;
 
   --radius-lg: 1.25rem;
   --radius-md: 1rem;
@@ -29,12 +29,11 @@
 
 @layer base {
   body {
-    background-color: #05070e;
+    background-color: #08111f;
     background-image: 
-      radial-gradient(at 0% 0%, rgba(30, 41, 59, 0.5) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(15, 23, 42, 0.8) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, rgba(17, 24, 39, 0.9) 0px, transparent 50%);
-    color: #f1f5f9;
+      radial-gradient(at 0% 0%, rgba(24, 34, 53, 0.4) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(15, 23, 42, 0.6) 0px, transparent 50%);
+    color: #f8fafc;
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     margin: 0;
@@ -43,55 +42,53 @@
   }
 }
 
-/* Dark theme premium utilities */
+/* Premium dark theme card overrides */
 .dark-sidebar-gradient {
-  background: linear-gradient(180deg, #090e1f 0%, #05070e 100%);
+  background: linear-gradient(180deg, #0f172a 0%, #08111f 100%);
 }
 
 .dark-glass-card {
-  background: rgba(13, 18, 35, 0.45);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  box-shadow: 
-    0 4px 30px rgba(0, 0, 0, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.03);
+  background-color: #182235 !important;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
 }
 
 .dark-glass-card-glow {
-  background: rgba(15, 22, 42, 0.5);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(59, 130, 246, 0.12);
+  background-color: #182235 !important;
+  border: 1px solid rgba(59, 130, 246, 0.2);
   box-shadow: 
     0 10px 40px rgba(0, 0, 0, 0.5),
-    0 0 15px rgba(59, 130, 246, 0.04),
-    inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    0 0 15px rgba(59, 130, 246, 0.06);
 }
 
-/* Blueprint design lines background for map */
+/* Hover highlights */
+.hover-bg-highlight:hover {
+  background-color: #22314a !important;
+}
+
+/* Blueprint grid background */
 .blueprint-grid {
   background-image: 
-    linear-gradient(rgba(59, 130, 246, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59, 130, 246, 0.02) 1px, transparent 1px);
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-/* Glow status colors */
+/* Glow status indicators */
 .glow-green {
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
 }
 .glow-yellow {
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
 }
 .glow-red {
-  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
 }
 .glow-blue {
-  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
 }
 .glow-purple {
-  box-shadow: 0 0 8px rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
 }
 
 /* Dark Theme Table Scroll Customization */
