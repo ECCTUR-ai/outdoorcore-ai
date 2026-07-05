@@ -11,6 +11,26 @@ interface CompanyCardProps {
 }
 
 export function CompanyCard({ company, onClick, isActive }: CompanyCardProps) {
+  const [imageError, setImageError] = React.useState(false);
+
+  const renderLogo = () => {
+    if (company.logoUrl && !imageError) {
+      return (
+        <img 
+          src={company.logoUrl} 
+          onError={() => setImageError(true)} 
+          className="w-10 h-10 rounded-xl object-contain border border-white/5 bg-slate-950 p-1 shrink-0" 
+          alt={company.name} 
+        />
+      );
+    }
+    return (
+      <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
+        {company.logo}
+      </div>
+    );
+  };
+
   return (
     <div
       onClick={onClick}
@@ -22,9 +42,7 @@ export function CompanyCard({ company, onClick, isActive }: CompanyCardProps) {
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-xs flex items-center justify-center shrink-0 shadow-sm">
-            {company.logo}
-          </div>
+          {renderLogo()}
           <div className="space-y-0.5">
             <h4 className="text-[11.5px] font-black text-white uppercase leading-none truncate max-w-[130px]">{company.name}</h4>
             <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">{company.sector}</span>

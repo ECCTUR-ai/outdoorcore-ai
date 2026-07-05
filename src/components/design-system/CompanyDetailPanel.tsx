@@ -21,14 +21,36 @@ interface CompanyDetailPanelProps {
 }
 
 export function CompanyDetailPanel({ company }: CompanyDetailPanelProps) {
+  const [imageError, setImageError] = React.useState(false);
+
+  React.useEffect(() => {
+    setImageError(false);
+  }, [company.id]);
+
+  const renderLogo = () => {
+    if (company.logoUrl && !imageError) {
+      return (
+        <img 
+          src={company.logoUrl} 
+          onError={() => setImageError(true)} 
+          className="w-18 h-18 rounded-2xl object-contain border border-white/5 bg-slate-950 p-2 shrink-0 shadow-sm" 
+          alt={company.name} 
+        />
+      );
+    }
+    return (
+      <div className="w-18 h-18 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-xl flex items-center justify-center shrink-0 shadow-sm">
+        {company.logo}
+      </div>
+    );
+  };
+
   return (
     <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-6 text-left sticky top-[95px] max-h-[calc(100vh-130px)] overflow-y-auto">
       {/* Header Profile Title card */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
-            {company.logo}
-          </div>
+          {renderLogo()}
           <div className="space-y-0.5">
             <h4 className="text-sm font-black text-white leading-tight uppercase">{company.name}</h4>
             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{company.sector} | {company.city}</span>

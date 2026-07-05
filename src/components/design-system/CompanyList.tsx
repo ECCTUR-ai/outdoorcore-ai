@@ -9,6 +9,25 @@ interface CompanyListProps {
   onSelect: (id: string) => void;
 }
 
+function CompanyListRowLogo({ company }: { company: Company }) {
+  const [imageError, setImageError] = React.useState(false);
+  if (company.logoUrl && !imageError) {
+    return (
+      <img 
+        src={company.logoUrl} 
+        onError={() => setImageError(true)} 
+        className="w-8 h-8 rounded-lg object-contain border border-white/5 bg-slate-950 p-0.5 shrink-0" 
+        alt={company.name} 
+      />
+    );
+  }
+  return (
+    <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-[10px] flex items-center justify-center shrink-0">
+      {company.logo}
+    </div>
+  );
+}
+
 export function CompanyList({ companies, selectedId, onSelect }: CompanyListProps) {
   const [search, setSearch] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
@@ -77,9 +96,7 @@ export function CompanyList({ companies, selectedId, onSelect }: CompanyListProp
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-[10px] flex items-center justify-center shrink-0">
-                    {company.logo}
-                  </div>
+                  <CompanyListRowLogo company={company} />
                   <div className="space-y-0.5 truncate leading-none">
                     <span className="text-[10.5px] font-extrabold block truncate leading-none text-white">{company.name}</span>
                     <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block mt-0.5">{company.sector}</span>

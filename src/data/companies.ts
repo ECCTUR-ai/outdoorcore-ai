@@ -16,6 +16,7 @@ export interface Company {
   upcomingCampaign: string;
   aiScore: number;
   logo: string;
+  logoUrl?: string;
   // Detail Panel specifics
   headquarters: string;
   website: string;
@@ -51,6 +52,7 @@ export const companies: Company[] = [
     upcomingCampaign: 'Samsung AI TV',
     aiScore: 9.4,
     logo: 'S',
+    logoUrl: '/logos/samsung.svg',
     headquarters: 'İstanbul (Merkez)',
     website: 'www.samsung.com/tr',
     phone: '+90 212 366 3000',
@@ -99,6 +101,7 @@ export const companies: Company[] = [
     upcomingCampaign: 'Fizy Yaz Konserleri',
     aiScore: 9.1,
     logo: 'T',
+    logoUrl: '/logos/turkcell.svg',
     headquarters: 'İstanbul (Merkez)',
     website: 'www.turkcell.com.tr',
     phone: '+90 212 313 1000',
@@ -141,6 +144,7 @@ export const companies: Company[] = [
     upcomingCampaign: 'Mil&Smiles Bonus',
     aiScore: 9.6,
     logo: 'T',
+    logoUrl: '/logos/thy.svg',
     headquarters: 'İstanbul (Merkez)',
     website: 'www.turkishairlines.com',
     phone: '+90 212 463 6300',
@@ -183,6 +187,7 @@ export const companies: Company[] = [
     upcomingCampaign: 'Okula Dönüş',
     aiScore: 8.5,
     logo: 'L',
+    logoUrl: '/logos/lcwaikiki.svg',
     headquarters: 'İstanbul (Merkez)',
     website: 'www.lcwaikiki.com',
     phone: '+90 212 657 5555',
@@ -225,6 +230,7 @@ export const companies: Company[] = [
     upcomingCampaign: 'AMG Performance',
     aiScore: 8.9,
     logo: 'M',
+    logoUrl: '/logos/mercedes.svg',
     headquarters: 'İstanbul (Merkez)',
     website: 'www.mercedes-benz.com.tr',
     phone: '+90 212 867 3000',
@@ -267,6 +273,7 @@ export const companies: Company[] = [
     upcomingCampaign: 'Yurt Dışı %40 İndirim',
     aiScore: 7.2,
     logo: 'P',
+    logoUrl: '/logos/pegasus.svg',
     headquarters: 'İstanbul (Merkez)',
     website: 'www.flypgs.com',
     phone: '+90 216 560 7000',
