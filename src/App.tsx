@@ -21,6 +21,11 @@ import { AiAssistant } from '@/pages/AiAssistant';
 import { Ayarlar } from '@/pages/Ayarlar';
 import { DesignSystemDemo } from '@/pages/DesignSystemDemo';
 
+// Sprint 11-14 Pages
+import { Maintenance } from '@/pages/Maintenance';
+import { CompetitorAnalysis } from '@/pages/CompetitorAnalysis';
+import { ExecutiveDashboard } from '@/pages/ExecutiveDashboard';
+
 function AppContent() {
   const { currentRoute } = useApp();
 
@@ -52,6 +57,12 @@ function AppContent() {
         return <Bildirimler />;
       case 'ai-assistant':
         return <AiAssistant />;
+      case 'maintenance':
+        return <Maintenance />;
+      case 'competitor-analysis':
+        return <CompetitorAnalysis />;
+      case 'executive-dashboard':
+        return <ExecutiveDashboard />;
       case 'ayarlar':
         return <Ayarlar />;
       case 'design-system':

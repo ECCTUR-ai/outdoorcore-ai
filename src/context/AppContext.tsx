@@ -15,7 +15,10 @@ type RouteType =
   | 'bildirimler'
   | 'ai-assistant' 
   | 'ayarlar'
-  | 'design-system';
+  | 'design-system'
+  | 'maintenance'
+  | 'competitor-analysis'
+  | 'executive-dashboard';
 
 interface AppContextProps {
   currentRoute: RouteType;

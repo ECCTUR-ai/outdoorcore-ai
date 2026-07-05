@@ -25,9 +25,9 @@ import {
 
 export function Sidebar() {
   const { currentRoute, setCurrentRoute, sidebarCollapsed, setSidebarCollapsed } = useApp();
-
   const menuItems = [
     { key: 'dashboard', label: 'Genel Bakış', icon: <LayoutDashboard size={13} /> },
+    { key: 'executive-dashboard', label: 'CEO Dashboard', icon: <BarChart3 size={13} className="text-emerald-450" /> },
     { key: 'ai-assistant', label: 'AI Copilot', icon: <Sparkles size={13} className="text-blue-400" /> },
     { key: 'dashboard-home', label: 'Ana Sayfa', icon: <Home size={13} />, isMock: true, route: 'dashboard' },
     { key: 'reklam-alanlari-inv', label: 'Envanter', icon: <Archive size={13} />, isMock: true, route: 'reklam-alanlari' },
@@ -41,12 +41,11 @@ export function Sidebar() {
     { key: 'raporlar', label: 'Raporlar', icon: <BarChart3 size={13} /> },
     { key: 'finans', label: 'Gelir & Faturalar', icon: <Coins size={13} /> },
     { key: 'bildirimler', label: 'Bildirim & Görev', icon: <Bell size={13} /> },
-    { key: 'dashboard-maintenance', label: 'Bakım & Arıza', icon: <Wrench size={13} />, isMock: true, route: 'dashboard' },
+    { key: 'maintenance', label: 'Bakım & Arıza', icon: <Wrench size={13} /> },
     { key: 'medya-kutuphanesi', label: 'Medya Kütüphanesi', icon: <Image size={13} /> },
-    { key: 'dashboard-competitor', label: 'Rakip Analizi', icon: <Eye size={13} />, isMock: true, route: 'dashboard' },
+    { key: 'competitor-analysis', label: 'Rakip Analizi', icon: <Eye size={13} /> },
     { key: 'ayarlar', label: 'Ayarlar', icon: <Settings size={13} /> }
   ];
-
   return (
     <aside
       className={`dark-sidebar-gradient border-r border-white/5 h-screen shrink-0 sticky top-0 flex flex-col justify-between transition-all duration-300 z-40 bg-[#08111f] ${
