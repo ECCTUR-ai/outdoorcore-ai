@@ -37,6 +37,39 @@ import { workflowService } from '@/services/workflowService';
 import { WizardStepId, WorkflowState } from '@/types/workflow';
 import { CompanyModal } from '@/components/design-system/CompanyModal';
 
+const MONTH_NAMES = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+];
+
+const getDaysInMonth = (year: number, month: number): number => {
+  return new Date(year, month + 1, 0).getDate();
+};
+
+const getFirstDayOfMonth = (year: number, month: number): number => {
+  const day = new Date(year, month, 1).getDay();
+  return day === 0 ? 6 : day - 1; // 0 for Monday, ..., 6 for Sunday
+};
+
+const parseStringDate = (dateStr: string): Date | null => {
+  if (!dateStr) return null;
+  const parts = dateStr.split('.');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  return null;
+};
+
+const formatDate = (date: Date): string => {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}.${month}.${year}`;
+};
+
 export function SalesWizard() {
   const { setCurrentRoute } = useApp();
   
@@ -334,7 +367,7 @@ export function SalesWizard() {
         </div>
 
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between col-span-2 md:col-span-1">
-          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Tahmini Aylık Toplam</span>
+          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Tahmini Aylık Gelir</span>
           <div className="flex items-baseline gap-1 mt-2">
             <span className="text-sm font-black text-white">
               ₺{kpiData.selectedMonthlySum.toLocaleString('tr-TR')}
@@ -353,7 +386,7 @@ export function SalesWizard() {
         case 'dates':
           return {
             title: `Doluluk Oranı Analizi`,
-            text: `Seçilen tarihlerde genel envanter doluluk oranı %${occupancyPercent}. Kiralama için uygun alternatifler mevcut.`,
+            text: `Doluluk %${occupancyPercent}. Bu tarihlerde ${kpiData.premiumAvailable} Premium Alan müsait. Alternatif tarihte %${kpiData.occupied > 0 ? 14 : 0} daha fazla boş alan var.`,
             meta: `Tarih aralığı kontrolü yapılıyor`
           };
         case 'spaces':
@@ -425,55 +458,203 @@ export function SalesWizard() {
     );
   }
 
-  // Step 1: Kampanya Tarihi Step View
+  // Step 1: Dates step view with premium calendar inline/popup
   function DatesStep() {
-    const handleDateChange = (field: 'startDate' | 'endDate', val: string) => {
-      setState(prev => ({
-        ...prev,
-        data: {
-          ...prev.data,
-          dates: prev.data.dates ? {
-            ...prev.data.dates,
-            [field]: val
-          } : {
-            startDate: '06.07.2026',
-            endDate: '06.08.2026',
-            [field]: val
+    const [pickerOpen, setPickerOpen] = useState(false);
+    const [viewDate, setViewDate] = useState<Date>(() => {
+      const parsed = parseStringDate(state.data.dates?.startDate || '06.07.2026');
+      return parsed || new Date(2026, 6, 6);
+    });
+    const [activeInput, setActiveInput] = useState<'start' | 'end'>('start');
+
+    const startVal = state.data.dates?.startDate || '';
+    const endVal = state.data.dates?.endDate || '';
+
+    const start = parseStringDate(startVal);
+    const end = parseStringDate(endVal);
+
+    const handleDayClick = (dayNum: number) => {
+      const clickedDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayNum);
+      if (activeInput === 'start') {
+        setState(prev => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            dates: {
+              startDate: formatDate(clickedDate),
+              endDate: ''
+            }
           }
+        }));
+        setActiveInput('end');
+      } else {
+        if (start && clickedDate < start) {
+          setState(prev => ({
+            ...prev,
+            data: {
+              ...prev.data,
+              dates: {
+                startDate: formatDate(clickedDate),
+                endDate: ''
+              }
+            }
+          }));
+        } else {
+          setState(prev => ({
+            ...prev,
+            data: {
+              ...prev.data,
+              dates: {
+                startDate: startVal,
+                endDate: formatDate(clickedDate)
+              }
+            }
+          }));
+          setPickerOpen(false);
         }
-      }));
+      }
     };
 
-    if (!state.data.dates) return null;
+    const daysInMonth = getDaysInMonth(viewDate.getFullYear(), viewDate.getMonth());
+    const firstDay = getFirstDayOfMonth(viewDate.getFullYear(), viewDate.getMonth());
+
+    const prevMonth = () => {
+      setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+    };
+
+    const nextMonth = () => {
+      setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+    };
+
+    const renderCalendarGrid = () => {
+      const cells = [];
+      for (let i = 0; i < firstDay; i++) {
+        cells.push(<div key={`empty-${i}`} className="w-8 h-8" />);
+      }
+      for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+        const currentDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), dayNum);
+        
+        const isStart = start && currentDate.getTime() === start.getTime();
+        const isEnd = end && currentDate.getTime() === end.getTime();
+        const isInRange = start && end && currentDate > start && currentDate < end;
+        
+        let cellClass = "w-8 h-8 rounded-lg flex items-center justify-center text-[10.5px] font-bold transition-all cursor-pointer hover:bg-indigo-650/20 text-slate-300";
+        if (isStart || isEnd) {
+          cellClass = "w-8 h-8 rounded-lg bg-indigo-600 text-white font-extrabold flex items-center justify-center text-[10.5px] shadow-sm shadow-indigo-600/50";
+        } else if (isInRange) {
+          cellClass = "w-8 h-8 rounded-lg bg-indigo-950/40 text-indigo-400 font-bold flex items-center justify-center text-[10.5px] border border-indigo-500/10";
+        }
+
+        cells.push(
+          <button
+            key={`day-${dayNum}`}
+            type="button"
+            onClick={() => handleDayClick(dayNum)}
+            className={cellClass}
+          >
+            {dayNum}
+          </button>
+        );
+      }
+      return cells;
+    };
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 relative">
         <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-500/10 text-left text-[10.5px] text-slate-400 font-semibold leading-relaxed">
-          Sihirbaza başlamak için kampanya tarih aralığını belirtin. Seçtiğiniz tarihlere göre müsait olan reklam alanları otomatik olarak filtrelenecektir.
+          Tarih seçimi yapmak için başlangıç veya bitiş alanına tıklayın. Tarih seçimi tamamlandığında envanter müsaitliği anlık olarak güncellenecektir.
         </div>
+
         <div className="grid grid-cols-2 gap-4">
-          <FormGroup>
-            <Label htmlFor="wizard-camp-start-date">Kampanya Başlangıç Tarihi *</Label>
-            <Input
-              id="wizard-camp-start-date"
-              value={state.data.dates.startDate}
-              onChange={(e) => handleDateChange('startDate', e.target.value)}
-              placeholder="GG.AA.YYYY"
-              required
-            />
+          <FormGroup className="relative">
+            <Label>Kampanya Başlangıç Tarihi *</Label>
+            <div className="relative">
+              <input
+                type="text"
+                readOnly
+                value={startVal}
+                onClick={() => {
+                  setActiveInput('start');
+                  setPickerOpen(true);
+                }}
+                className="w-full bg-[#0b1329] border border-white/10 hover:border-white/20 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white cursor-pointer select-none outline-none font-semibold"
+                placeholder="GG.AA.YYYY"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                <Calendar size={13} />
+              </span>
+            </div>
           </FormGroup>
 
-          <FormGroup>
-            <Label htmlFor="wizard-camp-end-date">Kampanya Bitiş Tarihi *</Label>
-            <Input
-              id="wizard-camp-end-date"
-              value={state.data.dates.endDate}
-              onChange={(e) => handleDateChange('endDate', e.target.value)}
-              placeholder="GG.AA.YYYY"
-              required
-            />
+          <FormGroup className="relative">
+            <Label>Kampanya Bitiş Tarihi *</Label>
+            <div className="relative">
+              <input
+                type="text"
+                readOnly
+                value={endVal}
+                onClick={() => {
+                  setActiveInput('end');
+                  setPickerOpen(true);
+                }}
+                className="w-full bg-[#0b1329] border border-white/10 hover:border-white/20 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white cursor-pointer select-none outline-none font-semibold"
+                placeholder="GG.AA.YYYY"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                <Calendar size={13} />
+              </span>
+            </div>
           </FormGroup>
         </div>
+
+        {pickerOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(false)} />
+            <div className="fixed inset-x-4 bottom-4 top-20 z-50 bg-[#08111f] border border-white/10 rounded-3xl p-5 shadow-2xl flex flex-col justify-between select-none md:absolute md:inset-auto md:top-full md:left-0 md:mt-2 md:w-72 md:bg-[#0b1329] md:rounded-2xl md:p-4">
+              <div className="space-y-4 flex-1 md:flex-initial">
+                <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                  <button
+                    type="button"
+                    onClick={prevMonth}
+                    className="p-1.5 hover:bg-white/5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                  >
+                    <ChevronLeft size={14} />
+                  </button>
+                  <span className="text-xs font-black text-white uppercase tracking-wider">
+                    {MONTH_NAMES[viewDate.getMonth()]} {viewDate.getFullYear()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={nextMonth}
+                    className="p-1.5 hover:bg-white/5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                  >
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                  <span>Pt</span><span>Sa</span><span>Ça</span><span>Pe</span><span>Cu</span><span>Ct</span><span>Pa</span>
+                </div>
+
+                <div className="grid grid-cols-7 gap-1 justify-items-center">
+                  {renderCalendarGrid()}
+                </div>
+              </div>
+
+              <div className="md:hidden pt-4 border-t border-white/5 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => setPickerOpen(false)}
+                  className="w-full"
+                >
+                  Kapat
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -503,7 +684,6 @@ export function SalesWizard() {
       }));
     };
 
-    // Filter available spaces based on reservation check
     const start = state.data.dates?.startDate || '';
     const end = state.data.dates?.endDate || '';
     const availableSpaces = spacesList.filter(s => 
@@ -857,7 +1037,7 @@ export function SalesWizard() {
             id="wizard-contract-notes"
             value={state.data.contract.notes}
             onChange={(e) => handleChangeContractField('notes', e.target.value)}
-            placeholder="Damga vergisi vb..."
+            placeholder="Şartlar..."
             rows={3}
           />
         </FormGroup>
@@ -927,7 +1107,7 @@ export function SalesWizard() {
             id="wizard-res-notes"
             value={state.data.reservation.notes}
             onChange={(e) => handleChangeReservationField('notes', e.target.value)}
-            placeholder="Rezervasyon detayları..."
+            placeholder="Rezervasyon notları..."
             rows={3}
           />
         </FormGroup>
@@ -1019,7 +1199,7 @@ export function SalesWizard() {
             id="wizard-camp-audience"
             value={state.data.campaign.targetAudience}
             onChange={(e) => handleChangeCampaignField('targetAudience', e.target.value)}
-            placeholder="Hedef kitle tanımı..."
+            placeholder="Hedef kitle..."
           />
         </FormGroup>
       </div>
@@ -1108,7 +1288,7 @@ export function SalesWizard() {
             id="wizard-fin-addr"
             value={state.data.finance.billingAddress}
             onChange={(e) => handleChangeFinanceField('billingAddress', e.target.value)}
-            placeholder="Adres girin..."
+            placeholder="Adres..."
             rows={2.5}
             required
           />
@@ -1137,7 +1317,6 @@ export function SalesWizard() {
         />
 
         <div className="space-y-3">
-          {/* Dates Info */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
             <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Kampanya Tarihleri</span>
             <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1146,7 +1325,6 @@ export function SalesWizard() {
             </div>
           </div>
 
-          {/* Company Details */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
             <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Firma Bilgisi</span>
             <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1155,7 +1333,6 @@ export function SalesWizard() {
             </div>
           </div>
 
-          {/* Spaces Details */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
             <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Kiralanacak Alanlar ({selectedSpaces.length})</span>
             <div className="space-y-1 text-[10px]">
@@ -1168,7 +1345,6 @@ export function SalesWizard() {
             </div>
           </div>
 
-          {/* Offer Details */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
             <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Teklif & Bütçe Detayları</span>
             <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1178,7 +1354,6 @@ export function SalesWizard() {
             </div>
           </div>
 
-          {/* Contract Details */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
             <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Sözleşme & Rezervasyon</span>
             <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1187,7 +1362,6 @@ export function SalesWizard() {
             </div>
           </div>
 
-          {/* Finance details */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
             <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Finansal Planlama</span>
             <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -1388,6 +1562,7 @@ export function SalesWizard() {
                       size="sm"
                       type="button"
                       onClick={goToNextStep}
+                      disabled={state.currentStep === 'dates' && (!state.data.dates?.startDate || !state.data.dates?.endDate)}
                       rightIcon={<ChevronRight size={13} />}
                     >
                       İleri
