@@ -1,23 +1,24 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabaseClient';
 import { authService } from './authService';
-import { UserProfile, OrganizationInfo, Permission, UserRole } from './types';
+import { UserProfile, OrganizationInfo, UserRole } from './types';
 import { sessionManager } from './session';
 import { rememberMe } from './rememberMe';
-import { roleCheck } from './roleCheck';
+import { roleService } from '@/permissions/roleService';
+import { PermissionKey, EnterpriseRoleType } from '@/permissions/accessControl';
 import { auditLogRepository } from '@/repositories';
 
 interface AuthContextProps {
   currentUser: UserProfile | null;
   organization: OrganizationInfo | null;
-  permissions: Permission[];
+  permissions: PermissionKey[];
   role: UserRole | null;
   loading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
-  can: (permission: Permission) => boolean;
+  can: (permission: PermissionKey) => boolean;
 }
 
 export const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -25,45 +26,23 @@ export const AuthContext = createContext<AuthContextProps | undefined>(undefined
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [organization, setOrganization] = useState<OrganizationInfo | null>(null);
+  const [permissions, setPermissions] = useState<PermissionKey[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
-  const getPermissionsForRole = (role: UserRole | null): Permission[] => {
-    if (!role) return [];
-    // SuperAdmin or CEO has all permissions
-    if (role === 'SuperAdmin' || role === 'CEO') {
-      return [
-        'view_dashboard', 'manage_companies', 'manage_spaces', 'manage_offers',
-        'manage_contracts', 'manage_reservations', 'manage_campaigns',
-        'view_finance', 'manage_finance', 'view_reports', 'manage_maintenance',
-        'view_competitors', 'manage_users', 'manage_settings'
-      ];
-    }
-    if (role === 'OperationLeader') {
-      return [
-        'view_dashboard', 'manage_companies', 'manage_spaces', 'manage_offers',
-        'manage_contracts', 'manage_reservations', 'manage_campaigns',
-        'view_reports', 'manage_maintenance', 'view_competitors'
-      ];
-    }
-    if (role === 'FinanceManager') {
-      return ['view_dashboard', 'view_finance', 'manage_finance', 'view_reports', 'view_competitors'];
-    }
-    if (role === 'Technician') {
-      return ['view_dashboard', 'manage_maintenance'];
-    }
-    return ['view_dashboard'];
-  };
 
   const syncProfile = (user: UserProfile, org: OrganizationInfo) => {
     setCurrentUser(user);
     setOrganization(org);
+    
+    // Resolve permissions dynamically from roleService Matrix (cached/live)
+    const perms = roleService.getRolePermissions(user.role as EnterpriseRoleType);
+    setPermissions(perms);
+    
     sessionManager.setLastActivity();
   };
 
   // Restore session on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      // 1. Check if there's a cached mock demo session
       const cachedSession = localStorage.getItem('outdoorcore_mock_session');
       if (cachedSession) {
         try {
@@ -81,12 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 2. Real Supabase Session restore
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session && session.user) {
           const email = session.user.email || '';
-          const role: UserRole = (session.user.user_metadata?.role as UserRole) || 'SuperAdmin';
+          const role: UserRole = (session.user.user_metadata?.role as UserRole) || 'Super Admin';
           const name = session.user.user_metadata?.name || email.split('@')[0];
           
           syncProfile(
@@ -116,16 +94,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth();
 
-    // 3. Listen to state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
         setOrganization(null);
+        setPermissions([]);
         localStorage.removeItem('outdoorcore_mock_session');
         sessionManager.clearSession();
       } else if (session && session.user) {
         const email = session.user.email || '';
-        const role: UserRole = (session.user.user_metadata?.role as UserRole) || 'SuperAdmin';
+        const role: UserRole = (session.user.user_metadata?.role as UserRole) || 'Super Admin';
         const name = session.user.user_metadata?.name || email.split('@')[0];
 
         syncProfile(
@@ -161,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('Session expired due to inactivity');
         logout();
       }
-    }, 60000); // Check every minute
+    }, 60000);
     return () => clearInterval(interval);
   }, [currentUser]);
 
@@ -170,15 +148,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { user, organization: org } = await authService.signIn(email, password);
       
-      // Save credentials for remember me
       if (remember) {
         rememberMe.saveCredentials(email);
       } else {
         rememberMe.clearCredentials();
       }
 
-      // If it is mock/demo login, store session in localstorage
-      if (user.id === 'usr-demo-0001' || email.includes('outdoorcore.ai')) {
+      if (email.includes('outdoorcore.ai') || email.includes('admin')) {
         localStorage.setItem('outdoorcore_mock_session', JSON.stringify({ user, org }));
       }
 
@@ -201,6 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await authService.signOut();
       setCurrentUser(null);
       setOrganization(null);
+      setPermissions([]);
       localStorage.removeItem('outdoorcore_mock_session');
       sessionManager.clearSession();
     } finally {
@@ -215,14 +192,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const can = (permission: Permission): boolean => {
+  const can = (permission: PermissionKey): boolean => {
     if (!currentUser) return false;
-    return roleCheck.can(currentUser.role, permission);
+    if (currentUser.role === 'Super Admin') return true;
+    return permissions.includes(permission);
   };
 
   const isAuthenticated = currentUser !== null;
-  const role = currentUser ? currentUser.role : null;
-  const permissions = getPermissionsForRole(role);
+  const role = currentUser ? (currentUser.role as UserRole) : null;
 
   return (
     <AuthContext.Provider value={{
@@ -241,3 +218,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     </AuthContext.Provider>
   );
 }
+export default AuthProvider;

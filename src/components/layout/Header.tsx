@@ -15,7 +15,7 @@ export function Header() {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, organization, permissions } = useAuth();
 
   const criticalCount = notificationsList.filter(n => n.status === 'critical').length;
   const taskCount = tasksList.length;
@@ -143,9 +143,27 @@ export function Header() {
               />
               <div className="absolute right-0 top-10 mt-2 w-48 dark-glass-card border border-white/10 rounded-2xl shadow-2xl p-2 z-50 animate-scale-in text-left">
                 {/* User info header */}
-                <div className="px-3.5 py-2.5 border-b border-white/5 mb-1.5 select-none leading-none">
+                <div className="px-3.5 py-2.5 border-b border-white/5 mb-1.5 select-none space-y-1">
                   <span className="text-[10px] font-black text-white block leading-none truncate">{currentUser?.name}</span>
-                  <span className="text-[7.5px] text-slate-500 font-bold block mt-1.5 truncate">{currentUser?.email}</span>
+                  <span className="text-[7px] text-slate-550 font-bold block truncate">{currentUser?.email}</span>
+                  <div className="pt-1.5 space-y-1 select-none">
+                    <div className="flex justify-between items-center text-[6.5px] uppercase font-bold text-slate-450">
+                      <span>Rol:</span>
+                      <span className="text-white font-black">{currentUser?.role}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[6.5px] uppercase font-bold text-slate-450">
+                      <span>Şirket:</span>
+                      <span className="text-white font-black truncate max-w-[80px]">{organization?.name}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[6.5px] uppercase font-bold text-slate-450">
+                      <span>Lisans:</span>
+                      <span className="text-emerald-450 font-black">{organization?.licenseStatus} ({organization?.tier})</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[6.5px] uppercase font-bold text-slate-450">
+                      <span>Yetkiler:</span>
+                      <span className="text-blue-400 font-black">{permissions?.length} İzin</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Actions */}

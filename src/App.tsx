@@ -28,6 +28,7 @@ import { DesignSystemDemo } from '@/pages/DesignSystemDemo';
 import { Maintenance } from '@/pages/Maintenance';
 import { CompetitorAnalysis } from '@/pages/CompetitorAnalysis';
 import { ExecutiveDashboard } from '@/pages/ExecutiveDashboard';
+import { SystemRoles } from '@/pages/SystemRoles';
 
 function AppContent() {
   const { currentRoute } = useApp();
@@ -82,6 +83,8 @@ function AppContent() {
         return <ExecutiveDashboard />;
       case 'ayarlar':
         return <Ayarlar />;
+      case 'system-roles':
+        return <SystemRoles />;
       case 'design-system':
         return <DesignSystemDemo />;
       default:

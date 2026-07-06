@@ -23,6 +23,9 @@ import {
   Bell
 } from 'lucide-react';
 
+import { usePermission } from '@/permissions/permissionHooks';
+import { PermissionKey } from '@/permissions/accessControl';
+
 export function Sidebar() {
   const { 
     currentRoute, 
@@ -33,27 +36,33 @@ export function Sidebar() {
     setMobileSidebarOpen
   } = useApp();
 
-  const menuItems = [
-    { key: 'dashboard', label: 'Genel Bakış', icon: <LayoutDashboard size={13} /> },
-    { key: 'executive-dashboard', label: 'CEO Dashboard', icon: <BarChart3 size={13} className="text-emerald-450" /> },
-    { key: 'ai-assistant', label: 'AI Copilot', icon: <Sparkles size={13} className="text-blue-400" /> },
-    { key: 'dashboard-home', label: 'Ana Sayfa', icon: <Home size={13} />, isMock: true, route: 'dashboard' },
-    { key: 'reklam-alanlari-inv', label: 'Envanter', icon: <Archive size={13} />, isMock: true, route: 'reklam-alanlari' },
-    { key: 'alan-haritasi', label: 'Harita (Terminal)', icon: <Map size={13} /> },
-    { key: 'reklam-alanlari', label: 'Reklam Alanları', icon: <MapPin size={13} /> },
-    { key: 'rezervasyonlar', label: 'Takvim', icon: <Calendar size={13} /> },
-    { key: 'sozlesmeler', label: 'Sözleşmeler', icon: <FileSignature size={13} /> },
-    { key: 'firmalar-markalar', label: 'Firmalar & Markalar', icon: <Building2 size={13} /> },
-    { key: 'teklifler', label: 'Teklifler', icon: <FileText size={13} /> },
-    { key: 'kampanyalar', label: 'Kampanyalar', icon: <Megaphone size={13} /> },
-    { key: 'raporlar', label: 'Raporlar', icon: <BarChart3 size={13} /> },
-    { key: 'finans', label: 'Gelir & Faturalar', icon: <Coins size={13} /> },
-    { key: 'bildirimler', label: 'Bildirim & Görev', icon: <Bell size={13} /> },
-    { key: 'maintenance', label: 'Bakım & Arıza', icon: <Wrench size={13} /> },
-    { key: 'medya-kutuphanesi', label: 'Medya Kütüphanesi', icon: <Image size={13} /> },
-    { key: 'competitor-analysis', label: 'Rakip Analizi', icon: <Eye size={13} /> },
-    { key: 'ayarlar', label: 'Ayarlar', icon: <Settings size={13} /> }
+  const menuItems: { key: string; label: string; icon: React.ReactNode; isMock?: boolean; route?: string; permission: PermissionKey }[] = [
+    { key: 'dashboard', label: 'Genel Bakış', icon: <LayoutDashboard size={13} />, permission: 'dashboard.view' },
+    { key: 'executive-dashboard', label: 'CEO Dashboard', icon: <BarChart3 size={13} className="text-emerald-450" />, permission: 'executive.view' },
+    { key: 'ai-assistant', label: 'AI Copilot', icon: <Sparkles size={13} className="text-blue-400" />, permission: 'ai.use' },
+    { key: 'dashboard-home', label: 'Ana Sayfa', icon: <Home size={13} />, isMock: true, route: 'dashboard', permission: 'dashboard.view' },
+    { key: 'reklam-alanlari-inv', label: 'Envanter', icon: <Archive size={13} />, isMock: true, route: 'reklam-alanlari', permission: 'spaces.view' },
+    { key: 'alan-haritasi', label: 'Harita (Terminal)', icon: <Map size={13} />, permission: 'spaces.view' },
+    { key: 'reklam-alanlari', label: 'Reklam Alanları', icon: <MapPin size={13} />, permission: 'spaces.view' },
+    { key: 'rezervasyonlar', label: 'Takvim', icon: <Calendar size={13} />, permission: 'spaces.view' },
+    { key: 'sozlesmeler', label: 'Sözleşmeler', icon: <FileSignature size={13} />, permission: 'contracts.view' },
+    { key: 'firmalar-markalar', label: 'Firmalar & Markalar', icon: <Building2 size={13} />, permission: 'companies.view' },
+    { key: 'teklifler', label: 'Teklifler', icon: <FileText size={13} />, permission: 'offers.view' },
+    { key: 'kampanyalar', label: 'Kampanyalar', icon: <Megaphone size={13} />, permission: 'campaigns.view' },
+    { key: 'raporlar', label: 'Raporlar', icon: <BarChart3 size={13} />, permission: 'reports.view' },
+    { key: 'finans', label: 'Gelir & Faturalar', icon: <Coins size={13} />, permission: 'finance.view' },
+    { key: 'bildirimler', label: 'Bildirim & Görev', icon: <Bell size={13} />, permission: 'dashboard.view' },
+    { key: 'maintenance', label: 'Bakım & Arıza', icon: <Wrench size={13} />, permission: 'maintenance.close' },
+    { key: 'medya-kutuphanesi', label: 'Medya Kütüphanesi', icon: <Image size={13} />, permission: 'media.upload' },
+    { key: 'competitor-analysis', label: 'Rakip Analizi', icon: <Eye size={13} />, permission: 'dashboard.view' },
+    { key: 'system-roles', label: 'Sistem Rolleri', icon: <Settings size={13} className="text-amber-500" />, permission: 'roles.manage' }
   ];
+
+  // Dynamic filter based on user permissions
+  const filteredMenuItems = menuItems.filter(item => {
+    // SuperAdmin bypass is built inside hook
+    return usePermission(item.permission);
+  });
 
   return (
     <>
@@ -102,7 +111,7 @@ export function Sidebar() {
 
           {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-0.5">
-            {menuItems.map(item => {
+            {filteredMenuItems.map(item => {
               const mappedRoute = item.isMock ? item.route : item.key;
               const isActive = currentRoute === mappedRoute && (!item.isMock || (item.isMock && currentRoute === item.route));
               

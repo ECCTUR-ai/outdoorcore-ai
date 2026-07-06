@@ -15,12 +15,18 @@ export type Permission =
   | 'manage_settings';
 
 export type UserRole = 
-  | 'CEO' 
-  | 'SuperAdmin' 
-  | 'OperationLeader' 
-  | 'FinanceManager' 
-  | 'Technician'
-  | 'Guest';
+  | 'Super Admin'
+  | 'CEO'
+  | 'Sales Director'
+  | 'Sales Representative'
+  | 'Finance Manager'
+  | 'Finance Staff'
+  | 'Marketing Manager'
+  | 'Operations Manager'
+  | 'Technical Manager'
+  | 'Technical Staff'
+  | 'Customer'
+  | 'Read Only';
 
 export interface UserProfile {
   id: string;

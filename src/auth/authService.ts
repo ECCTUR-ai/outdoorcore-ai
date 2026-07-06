@@ -6,12 +6,27 @@ import { UserProfile, OrganizationInfo, UserRole } from './types';
 export const authService = {
   // Demo Mock data definition
   getDemoUser(email: string = 'demo@outdoorcore.ai'): UserProfile {
+    let name = 'Cemil Sezgin';
+    let role: UserRole = 'CEO';
+    let avatarUrl: string | undefined = undefined;
+
+    if (email.startsWith('finance')) {
+      name = 'Fatma Yılmaz';
+      role = 'Finance Manager';
+    } else if (email.startsWith('sales')) {
+      name = 'Savaş Arslan';
+      role = 'Sales Director';
+    } else if (email.startsWith('customer')) {
+      name = 'Kadir Kaya (THY)';
+      role = 'Customer';
+    }
+
     return {
-      id: 'usr-demo-0001',
+      id: `usr-demo-${role.toLowerCase()}`,
       email,
-      name: 'Cemil Sezgin',
-      role: 'CEO',
-      avatarUrl: undefined,
+      name,
+      role,
+      avatarUrl,
       organizationId: 'org-demo-0001',
       lastLogin: new Date().toLocaleString()
     };
@@ -29,9 +44,16 @@ export const authService = {
 
   async signIn(email: string, password: string): Promise<{ user: UserProfile; organization: OrganizationInfo }> {
     // 1. Check Demo credentials first
-    if (email === 'demo@outdoorcore.ai') {
+    const cleanEmail = email.toLowerCase().trim();
+    if (
+      cleanEmail === 'demo@outdoorcore.ai' ||
+      cleanEmail === 'ceo@outdoorcore.ai' ||
+      cleanEmail === 'finance@outdoorcore.ai' ||
+      cleanEmail === 'sales@outdoorcore.ai' ||
+      cleanEmail === 'customer@outdoorcore.ai'
+    ) {
       return {
-        user: this.getDemoUser(email),
+        user: this.getDemoUser(cleanEmail),
         organization: this.getDemoOrganization()
       };
     }
@@ -46,7 +68,7 @@ export const authService = {
       if (!data.user) throw new Error('Kullanıcı bulunamadı.');
 
       // Mock organization lookup for real user (until full DB fetch is linked)
-      const role: UserRole = (data.user.user_metadata?.role as UserRole) || 'SuperAdmin';
+      const role: UserRole = (data.user.user_metadata?.role as UserRole) || 'Super Admin';
       const name = data.user.user_metadata?.name || email.split('@')[0];
 
       return {
@@ -98,7 +120,7 @@ export const authService = {
     if (error) throw error;
   },
 
-  async inviteUser(email: string, role: UserRole = 'OperationLeader'): Promise<void> {
+  async inviteUser(email: string, role: UserRole = 'Operations Manager'): Promise<void> {
     // Trigger invite admin API function via Supabase edge functions or RPC
     console.log(`[Auth invite] Inviting ${email} with role ${role}...`);
   }

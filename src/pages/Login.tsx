@@ -245,11 +245,36 @@ export function Login() {
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-500/10 text-left select-none text-[9.5px]">
-            <span className="text-indigo-400 font-extrabold block mb-1">💡 Demo Modu Aktif</span>
-            <p className="text-slate-450 leading-relaxed font-semibold">
-              Kullanıcı adı: <strong className="text-slate-300">demo@outdoorcore.ai</strong><br />
-              Şifre: Herhangi bir değer girerek CEO yetkisiyle sistemi test edebilirsiniz.
+          <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-500/10 text-left select-none text-[9.5px] space-y-2">
+            <span className="text-indigo-400 font-extrabold block">💡 Kurumsal Demo Giriş Paneli</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => { setEmail('ceo@outdoorcore.ai'); setPassword('demo'); }}
+                className="py-1.5 px-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-400 text-indigo-400 text-[8px] font-black uppercase text-center block cursor-pointer transition-all"
+              >
+                CEO / Yönetici
+              </button>
+              <button
+                onClick={() => { setEmail('finance@outdoorcore.ai'); setPassword('demo'); }}
+                className="py-1.5 px-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-400 text-indigo-400 text-[8px] font-black uppercase text-center block cursor-pointer transition-all"
+              >
+                Finans Müdürü
+              </button>
+              <button
+                onClick={() => { setEmail('sales@outdoorcore.ai'); setPassword('demo'); }}
+                className="py-1.5 px-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-400 text-indigo-400 text-[8px] font-black uppercase text-center block cursor-pointer transition-all"
+              >
+                Satış Müdürü
+              </button>
+              <button
+                onClick={() => { setEmail('customer@outdoorcore.ai'); setPassword('demo'); }}
+                className="py-1.5 px-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-400 text-indigo-400 text-[8px] font-black uppercase text-center block cursor-pointer transition-all"
+              >
+                Müşteri (THY)
+              </button>
+            </div>
+            <p className="text-[7.5px] text-slate-500 mt-1 leading-normal font-semibold">
+              Yukarıdan rol seçip Giriş Yap butonuna tıklayın. Her rol için yetki matrisi otomatik yüklenecektir.
             </p>
           </div>
         </div>
