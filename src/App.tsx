@@ -3,6 +3,9 @@ import { AppProvider, useApp } from '@/context/AppContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { CommandPalette } from '@/components/layout/CommandPalette';
+import { AuthProvider } from '@/auth/AuthProvider';
+import { useAuth } from '@/auth/useAuth';
+import { Login } from '@/pages/Login';
 
 // Pages
 import { Dashboard } from '@/pages/Dashboard';
@@ -28,6 +31,20 @@ import { ExecutiveDashboard } from '@/pages/ExecutiveDashboard';
 
 function AppContent() {
   const { currentRoute } = useApp();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen w-full bg-[#08111f] flex flex-col items-center justify-center text-slate-400 select-none">
+        <div className="w-10 h-10 border-4 border-blue-500/25 border-t-blue-500 rounded-full animate-spin mb-4" />
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">OutdoorCore Yükleniyor...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   const renderActivePage = () => {
     switch (currentRoute) {
@@ -42,7 +59,7 @@ function AppContent() {
       case 'rezervasyonlar':
         return <Rezervasyonlar />;
       case 'kampanyalar':
-        return <Kampanyalar />;
+        return <CampaignsPageWrapper />;
       case 'teklifler':
         return <Teklifler />;
       case 'sozlesmeler':
@@ -72,6 +89,11 @@ function AppContent() {
     }
   };
 
+  // Helper alias to bypass campaigns naming collision if any
+  function CampaignsPageWrapper() {
+    return <Kampanyalar />;
+  }
+
   return (
     <div className="flex min-h-screen bg-[#08111f] text-slate-200 transition-colors duration-200 font-sans">
       {/* Navigation Sidebar */}
@@ -94,8 +116,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <AuthProvider>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </AuthProvider>
   );
 }

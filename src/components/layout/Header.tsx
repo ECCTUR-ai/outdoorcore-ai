@@ -5,11 +5,17 @@ import { Avatar } from '../design-system/Avatar';
 import { Badge } from '../design-system/Badge';
 import { notificationRepository, taskRepository } from '@/repositories';
 
+import { useAuth } from '@/auth/useAuth';
+import { ProfileDrawer } from '../design-system/ProfileDrawer';
+
 export function Header() {
   const notificationsList = notificationRepository.getAllSync();
   const tasksList = taskRepository.getAllSync();
-  const { setCommandPaletteOpen, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
+  const { setCommandPaletteOpen, mobileSidebarOpen, setMobileSidebarOpen, setCurrentRoute } = useApp();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { currentUser, logout } = useAuth();
 
   const criticalCount = notificationsList.filter(n => n.status === 'critical').length;
   const taskCount = tasksList.length;
@@ -115,16 +121,69 @@ export function Header() {
         </div>
 
         {/* User Card Dropdown */}
-        <div className="flex items-center gap-1.5 border-l border-white/5 pl-2.5 md:pl-3.5 shrink-0">
-          <Avatar 
-            name="Cemil Sezgin" 
-            size="sm" 
-            status="online" 
-            className="font-black text-slate-200"
-          />
-          <ChevronDown size={11} className="text-slate-500 cursor-pointer hover:text-slate-350 transition-colors" />
+        <div className="flex items-center gap-1.5 border-l border-white/5 pl-2.5 md:pl-3.5 shrink-0 relative">
+          <div 
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-1.5 cursor-pointer hover:opacity-90 transition-all select-none"
+          >
+            <Avatar 
+              name={currentUser?.name || 'Cemil Sezgin'} 
+              size="sm" 
+              status="online" 
+              className="font-black text-slate-200"
+            />
+            <ChevronDown size={11} className="text-slate-500 hover:text-slate-350 transition-colors" />
+          </div>
+
+          {showUserMenu && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowUserMenu(false)} 
+              />
+              <div className="absolute right-0 top-10 mt-2 w-48 dark-glass-card border border-white/10 rounded-2xl shadow-2xl p-2 z-50 animate-scale-in text-left">
+                {/* User info header */}
+                <div className="px-3.5 py-2.5 border-b border-white/5 mb-1.5 select-none leading-none">
+                  <span className="text-[10px] font-black text-white block leading-none truncate">{currentUser?.name}</span>
+                  <span className="text-[7.5px] text-slate-500 font-bold block mt-1.5 truncate">{currentUser?.email}</span>
+                </div>
+
+                {/* Actions */}
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setProfileOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-[9px] font-black uppercase text-slate-400 hover:text-white hover:bg-white/3 transition-all cursor-pointer block"
+                >
+                  Profil & Hesabım
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setCurrentRoute('ayarlar');
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-[9px] font-black uppercase text-slate-400 hover:text-white hover:bg-white/3 transition-all cursor-pointer block"
+                >
+                  Sistem Ayarları
+                </button>
+                <button
+                  onClick={async () => {
+                    setShowUserMenu(false);
+                    await logout();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-[9px] font-black uppercase text-rose-450 hover:text-rose-400 hover:bg-rose-500/5 transition-all cursor-pointer block border-t border-white/3 mt-1.5 pt-2"
+                >
+                  Çıkış Yap
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Profile details slideover */}
+      <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
     </header>
   );
 }
