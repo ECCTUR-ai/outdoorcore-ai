@@ -25,8 +25,22 @@ import {
 
 import { usePermission } from '@/permissions/permissionHooks';
 import { PermissionKey } from '@/permissions/accessControl';
+import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
+import { useState, useEffect } from 'react';
 
 export function Sidebar() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      setUnreadCount(newNotifRepo.listUnread().length);
+    };
+    updateCount();
+    window.addEventListener('notifications_updated', updateCount);
+    return () => {
+      window.removeEventListener('notifications_updated', updateCount);
+    };
+  }, []);
   const { 
     currentRoute, 
     setCurrentRoute, 
@@ -130,12 +144,20 @@ export function Sidebar() {
                   }`}
                   title={sidebarCollapsed ? item.label : undefined}
                 >
-                  <span className={`shrink-0 ${isActive ? 'scale-[1.08] text-[inherit]' : 'text-slate-500'}`}>
+                  <span className={`shrink-0 relative ${isActive ? 'scale-[1.08] text-[inherit]' : 'text-slate-500'}`}>
                     {item.icon}
+                    {item.key === 'bildirimler' && unreadCount > 0 && sidebarCollapsed && !mobileSidebarOpen && (
+                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    )}
                   </span>
                   {(!sidebarCollapsed || mobileSidebarOpen) && (
-                    <span className="text-[10px] uppercase tracking-wider block truncate">
-                      {item.label}
+                    <span className="text-[10px] uppercase tracking-wider flex items-center justify-between w-full truncate">
+                      <span>{item.label}</span>
+                      {item.key === 'bildirimler' && unreadCount > 0 && (
+                        <span className="text-[8px] font-black bg-blue-500 text-white px-1.5 py-0.2 rounded-full shrink-0 leading-none">
+                          {unreadCount}
+                        </span>
+                      )}
                     </span>
                   )}
                 </button>

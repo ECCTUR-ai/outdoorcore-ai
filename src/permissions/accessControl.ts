@@ -39,7 +39,13 @@ export type PermissionKey =
   | 'audit.view'
   | 'activity.view'
   | 'ai.use'
-  | 'executive.view';
+  | 'executive.view'
+  | 'notifications.view'
+  | 'notifications.manage'
+  | 'tasks.view'
+  | 'tasks.create'
+  | 'tasks.assign'
+  | 'tasks.complete';
 
 export type EnterpriseRoleType = 
   | 'Super Admin'
@@ -63,7 +69,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<EnterpriseRoleType, PermissionKey[]
     'contracts.view', 'contracts.sign', 'contracts.cancel', 'campaigns.view', 'campaigns.publish', 'campaigns.pause',
     'finance.view', 'finance.invoice.create', 'finance.payment.create', 'finance.export', 'reports.view', 'reports.export',
     'media.upload', 'media.delete', 'maintenance.assign', 'maintenance.close', 'users.view', 'users.create',
-    'users.update', 'users.delete', 'roles.manage', 'settings.manage', 'audit.view', 'activity.view', 'ai.use', 'executive.view'
+    'users.update', 'users.delete', 'roles.manage', 'settings.manage', 'audit.view', 'activity.view', 'ai.use', 'executive.view',
+    'notifications.view', 'notifications.manage', 'tasks.view', 'tasks.create', 'tasks.assign', 'tasks.complete'
   ],
   'CEO': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update', 'companies.delete',
@@ -71,18 +78,19 @@ export const ROLE_PERMISSIONS_MATRIX: Record<EnterpriseRoleType, PermissionKey[]
     'contracts.view', 'contracts.sign', 'contracts.cancel', 'campaigns.view', 'campaigns.publish',
     'finance.view', 'finance.invoice.create', 'finance.export', 'reports.view', 'reports.export',
     'media.upload', 'maintenance.close', 'users.view', 'users.create', 'roles.manage', 'settings.manage',
-    'audit.view', 'activity.view', 'ai.use', 'executive.view'
+    'audit.view', 'activity.view', 'ai.use', 'executive.view',
+    'notifications.view', 'notifications.manage', 'tasks.view', 'tasks.create', 'tasks.assign', 'tasks.complete'
   ],
   'Sales Director': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update',
     'spaces.view', 'offers.view', 'offers.create', 'offers.update', 'offers.delete', 'offers.approve',
     'contracts.view', 'contracts.sign', 'campaigns.view', 'media.upload',
-    'reports.view', 'reports.export', 'ai.use'
+    'reports.view', 'reports.export', 'ai.use', 'notifications.view', 'tasks.view', 'tasks.create', 'tasks.assign', 'tasks.complete'
   ],
   'Sales Representative': [
     'dashboard.view', 'companies.view', 'companies.create',
     'spaces.view', 'offers.view', 'offers.create', 'offers.update',
-    'contracts.view', 'campaigns.view', 'media.upload', 'ai.use'
+    'contracts.view', 'campaigns.view', 'media.upload', 'ai.use', 'notifications.view', 'tasks.view'
   ],
   'Finance Manager': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'contracts.view',
@@ -157,5 +165,11 @@ export const ALL_PERMISSIONS_LIST: { key: PermissionKey; name: string; group: st
   { key: 'audit.view', name: 'Audit Log Görüntüle', group: 'Settings' },
   { key: 'activity.view', name: 'Aktivite Log Listele', group: 'Settings' },
   { key: 'ai.use', name: 'AI Copilot Kullan', group: 'AI' },
-  { key: 'executive.view', name: 'Executive Dashboard Aç', group: 'Dashboard' }
+  { key: 'executive.view', name: 'Executive Dashboard Aç', group: 'Dashboard' },
+  { key: 'notifications.view', name: 'Bildirimleri Görüntüle', group: 'Notifications' },
+  { key: 'notifications.manage', name: 'Bildirim Tercihlerini Yönet', group: 'Notifications' },
+  { key: 'tasks.view', name: 'Görevleri Listele', group: 'Tasks' },
+  { key: 'tasks.create', name: 'Görev Ekle', group: 'Tasks' },
+  { key: 'tasks.assign', name: 'Görev Sorumlusu Ata', group: 'Tasks' },
+  { key: 'tasks.complete', name: 'Görevi Tamamla', group: 'Tasks' }
 ];

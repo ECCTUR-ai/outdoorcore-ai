@@ -11,6 +11,8 @@ import { tasksList } from '@/data/tasks';
 import { notificationsList } from '@/data/notifications';
 import { maintenanceTasks } from '@/data/maintenance';
 import { competitorsList, competitorKpis } from '@/data/competitors';
+import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
+import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 
 // ----------------------------------------------------
 // PERSISTENCE AND CONTEXT HELPERS FOR FALLBACK DEMO
@@ -1291,31 +1293,41 @@ export const mediaRepository = {
 
 export const taskRepository = {
   getAllSync() {
-    return tasksList;
+    return newTaskRepo.list().map(t => ({
+      id: t.taskId,
+      clientName: t.assignedTo || 'Sistem',
+      logo: (t.assignedTo || 'S')[0],
+      taskTitle: t.title,
+      priority: t.priority === 'low' ? 'Düşük' : t.priority === 'medium' ? 'Orta' : t.priority === 'high' ? 'Yüksek' : 'Kritik' as any,
+      dueDate: t.dueDate,
+      assignee: t.assignedTo || 'Atanmadı',
+      module: t.sourceEntityType === 'contract' ? 'Sözleşme' : t.sourceEntityType === 'offer' ? 'Teklif' : t.sourceEntityType === 'campaign' ? 'Kampanya' : t.sourceEntityType === 'finance' ? 'Finans' : 'Bakım' as any,
+      status: t.status === 'todo' ? 'Yapılacak' : t.status === 'in_progress' ? 'Devam Ediyor' : t.status === 'waiting' ? 'Bekliyor' : 'Tamamlandı' as any,
+      companyId: t.sourceEntityType === 'company' ? t.sourceEntityId : undefined,
+      linkId: t.sourceEntityId
+    }));
   },
   async getAll() {
-    try {
-      const { data, error } = await supabase.from('tasks').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return tasksList;
-    }
+    return this.getAllSync();
   }
 };
 
 export const notificationRepository = {
   getAllSync() {
-    return notificationsList;
+    return newNotifRepo.list().map(n => ({
+      id: n.notificationId,
+      time: new Date(n.createdAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
+      user: 'Sistem',
+      company: n.title,
+      message: n.message,
+      category: n.category.toUpperCase(),
+      status: (n.type === 'danger' ? 'critical' : n.type === 'info' ? 'info' : n.type === 'success' ? 'success' : 'warning') as any,
+      companyId: n.sourceEntityType === 'company' ? n.sourceEntityId : undefined,
+      linkId: n.sourceEntityId
+    }));
   },
   async getAll() {
-    try {
-      const { data, error } = await supabase.from('notifications').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return notificationsList;
-    }
+    return this.getAllSync();
   }
 };
 

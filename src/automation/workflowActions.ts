@@ -5,6 +5,8 @@ import { contracts } from '@/data/contracts';
 import { reservations } from '@/data/reservations';
 import { campaigns } from '@/data/campaigns';
 import { financeData } from '@/data/finance';
+import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
+import { notificationEngine } from '@/notifications/notificationEngine';
 
 // Helper to read/write localStorage mock arrays
 const getMockData = <T>(key: string, fallback: T[]): T[] => {
@@ -26,45 +28,43 @@ const saveMockData = <T>(key: string, data: T[]) => {
 
 export const workflowActionsExecutor = {
   createTask(payload: any) {
-    const newTask: TaskItem = {
-      id: 'TSK-' + Math.floor(1000 + Math.random() * 9000),
-      clientName: payload.clientName || 'Sistem Görevi',
-      logo: (payload.clientName || 'S')[0].toUpperCase(),
-      taskTitle: payload.title || 'Otomasyon Görevi',
-      priority: payload.priority || 'Orta',
-      dueDate: payload.dueDate || 'Bugün',
-      assignee: payload.assignee || 'AI Bot',
-      module: payload.category || 'Teklif',
-      status: 'Yapılacak',
-      companyId: payload.companyId,
-      linkId: payload.linkId
-    };
-    tasksList.unshift(newTask);
-    saveMockData('tasks', tasksList);
-    
-    // Dispatch standard browser event to trigger react view updates
-    window.dispatchEvent(new CustomEvent('task_created', { detail: newTask }));
-    return newTask.id;
+    const newTask = newTaskRepo.create({
+      organizationId: 'org-1',
+      assignedTo: payload.assignee || 'Ahmet Y.',
+      title: payload.title || 'Otomasyon Görevi',
+      description: payload.notes || 'Otomasyon akışı sonucu atanan görev.',
+      status: 'todo',
+      priority: payload.priority === 'Kritik' ? 'critical' : payload.priority === 'Yüksek' ? 'high' : payload.priority === 'Orta' ? 'medium' : 'low',
+      dueDate: payload.dueDate || '10.07.2026',
+      sourceEntityType: payload.category === 'Sözleşme' ? 'contract' : payload.category === 'Teklif' ? 'offer' : payload.category === 'Kampanya' ? 'campaign' : 'system',
+      sourceEntityId: payload.linkId || '0'
+    });
+    return newTask.taskId;
   },
 
   createNotification(payload: any) {
-    const newNotification: SystemNotification = {
-      id: 'NTF-' + Math.floor(1000 + Math.random() * 9000),
-      time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }),
-      user: payload.user || 'Yapay Zeka',
-      company: payload.company || 'Sistem',
-      message: payload.message || 'Otomasyon bildirimi tetiklendi.',
-      category: payload.category || 'Sistem',
-      status: payload.type || 'info',
-      companyId: payload.companyId,
-      linkId: payload.linkId
+    const categoryMapping: Record<string, any> = {
+      'Teklif': 'offer',
+      'Sözleşme': 'contract',
+      'Rezervasyon': 'reservation',
+      'Kampanya': 'campaign',
+      'Tahsilat': 'finance',
+      'Bakım': 'maintenance',
+      'Sistem': 'system'
     };
-    notificationsList.unshift(newNotification);
-    saveMockData('notifications', notificationsList);
-    
-    // Dispatch standard browser event to trigger react view updates
-    window.dispatchEvent(new CustomEvent('notification_created', { detail: newNotification }));
-    return newNotification.id;
+    notificationEngine.dispatchNotification({
+      organizationId: 'org-1',
+      userId: 'usr-demo',
+      title: payload.company || 'Sistem Bildirimi',
+      message: payload.message || 'Otomasyon bildirimi.',
+      type: payload.type === 'critical' ? 'danger' : payload.type === 'warning' ? 'warning' : payload.type === 'success' ? 'success' : 'info',
+      priority: payload.type === 'critical' ? 'critical' : 'medium',
+      category: categoryMapping[payload.category] || 'system',
+      sourceEntityType: 'system',
+      sourceEntityId: payload.linkId || '0',
+      channel: 'in_app'
+    });
+    return 'NTF-MOCKED';
   },
 
   async logActivity(payload: any) {
