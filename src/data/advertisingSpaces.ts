@@ -28,6 +28,11 @@ export interface AdvertisingSpace {
   reach: string;
   frequency: number;
   image: string;
+  terminal?: string;
+  floor?: string;
+  notes?: string;
+  deleted_at?: string;
+  deleted_by?: string;
 }
 
 export const advertisingSpaces: AdvertisingSpace[] = [

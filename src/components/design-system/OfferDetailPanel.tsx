@@ -10,19 +10,27 @@ import {
   Coins, 
   Sparkles, 
   FileText,
-  FileCheck,
   CalendarCheck,
   UserCheck,
-  BookOpen
+  BookOpen,
+  Edit3,
+  Trash2,
+  Send,
+  Check,
+  XSquare,
+  RotateCcw
 } from 'lucide-react';
-
 import { EntityLink } from './EntityLink';
+import { PermissionGate } from './PermissionGate';
 
 interface OfferDetailPanelProps {
   offer: Offer;
+  onEdit: (offer: Offer) => void;
+  onDelete: (id: string) => void;
+  onStageChange: (id: string, newStage: Offer['stage'], approved?: boolean) => void;
 }
 
-export function OfferDetailPanel({ offer }: OfferDetailPanelProps) {
+export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: OfferDetailPanelProps) {
   return (
     <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto">
       {/* Header Profile Title */}
@@ -31,16 +39,99 @@ export function OfferDetailPanel({ offer }: OfferDetailPanelProps) {
           <span className="text-[9px] font-black text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/10 uppercase tracking-widest inline-block">
             Teklif: #{offer.id}
           </span>
-          <h4 className="text-sm font-black text-white leading-tight uppercase truncate max-w-[200px]">{offer.clientName}</h4>
-          <span className="text-[8.5px] text-slate-550 font-bold uppercase tracking-wider block truncate max-w-[200px]">{offer.campaignName}</span>
+          <h4 className="text-sm font-black text-white leading-tight uppercase truncate max-w-[150px]" title={offer.clientName}>{offer.clientName}</h4>
+          <span className="text-[8.5px] text-slate-550 font-bold uppercase tracking-wider block truncate max-w-[150px]" title={offer.campaignName}>{offer.campaignName}</span>
         </div>
         <Badge variant={offer.priority === 'Yüksek' ? 'danger' : 'warning'}>
           {offer.priority} Öncelik
         </Badge>
       </div>
 
+      {/* Action Buttons: Düzenle & Sil */}
+      <div className="grid grid-cols-2 gap-2 pt-1 border-b border-white/5 pb-4">
+        <PermissionGate permission="offers.update">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            leftIcon={<Edit3 size={11} />} 
+            onClick={() => onEdit(offer)}
+          >
+            Düzenle
+          </Button>
+        </PermissionGate>
+        
+        <PermissionGate permission="offers.delete">
+          <Button 
+            variant="danger" 
+            size="sm" 
+            leftIcon={<Trash2 size={11} />} 
+            onClick={() => onDelete(offer.id)}
+          >
+            Sil
+          </Button>
+        </PermissionGate>
+      </div>
+
+      {/* Teklif Aşaması Yönetimi Quick Actions */}
+      <div className="space-y-2 pt-1 border-b border-white/5 pb-4">
+        <Label>Teklif Durum Yönetimi</Label>
+        <div className="flex flex-wrap gap-2">
+          {offer.stage !== 'Onay Bekleniyor' && offer.stage !== 'Tamamlandı' && offer.stage !== 'Sözleşme' && (
+            <PermissionGate permission="offers.update">
+              <Button 
+                variant="minimal" 
+                size="xs" 
+                leftIcon={<Send size={10} />}
+                onClick={() => onStageChange(offer.id, 'Onay Bekleniyor')}
+              >
+                Onaya Gönder
+              </Button>
+            </PermissionGate>
+          )}
+
+          {offer.stage === 'Onay Bekleniyor' && (
+            <PermissionGate permission="offers.approve">
+              <Button 
+                variant="success" 
+                size="xs" 
+                leftIcon={<Check size={10} />}
+                onClick={() => onStageChange(offer.id, 'Sözleşme', true)}
+              >
+                Onayla
+              </Button>
+            </PermissionGate>
+          )}
+
+          {offer.stage !== 'Tamamlandı' && (
+            <PermissionGate permission="offers.update">
+              <Button 
+                variant="danger" 
+                size="xs" 
+                leftIcon={<XSquare size={10} />}
+                onClick={() => onStageChange(offer.id, 'Tamamlandı')}
+              >
+                İptal Et
+              </Button>
+            </PermissionGate>
+          )}
+
+          {offer.stage === 'Onay Bekleniyor' && (
+            <PermissionGate permission="offers.update">
+              <Button 
+                variant="minimal" 
+                size="xs" 
+                leftIcon={<RotateCcw size={10} />}
+                onClick={() => onStageChange(offer.id, 'Teklif Hazırlandı')}
+              >
+                Revize Et
+              </Button>
+            </PermissionGate>
+          )}
+        </div>
+      </div>
+
       {/* Booking Core Metadata */}
-      <div className="grid grid-cols-2 gap-3.5 border-t border-b border-white/5 py-4 text-[10.5px] font-semibold text-slate-400">
+      <div className="grid grid-cols-2 gap-3.5 border-b border-white/5 pb-4 text-[10.5px] font-semibold text-slate-400">
         <div className="flex items-center gap-2">
           <Coins size={12} className="text-slate-500 shrink-0" />
           <span className="text-emerald-450 font-bold">{offer.value}</span>
@@ -64,29 +155,31 @@ export function OfferDetailPanel({ offer }: OfferDetailPanelProps) {
       </div>
 
       {/* Suggested Spaces */}
-      <div className="space-y-2 text-left">
-        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 leading-none mb-2.5">
-          <MapPin size={11} className="text-blue-400" />
-          Önerilen Reklam Alanları
-        </h5>
-        <div className="space-y-1.5">
-          {offer.spacesList.map((code, idx) => {
-            const mappedId = offer.spaceIds?.[idx] || 'SPC-0001';
-            return (
-              <div 
-                key={code} 
-                className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[10px]"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-black">#{code}</span>
-                  <EntityLink type="space" id={mappedId} label="Detay" />
+      {offer.spacesList && offer.spacesList.length > 0 && (
+        <div className="space-y-2 text-left">
+          <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 leading-none mb-2.5">
+            <MapPin size={11} className="text-blue-400" />
+            Önerilen Reklam Alanları
+          </h5>
+          <div className="space-y-1.5">
+            {offer.spacesList.map((code, idx) => {
+              const mappedId = offer.spaceIds?.[idx] || 'SPC-0001';
+              return (
+                <div 
+                  key={code} 
+                  className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[10px]"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-white font-black">#{code}</span>
+                    <EntityLink type="space" id={mappedId} label="Detay" />
+                  </div>
+                  <span className="text-[8px] text-slate-500 font-black uppercase">LED Ekran</span>
                 </div>
-                <span className="text-[8px] text-slate-500 font-black uppercase">LED Ekran</span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Global Linked References */}
       <div className="space-y-2.5 border-t border-white/5 pt-4">
@@ -108,41 +201,46 @@ export function OfferDetailPanel({ offer }: OfferDetailPanelProps) {
       </div>
 
       {/* Offer content details */}
-      <div className="space-y-2 text-left pt-1 border-t border-white/5 text-[10.5px] font-semibold text-slate-450">
-        <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2.5">
-          Teklif Açıklaması
-        </h5>
-        <p className="text-[10px] text-slate-350 leading-relaxed m-0">{offer.details}</p>
-      </div>
+      {offer.details && (
+        <div className="space-y-2 text-left pt-1 border-t border-white/5 text-[10.5px] font-semibold text-slate-455">
+          <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2.5">
+            Teklif Açıklaması
+          </h5>
+          <p className="text-[10px] text-slate-350 leading-relaxed m-0">{offer.details}</p>
+        </div>
+      )}
 
       {/* AI Sales Optimizer Suggestion */}
-      <div className="p-3.5 bg-gradient-to-br from-blue-950/20 to-indigo-950/30 border border-blue-500/10 rounded-2xl text-left select-none space-y-1.5">
-        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
-          <Sparkles size={11} className="animate-pulse" />
-          AI Satış Analizi
-        </span>
-        <p className="text-[9.5px] text-slate-400 font-bold leading-normal m-0">
-          Bu teklif için {offer.spacesList[0] || 'seçili'} alanının 15 gün içinde boşalacağı dikkate alınarak teklif süresinin hızlandırılması önerilir.
-        </p>
-      </div>
+      {offer.spacesList && offer.spacesList.length > 0 && (
+        <div className="p-3.5 bg-gradient-to-br from-blue-950/20 to-indigo-950/30 border border-blue-500/10 rounded-2xl text-left select-none space-y-1.5">
+          <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
+            <Sparkles size={11} className="animate-pulse" />
+            AI Satış Analizi
+          </span>
+          <p className="text-[9.5px] text-slate-400 font-bold leading-normal m-0">
+            Bu teklif için {offer.spacesList[0] || 'seçili'} alanının 15 gün içinde boşalacağı dikkate alınarak teklif süresinin hızlandırılması önerilir.
+          </p>
+        </div>
+      )}
 
       {/* Bottom CTA Actions */}
       <div className="grid grid-cols-2 gap-2 pt-3.5 border-t border-white/5">
-        <Button variant="primary" size="sm" onClick={() => alert(`${offer.clientName} teklif formu açılacak.`)}>
-          Teklifi Düzenle
-        </Button>
         <Button variant="outline" size="sm" leftIcon={<FileText size={12} />} onClick={() => alert('PDF Teklif belgesi indiriliyor...')}>
           PDF Oluştur
         </Button>
-        <Button variant="minimal" size="sm" leftIcon={<CalendarCheck size={12} />} className="col-span-2 text-[10px]" onClick={() => alert('Fırsat Rezervasyon takvimine aktarılıyor...')}>
+        <Button variant="minimal" size="sm" leftIcon={<CalendarCheck size={12} />} className="text-[10px]" onClick={() => alert('Fırsat Rezervasyon takvimine aktarılıyor...')}>
           Rezervasyona Çevir
         </Button>
-        <Button variant="ghost" size="sm" leftIcon={<FileCheck size={12} />} className="col-span-2 text-[10px]" onClick={() => alert('Teklif Sözleşmeler sayfasına aktarılıyor...')}>
-          Sözleşmeye Çevir
-        </Button>
-        <Button variant="ghost" size="sm" leftIcon={<BookOpen size={12} />} className="col-span-2 text-[10px] border border-white/5" onClick={() => alert(`${offer.clientName} CRM kartı açılıyor...`)}>
-          Firma Kartını Aç
-        </Button>
+        
+        {offer.companyId && (
+          <Button variant="ghost" size="sm" leftIcon={<BookOpen size={12} />} className="col-span-2 text-[10px] border border-white/5" onClick={() => {
+            const params = new URLSearchParams();
+            params.set('companyId', offer.companyId || '');
+            window.location.href = `/firmalar-markalar?${params.toString()}`;
+          }}>
+            Firma Kartını Aç
+          </Button>
+        )}
       </div>
     </div>
   );

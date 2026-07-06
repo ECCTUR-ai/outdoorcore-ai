@@ -1,42 +1,86 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   DownloadCloud, 
   FileSpreadsheet, 
-  SlidersHorizontal, 
   Sparkles,
   Building2,
   Users,
   Layers,
   Coins,
-  CalendarDays,
   FileSignature
 } from 'lucide-react';
 import { Company } from '@/data/companies';
 import { companyRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
-import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { CompanyCard } from '@/components/design-system/CompanyCard';
 import { CompanyList } from '@/components/design-system/CompanyList';
 import { CompanyDetailPanel } from '@/components/design-system/CompanyDetailPanel';
 import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
+import { PermissionGate } from '@/components/design-system/PermissionGate';
+import { CompanyModal } from '@/components/design-system/CompanyModal';
 
 export function FirmalarMarkalar() {
-  const companies = companyRepository.getAllSync();
-  const [selectedId, setSelectedId] = useState<string>('CMP-0001');
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedId, setSelectedId] = useState<string>('');
+  const [loading, setLoading] = useState(true);
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | undefined>(undefined);
 
-  React.useEffect(() => {
+  const fetchCompanies = async (selectFirst = false) => {
+    setLoading(true);
+    try {
+      const data = await companyRepository.list();
+      setCompanies(data);
+      if (data.length > 0) {
+        if (selectFirst || !selectedId || !data.some(c => c.id === selectedId)) {
+          setSelectedId(data[0].id);
+        }
+      } else {
+        setSelectedId('');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompanies(true);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const companyId = params.get('companyId');
     if (companyId && companies.some(c => c.id === companyId)) {
       setSelectedId(companyId);
     }
-  }, []);
+  }, [companies]);
 
   // Selected company lookup model
   const selectedCompany = companies.find(c => c.id === selectedId) || companies[0];
+
+  const handleCreate = () => {
+    setEditingCompany(undefined);
+    setModalOpen(true);
+  };
+
+  const handleEdit = (comp: Company) => {
+    setEditingCompany(comp);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Bu firmayı silmek istediğinize emin misiniz?')) {
+      const success = await companyRepository.softDelete(id);
+      if (success) {
+        fetchCompanies(true);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6 select-none pb-12">
@@ -58,14 +102,16 @@ export function FirmalarMarkalar() {
             OutdoorCore AI
           </Button>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            leftIcon={<Plus size={13} />}
-            onClick={() => alert('Yeni firma ekleme mockup formu açılacak.')}
-          >
-            Yeni Firma
-          </Button>
+          <PermissionGate permission="companies.create">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              leftIcon={<Plus size={13} />}
+              onClick={handleCreate}
+            >
+              Yeni Firma
+            </Button>
+          </PermissionGate>
 
           <Button 
             variant="minimal" 
@@ -91,7 +137,7 @@ export function FirmalarMarkalar() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Firma"
-          value="248"
+          value={loading ? '...' : String(companies.length)}
           percentage="%100"
           subtext="Kayıtlı portföy"
           icon={<Building2 size={15} />}
@@ -99,8 +145,8 @@ export function FirmalarMarkalar() {
         />
         <DarkKpiCard
           title="Aktif Firma"
-          value="196"
-          percentage="%79.0"
+          value={loading ? '...' : String(companies.filter(c => c.status === 'Aktif').length)}
+          percentage={`${companies.length > 0 ? ((companies.filter(c => c.status === 'Aktif').length / companies.length) * 100).toFixed(1) : 0}%`}
           subtext="Aktif kiralama yapan"
           icon={<Users size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-400 border-emerald-500/10"
@@ -169,21 +215,42 @@ export function FirmalarMarkalar() {
                 onClick={() => setSelectedId(c.id)}
               />
             ))}
+            {companies.length === 0 && !loading && (
+              <div className="col-span-2 text-center text-slate-500 text-xs font-bold uppercase tracking-wider py-8">
+                Firma Bulunamadı
+              </div>
+            )}
           </div>
         </div>
 
         {/* 3. Sağ: Detailed sticky overview panel */}
         <div className="order-3 lg:order-none lg:col-span-4">
-          <CompanyDetailPanel company={selectedCompany} />
+          {selectedCompany && (
+            <CompanyDetailPanel 
+              company={selectedCompany} 
+              onEdit={handleEdit} 
+              onDelete={handleDelete}
+            />
+          )}
         </div>
       </div>
 
-      {/* AI Insight Drawer overlay dialog */}
-      <AiInsightDrawer 
-        isOpen={aiDrawerOpen}
-        onClose={() => setAiDrawerOpen(false)}
-        selectedSpaceCode={selectedCompany.name}
+      {/* Company CRUD Modal */}
+      <CompanyModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        company={editingCompany}
+        onSuccess={() => fetchCompanies(false)}
       />
+
+      {/* AI Insight Drawer overlay dialog */}
+      {selectedCompany && (
+        <AiInsightDrawer 
+          isOpen={aiDrawerOpen}
+          onClose={() => setAiDrawerOpen(false)}
+          selectedSpaceCode={selectedCompany.name}
+        />
+      )}
     </div>
   );
 }

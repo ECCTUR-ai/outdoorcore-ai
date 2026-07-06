@@ -8,8 +8,11 @@ export type PermissionKey =
   | 'spaces.view'
   | 'spaces.create'
   | 'spaces.update'
+  | 'spaces.delete'
   | 'offers.view'
   | 'offers.create'
+  | 'offers.update'
+  | 'offers.delete'
   | 'offers.approve'
   | 'contracts.view'
   | 'contracts.sign'
@@ -56,15 +59,15 @@ export type EnterpriseRoleType =
 export const ROLE_PERMISSIONS_MATRIX: Record<EnterpriseRoleType, PermissionKey[]> = {
   'Super Admin': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update', 'companies.delete',
-    'spaces.view', 'spaces.create', 'spaces.update', 'offers.view', 'offers.create', 'offers.approve',
+    'spaces.view', 'spaces.create', 'spaces.update', 'spaces.delete', 'offers.view', 'offers.create', 'offers.update', 'offers.delete', 'offers.approve',
     'contracts.view', 'contracts.sign', 'contracts.cancel', 'campaigns.view', 'campaigns.publish', 'campaigns.pause',
     'finance.view', 'finance.invoice.create', 'finance.payment.create', 'finance.export', 'reports.view', 'reports.export',
     'media.upload', 'media.delete', 'maintenance.assign', 'maintenance.close', 'users.view', 'users.create',
     'users.update', 'users.delete', 'roles.manage', 'settings.manage', 'audit.view', 'activity.view', 'ai.use', 'executive.view'
   ],
   'CEO': [
-    'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update',
-    'spaces.view', 'offers.view', 'offers.create', 'offers.approve',
+    'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update', 'companies.delete',
+    'spaces.view', 'spaces.create', 'spaces.update', 'spaces.delete', 'offers.view', 'offers.create', 'offers.update', 'offers.delete', 'offers.approve',
     'contracts.view', 'contracts.sign', 'contracts.cancel', 'campaigns.view', 'campaigns.publish',
     'finance.view', 'finance.invoice.create', 'finance.export', 'reports.view', 'reports.export',
     'media.upload', 'maintenance.close', 'users.view', 'users.create', 'roles.manage', 'settings.manage',
@@ -72,13 +75,13 @@ export const ROLE_PERMISSIONS_MATRIX: Record<EnterpriseRoleType, PermissionKey[]
   ],
   'Sales Director': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update',
-    'spaces.view', 'offers.view', 'offers.create', 'offers.approve',
+    'spaces.view', 'offers.view', 'offers.create', 'offers.update', 'offers.delete', 'offers.approve',
     'contracts.view', 'contracts.sign', 'campaigns.view', 'media.upload',
     'reports.view', 'reports.export', 'ai.use'
   ],
   'Sales Representative': [
     'dashboard.view', 'companies.view', 'companies.create',
-    'spaces.view', 'offers.view', 'offers.create',
+    'spaces.view', 'offers.view', 'offers.create', 'offers.update',
     'contracts.view', 'campaigns.view', 'media.upload', 'ai.use'
   ],
   'Finance Manager': [
@@ -95,7 +98,7 @@ export const ROLE_PERMISSIONS_MATRIX: Record<EnterpriseRoleType, PermissionKey[]
     'media.upload', 'media.delete', 'reports.view', 'ai.use'
   ],
   'Operations Manager': [
-    'dashboard.view', 'companies.view', 'spaces.view', 'spaces.create', 'spaces.update',
+    'dashboard.view', 'companies.view', 'spaces.view', 'spaces.create', 'spaces.update', 'spaces.delete',
     'campaigns.view', 'media.upload', 'ai.use'
   ],
   'Technical Manager': [
@@ -123,8 +126,11 @@ export const ALL_PERMISSIONS_LIST: { key: PermissionKey; name: string; group: st
   { key: 'spaces.view', name: 'Envanter Görüntüle', group: 'Spaces' },
   { key: 'spaces.create', name: 'Ünite Ekle', group: 'Spaces' },
   { key: 'spaces.update', name: 'Ünite Düzenle', group: 'Spaces' },
+  { key: 'spaces.delete', name: 'Ünite Sil', group: 'Spaces' },
   { key: 'offers.view', name: 'Teklifleri Listele', group: 'Offers' },
   { key: 'offers.create', name: 'Teklif Oluştur', group: 'Offers' },
+  { key: 'offers.update', name: 'Teklif Düzenle', group: 'Offers' },
+  { key: 'offers.delete', name: 'Teklif Sil', group: 'Offers' },
   { key: 'offers.approve', name: 'Teklif Karara Bağla', group: 'Offers' },
   { key: 'contracts.view', name: 'Kontratları Gör', group: 'Contracts' },
   { key: 'contracts.sign', name: 'Kontrat Onayla', group: 'Contracts' },

@@ -14,14 +14,18 @@ import {
   DownloadCloud, 
   FileText, 
   Bookmark, 
-  Edit3 
+  Edit3,
+  Trash2
 } from 'lucide-react';
+import { PermissionGate } from './PermissionGate';
 
 interface AdvertisingSpaceDetailPanelProps {
   space: AdvertisingSpace;
+  onEdit: () => void;
+  onDelete: (id: string) => void;
 }
 
-export function AdvertisingSpaceDetailPanel({ space }: AdvertisingSpaceDetailPanelProps) {
+export function AdvertisingSpaceDetailPanel({ space, onEdit, onDelete }: AdvertisingSpaceDetailPanelProps) {
   return (
     <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto">
       {/* Visual Placeholder card box */}
@@ -185,9 +189,19 @@ export function AdvertisingSpaceDetailPanel({ space }: AdvertisingSpaceDetailPan
         <Button variant="outline" size="sm" leftIcon={<Bookmark size={12} />} onClick={() => alert(`${space.code} için rezervasyon modalı tetiklenecek.`)}>
           Rezerve Et
         </Button>
-        <Button variant="minimal" size="sm" leftIcon={<Edit3 size={11} />} className="col-span-2" onClick={() => alert(`${space.code} düzenleme modalı tetiklenecek.`)}>
-          Detayları Düzenle
-        </Button>
+        
+        <PermissionGate permission="spaces.update">
+          <Button variant="minimal" size="sm" leftIcon={<Edit3 size={11} />} onClick={onEdit}>
+            Düzenle
+          </Button>
+        </PermissionGate>
+        
+        <PermissionGate permission="spaces.delete">
+          <Button variant="danger" size="sm" leftIcon={<Trash2 size={11} />} onClick={() => onDelete(space.id)}>
+            Sil
+          </Button>
+        </PermissionGate>
+
         <Button variant="ghost" size="sm" leftIcon={<DownloadCloud size={12} />} className="col-span-2 text-[10px]" onClick={() => alert(`${space.code} Medya Kiti (.zip) indiriliyor...`)}>
           Medya Kit İndir
         </Button>

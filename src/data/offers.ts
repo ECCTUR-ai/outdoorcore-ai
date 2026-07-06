@@ -18,6 +18,9 @@ export interface Offer {
   contractId?: string;
   reservationId?: string;
   campaignId?: string;
+  notes?: string;
+  deleted_at?: string;
+  deleted_by?: string;
 }
 
 export const offers: Offer[] = [

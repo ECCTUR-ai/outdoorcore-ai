@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   DownloadCloud, 
@@ -9,13 +9,11 @@ import {
   CheckCircle,
   Clock,
   CheckCheck,
-  TrendingUp,
   Percent
 } from 'lucide-react';
 import { Offer } from '@/data/offers';
 import { offerRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
-import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { OfferPipeline } from '@/components/design-system/OfferPipeline';
 import { OfferDetailPanel } from '@/components/design-system/OfferDetailPanel';
 import { OfferActivityFeed } from '@/components/design-system/OfferActivityFeed';
@@ -23,22 +21,86 @@ import { OfferTaskList } from '@/components/design-system/OfferTaskList';
 import { OfferAiInsights } from '@/components/design-system/OfferAiInsights';
 import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
+import { PermissionGate } from '@/components/design-system/PermissionGate';
+import { OfferModal } from '@/components/design-system/OfferModal';
 
 export function Teklifler() {
-  const offers = offerRepository.getAllSync();
-  const [selectedOfferId, setSelectedOfferId] = useState<string>('OFF-0001');
+  const [offers, setOffers] = useState<Offer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOfferId, setSelectedOfferId] = useState<string>('');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
-  React.useEffect(() => {
+  // CRUD Modals
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<Offer | undefined>(undefined);
+
+  const fetchOffers = async (selectFirst = false) => {
+    setLoading(true);
+    try {
+      const data = await offerRepository.list();
+      setOffers(data);
+      if (data.length > 0) {
+        if (selectFirst || !selectedOfferId || !data.some(o => o.id === selectedOfferId)) {
+          setSelectedOfferId(data[0].id);
+        }
+      } else {
+        setSelectedOfferId('');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOffers(true);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const offerId = params.get('offerId');
     if (offerId && offers.some(o => o.id === offerId)) {
       setSelectedOfferId(offerId);
     }
-  }, []);
+  }, [offers]);
 
   // Selected offer lookup
   const selectedOffer = offers.find(o => o.id === selectedOfferId) || offers[0];
+
+  const handleCreate = () => {
+    setEditingOffer(undefined);
+    setModalOpen(true);
+  };
+
+  const handleEdit = (off: Offer) => {
+    setEditingOffer(off);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Bu teklifi silmek istediğinize emin misiniz?')) {
+      const success = await offerRepository.softDelete(id);
+      if (success) {
+        fetchOffers(true);
+      }
+    }
+  };
+
+  const handleStageChange = async (id: string, newStage: Offer['stage'], approved = false) => {
+    try {
+      await offerRepository.update(id, { stage: newStage, approved });
+      fetchOffers(false);
+    } catch (e: any) {
+      alert(e.message || 'Aşama değiştirilirken hata oluştu.');
+    }
+  };
+
+  // Pipeline total value calculation
+  const totalValue = offers.reduce((acc, curr) => acc + curr.valueNumeric, 0);
+  const formattedTotalValue = totalValue >= 1000000 
+    ? `₺${(totalValue / 1000000).toFixed(1)}M` 
+    : `₺${(totalValue / 1000).toFixed(0)}K`;
 
   return (
     <div className="space-y-6 select-none pb-12">
@@ -60,14 +122,16 @@ export function Teklifler() {
             OutdoorCore AI
           </Button>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            leftIcon={<Plus size={13} />}
-            onClick={() => alert('Yeni teklif ekleme mockup formu açılacak.')}
-          >
-            Yeni Teklif
-          </Button>
+          <PermissionGate permission="offers.create">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              leftIcon={<Plus size={13} />}
+              onClick={handleCreate}
+            >
+              Yeni Teklif
+            </Button>
+          </PermissionGate>
 
           <Button 
             variant="minimal" 
@@ -93,7 +157,7 @@ export function Teklifler() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Fırsat"
-          value="128"
+          value={loading ? '...' : String(offers.length)}
           percentage="%100"
           subtext="Aktif satış takibi"
           icon={<Layers size={15} />}
@@ -101,7 +165,7 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Pipeline Değeri"
-          value="₺94.75M"
+          value={loading ? '...' : formattedTotalValue}
           percentage="₺15.6M bu ay"
           subtext="Toplam fırsat hacmi"
           icon={<Coins size={15} />}
@@ -119,7 +183,7 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Onay Bekleyen"
-          value="14"
+          value={loading ? '...' : String(offers.filter(o => o.stage === 'Onay Bekleniyor').length)}
           percentage="KRİTİK"
           subtext="Müşteri onayında"
           icon={<CheckCircle size={15} />}
@@ -128,7 +192,7 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Kazanılan"
-          value="18"
+          value={loading ? '...' : String(offers.filter(o => o.stage === 'Tamamlandı' || o.stage === 'Sözleşme').length)}
           percentage="+4 yeni"
           subtext="Sözleşmeye dönen"
           icon={<CheckCheck size={15} />}
@@ -158,6 +222,11 @@ export function Teklifler() {
               selectedId={selectedOfferId}
               onSelect={(id) => setSelectedOfferId(id)}
             />
+            {offers.length === 0 && !loading && (
+              <div className="text-center text-slate-500 text-xs font-bold uppercase tracking-wider py-12 border border-dashed border-white/5 rounded-3xl bg-slate-900/10">
+                Hiç Teklif Bulunmamaktadır
+              </div>
+            )}
           </div>
 
           {/* Section 2: Bottom activity tracking dashboards */}
@@ -170,18 +239,33 @@ export function Teklifler() {
 
         {/* Sağ 3-Sütun: Sticky details panel */}
         <div className="order-2 lg:order-none lg:col-span-3">
-          <OfferDetailPanel 
-            offer={selectedOffer}
-          />
+          {selectedOffer && (
+            <OfferDetailPanel 
+              offer={selectedOffer}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onStageChange={handleStageChange}
+            />
+          )}
         </div>
       </div>
 
-      {/* Slide-over AI CRM overlay */}
-      <AiInsightDrawer 
-        isOpen={aiDrawerOpen}
-        onClose={() => setAiDrawerOpen(false)}
-        selectedSpaceCode={selectedOffer.clientName}
+      {/* Offer CRUD Modal */}
+      <OfferModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        offer={editingOffer}
+        onSuccess={() => fetchOffers(false)}
       />
+
+      {/* Slide-over AI CRM overlay */}
+      {selectedOffer && (
+        <AiInsightDrawer 
+          isOpen={aiDrawerOpen}
+          onClose={() => setAiDrawerOpen(false)}
+          selectedSpaceCode={selectedOffer.clientName}
+        />
+      )}
     </div>
   );
 }

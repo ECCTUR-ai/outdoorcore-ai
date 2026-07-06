@@ -9,6 +9,8 @@ export interface Company {
   sector: string;
   city: string;
   status: 'Aktif' | 'Pasif';
+  deleted_at?: string;
+  deleted_by?: string;
   campaignsCount: number;
   totalSpend: string;
   activeSpacesCount: number;

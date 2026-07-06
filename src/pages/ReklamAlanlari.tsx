@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   DownloadCloud, 
@@ -22,13 +22,16 @@ import { AdvertisingSpaceMap } from '@/components/design-system/AdvertisingSpace
 import { AdvertisingSpaceDetailPanel } from '@/components/design-system/AdvertisingSpaceDetailPanel';
 import { SpaceStatusBadge } from '@/components/design-system/SpaceStatusBadge';
 import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
-import { Input, Select } from '@/components/design-system/Form';
+import { Input, Select, FormGroup, Label } from '@/components/design-system/Form';
 import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
+import { PermissionGate } from '@/components/design-system/PermissionGate';
+import { AdvertisingSpaceModal } from '@/components/design-system/AdvertisingSpaceModal';
 
 export function ReklamAlanlari() {
-  const advertisingSpaces = spaceRepository.getAllSync();
-  const [selectedCode, setSelectedCode] = useState<string>('SG-001');
+  const [advertisingSpaces, setAdvertisingSpaces] = useState<AdvertisingSpace[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCode, setSelectedCode] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalFilter, setTerminalFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -36,7 +39,34 @@ export function ReklamAlanlari() {
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  React.useEffect(() => {
+  // CRUD Modals
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingSpace, setEditingSpace] = useState<AdvertisingSpace | undefined>(undefined);
+
+  const fetchSpaces = async (selectFirst = false) => {
+    setLoading(true);
+    try {
+      const data = await spaceRepository.list();
+      setAdvertisingSpaces(data);
+      if (data.length > 0) {
+        if (selectFirst || !selectedCode || !data.some(s => s.code === selectedCode)) {
+          setSelectedCode(data[0].code);
+        }
+      } else {
+        setSelectedCode('');
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSpaces(true);
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const spaceId = params.get('spaceId');
     if (spaceId) {
@@ -45,7 +75,7 @@ export function ReklamAlanlari() {
         setSelectedCode(found.code);
       }
     }
-  }, []);
+  }, [advertisingSpaces]);
 
   // Selected space model lookup
   const selectedSpace = advertisingSpaces.find(s => s.code === selectedCode) || advertisingSpaces[0];
@@ -64,6 +94,27 @@ export function ReklamAlanlari() {
   const pageSize = 5;
   const paginatedSpaces = filteredSpaces.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const totalPages = Math.ceil(filteredSpaces.length / pageSize);
+
+  const handleCreate = () => {
+    setEditingSpace(undefined);
+    setModalOpen(true);
+  };
+
+  const handleEdit = () => {
+    if (selectedSpace) {
+      setEditingSpace(selectedSpace);
+      setModalOpen(true);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Bu reklam alanını silmek istediğinize emin misiniz?')) {
+      const success = await spaceRepository.softDelete(id);
+      if (success) {
+        fetchSpaces(true);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6 select-none pb-12">
@@ -85,14 +136,16 @@ export function ReklamAlanlari() {
             OutdoorCore AI
           </Button>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
-            leftIcon={<Plus size={13} />}
-            onClick={() => alert('Yeni reklam alanı oluşturma formu mockup modalı açılacak.')}
-          >
-            Alan Ekle
-          </Button>
+          <PermissionGate permission="spaces.create">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              leftIcon={<Plus size={13} />}
+              onClick={handleCreate}
+            >
+              Alan Ekle
+            </Button>
+          </PermissionGate>
 
           <Button 
             variant="minimal" 
@@ -118,7 +171,7 @@ export function ReklamAlanlari() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <DarkKpiCard
           title="Toplam Alan"
-          value="150"
+          value={loading ? '...' : String(advertisingSpaces.length)}
           percentage="%100"
           subtext="Tüm envanter"
           icon={<MapPin size={15} />}
@@ -126,8 +179,8 @@ export function ReklamAlanlari() {
         />
         <DarkKpiCard
           title="Dolu Alan"
-          value="92"
-          percentage="%61.3"
+          value={loading ? '...' : String(advertisingSpaces.filter(s => s.status === 'dolu').length)}
+          percentage={`${advertisingSpaces.length > 0 ? ((advertisingSpaces.filter(s => s.status === 'dolu').length / advertisingSpaces.length) * 100).toFixed(1) : 0}%`}
           subtext="Aktif sözleşmeler"
           icon={<CheckSquare size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-400 border-emerald-500/10"
@@ -135,165 +188,136 @@ export function ReklamAlanlari() {
         />
         <DarkKpiCard
           title="Boş Alan"
-          value="34"
-          percentage="%22.7"
-          subtext="Kiralanabilir alanlar"
+          value={loading ? '...' : String(advertisingSpaces.filter(s => s.status === 'bos').length)}
+          percentage={`${advertisingSpaces.length > 0 ? ((advertisingSpaces.filter(s => s.status === 'bos').length / advertisingSpaces.length) * 100).toFixed(1) : 0}%`}
+          subtext="Müsait üniteler"
           icon={<Circle size={15} />}
+          iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
+          glowColor="blue"
+        />
+        <DarkKpiCard
+          title="Teklif Aşamasında"
+          value={loading ? '...' : String(advertisingSpaces.filter(s => s.status === 'teklif').length)}
+          percentage={`${advertisingSpaces.length > 0 ? ((advertisingSpaces.filter(s => s.status === 'teklif').length / advertisingSpaces.length) * 100).toFixed(1) : 0}%`}
+          subtext="Opsiyonlu alanlar"
+          icon={<FileText size={15} />}
           iconBgColor="bg-amber-500/10 text-amber-400 border-amber-500/10"
           glowColor="yellow"
         />
         <DarkKpiCard
-          title="Teklif Aşamasında"
-          value="18"
-          percentage="%12.0"
-          subtext="Müzakere sürecinde"
-          icon={<FileText size={15} />}
-          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
-          glowColor="purple"
-        />
-        <DarkKpiCard
-          title="Bakımda"
-          value="6"
-          percentage="%4.0"
-          subtext="Serviste olan alanlar"
+          title="Bakım Modu"
+          value={loading ? '...' : String(advertisingSpaces.filter(s => s.status === 'bakim').length)}
+          percentage={`${advertisingSpaces.length > 0 ? ((advertisingSpaces.filter(s => s.status === 'bakim').length / advertisingSpaces.length) * 100).toFixed(1) : 0}%`}
+          subtext="Arızalı üniteler"
           icon={<Wrench size={15} />}
           iconBgColor="bg-rose-500/10 text-rose-400 border-rose-500/10"
           glowColor="red"
         />
       </div>
 
-      {/* Main Layout 3 Section Grid split */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Side: Map & Table List */}
-        <div className="order-1 lg:order-none lg:col-span-8 space-y-6">
-          {/* Section 1: Terminal Map Mock Card */}
-          <DarkDashboardCard
-            title="Alan Haritası"
-            description="Terminal üniteleri yerleşim dağılımı"
-            headerActions={
-              <div className="relative">
-                <select className="bg-white/5 border border-white/5 rounded-xl px-3.5 py-1.5 text-[9.5px] font-black text-slate-300 focus:outline-none uppercase tracking-wider cursor-pointer appearance-none pr-7">
-                  <option value="İç Hatlar - Giriş Kat">İç Hatlar - Giriş Kat</option>
-                  <option value="Dış Hatlar - Gidiş Lobi">Dış Hatlar - Gidiş Lobi</option>
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[8px]">
-                  ▼
-                </div>
-              </div>
-            }
+      {/* Main Workspace Filter Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5 bg-white/3 border border-white/5 rounded-3xl text-left">
+        <FormGroup>
+          <Label htmlFor="search">İsim / Kod Ara</Label>
+          <div className="relative">
+            <Input 
+              id="search"
+              placeholder="SG-001 veya Giriş LED..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              leftIcon={<Search size={13} />}
+            />
+          </div>
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="terminal-filter">Terminal Konumu</Label>
+          <Select 
+            id="terminal-filter"
+            value={terminalFilter}
+            onChange={(e) => setTerminalFilter(e.target.value)}
           >
-            <div className="space-y-4">
-              <AdvertisingSpaceMap 
-                selectedCode={selectedCode}
-                onSelectCode={(code) => setSelectedCode(code)}
-              />
-              {/* Map Legend */}
-              <div className="flex flex-wrap items-center justify-start gap-4 pt-1">
-                {[
-                  { label: 'Dolu', color: 'bg-emerald-500 glow-green' },
-                  { label: 'Boş (Müsait)', color: 'bg-amber-500 glow-yellow' },
-                  { label: 'Teklif Aşamasında', color: 'bg-purple-500 glow-purple' },
-                  { label: 'Bakımda / Arıza', color: 'bg-rose-500 glow-red' },
-                  { label: 'Yakında Boşalacak', color: 'bg-blue-500 glow-blue' }
-                ].map(leg => (
-                  <div key={leg.label} className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full border border-white/5 ${leg.color}`} />
-                    <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider">{leg.label}</span>
-                  </div>
-                ))}
-              </div>
+            <option value="">Tümü</option>
+            <option value="İç Hatlar">İç Hatlar</option>
+            <option value="Dış Hatlar">Dış Hatlar</option>
+          </Select>
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="type-filter">Ünite Tipi</Label>
+          <Select 
+            id="type-filter"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="">Tümü</option>
+            <option value="LED">LED Ekran</option>
+            <option value="Lightbox">Lightbox</option>
+            <option value="Billboard">Billboard</option>
+          </Select>
+        </FormGroup>
+
+        <FormGroup>
+          <Label htmlFor="status-filter">Doluluk Durumu</Label>
+          <Select 
+            id="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">Tümü</option>
+            <option value="dolu">Dolu</option>
+            <option value="bos">Boş / Müsait</option>
+            <option value="teklif">Teklifte</option>
+            <option value="bakim">Bakımda</option>
+          </Select>
+        </FormGroup>
+      </div>
+
+      {/* Middle Interactive Map Section */}
+      <div className="grid grid-cols-1 gap-6">
+        <DarkDashboardCard>
+          <div className="flex justify-between items-center mb-4">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Havalimanı Terminal Canlı Haritası</span>
+            <div className="flex items-center gap-4 text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block"></span> Dolu</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-sky-500 rounded-full inline-block"></span> Boş</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 bg-amber-500 rounded-full inline-block"></span> Teklif</span>
             </div>
-          </DarkDashboardCard>
+          </div>
+          <AdvertisingSpaceMap 
+            selectedCode={selectedCode}
+            onSelectCode={(code) => setSelectedCode(code)}
+          />
+        </DarkDashboardCard>
+      </div>
 
-          {/* Section 2: Space Inventory Table List */}
-          <DarkDashboardCard
-            title="Reklam Alanları Listesi"
-            description="Tüm açık hava reklam lokasyonları envanteri"
-          >
-            <div className="space-y-4 text-left">
-              {/* Filters row */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="relative">
-                  <Search size={12} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <Input 
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder="Alan adı veya kodu ara..."
-                    className="pl-10"
-                  />
-                </div>
-                <Select 
-                  value={terminalFilter}
-                  onChange={(e) => {
-                    setTerminalFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">Tüm Terminaller</option>
-                  <option value="İç Hatlar">İç Hatlar</option>
-                  <option value="Dış Hatlar">Dış Hatlar</option>
-                </Select>
-                <Select 
-                  value={typeFilter}
-                  onChange={(e) => {
-                    setTypeFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">Tüm Tipler</option>
-                  <option value="LED">LED Ekran</option>
-                  <option value="Lightbox">Lightbox</option>
-                </Select>
-                <Select 
-                  value={statusFilter}
-                  onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                >
-                  <option value="">Tüm Durumlar</option>
-                  <option value="dolu">Dolu</option>
-                  <option value="bos">Müsait (Boş)</option>
-                  <option value="teklif">Teklif Aşamasında</option>
-                  <option value="bakim">Bakımda</option>
-                </Select>
+      {/* Bottom Inventory Table and Detail Panel Split Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Side: Table View */}
+        <div className="order-1 lg:order-none lg:col-span-8">
+          <DarkDashboardCard className="h-full flex flex-col justify-between">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Envanter Listesi</span>
               </div>
 
-              {/* Data Table */}
-              <Table headers={[
-                'Alan Kodu', 
-                'Alan Adı', 
-                'Lokasyon', 
-                'Tip', 
-                'Ölçü', 
-                'Günlük Trafik', 
-                'Durum', 
-                'Kiralayan Firma', 
-                'Bitiş Tarihi', 
-                'Aylık Bedel', 
-                'İşlemler'
-              ]}>
+              <Table headers={['Alan Kodu', 'Ünite Tanımı', 'Lokasyon & Detay', 'Ölçü', 'Durum', 'Yayıncı Müşteri', 'Bitiş Tarihi', 'Fiyat', '']}>
+
                 {paginatedSpaces.map(space => {
                   const isSelected = selectedCode === space.code;
                   return (
                     <TableRow 
-                      key={space.code}
+                      key={space.id} 
                       onClick={() => setSelectedCode(space.code)}
-                      className={`cursor-pointer ${isSelected ? 'bg-white/5' : ''}`}
+                      className={`cursor-pointer transition-colors duration-150 ${isSelected ? 'bg-white/3 border-l-2 border-l-blue-400' : 'border-b border-white/3 hover:bg-white/1'}`}
                     >
-                      <TableCell className="font-extrabold text-blue-400">#{space.code}</TableCell>
-                      <TableCell className="font-black text-white">{space.name}</TableCell>
-                      <TableCell>{space.location}</TableCell>
-                      <TableCell>
-                        <span className="text-[10px] bg-white/5 border border-white/5 px-2 py-0.5 rounded text-slate-300 font-bold">
-                          {space.type}
-                        </span>
+                      <TableCell className="font-black text-blue-450 text-[10px] uppercase">{space.code}</TableCell>
+                      <TableCell className="font-extrabold text-white">{space.name}</TableCell>
+                      <TableCell className="font-semibold text-slate-400">
+                        <div>{space.location}</div>
+                        <div className="text-[8px] text-slate-500">{space.type} Ekran | {space.traffic.toLocaleString('tr-TR')} yolcu/gün</div>
                       </TableCell>
-                      <TableCell>{space.size}</TableCell>
-                      <TableCell className="font-bold text-slate-350">{space.traffic.toLocaleString('tr-TR')}</TableCell>
+                      <TableCell className="font-semibold text-slate-400">{space.size}</TableCell>
                       <TableCell>
                         <SpaceStatusBadge status={space.status} />
                       </TableCell>
@@ -316,6 +340,13 @@ export function ReklamAlanlari() {
                     </TableRow>
                   );
                 })}
+                {paginatedSpaces.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-slate-500 text-xs font-bold uppercase py-8">
+                      Reklam Alanı Bulunamadı
+                    </TableCell>
+                  </TableRow>
+                )}
               </Table>
 
               {/* Table Pagination row */}
@@ -353,16 +384,32 @@ export function ReklamAlanlari() {
 
         {/* Right Side: Sticky Space Detail Panel */}
         <div className="order-2 lg:order-none lg:col-span-4">
-          <AdvertisingSpaceDetailPanel space={selectedSpace} />
+          {selectedSpace && (
+            <AdvertisingSpaceDetailPanel 
+              space={selectedSpace} 
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          )}
         </div>
       </div>
 
-      {/* Slide-over AI Insight Drawer dialog */}
-      <AiInsightDrawer 
-        isOpen={aiDrawerOpen} 
-        onClose={() => setAiDrawerOpen(false)} 
-        selectedSpaceCode={selectedCode}
+      {/* CRUD Modal */}
+      <AdvertisingSpaceModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        space={editingSpace}
+        onSuccess={() => fetchSpaces(false)}
       />
+
+      {/* Slide-over AI Insight Drawer dialog */}
+      {selectedSpace && (
+        <AiInsightDrawer 
+          isOpen={aiDrawerOpen} 
+          onClose={() => setAiDrawerOpen(false)} 
+          selectedSpaceCode={selectedCode}
+        />
+      )}
     </div>
   );
 }

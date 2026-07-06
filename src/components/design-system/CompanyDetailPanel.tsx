@@ -1,28 +1,21 @@
 import React from 'react';
 import { Company } from '@/data/companies';
-import { SpaceStatusBadge } from './SpaceStatusBadge';
 import { Badge } from './Badge';
 import { Label } from './Form';
 import { ContactCard } from './ContactCard';
 import { CompanyTabs } from './CompanyTabs';
-import { 
-  Building2, 
-  MapPin, 
-  Tv, 
-  Activity, 
-  Sparkles, 
-  Layers, 
-  DollarSign, 
-  Folder 
-} from 'lucide-react';
-
+import { Sparkles, Edit3, Trash2 } from 'lucide-react';
 import { EntityLink } from './EntityLink';
+import { Button } from './Button';
+import { PermissionGate } from './PermissionGate';
 
 interface CompanyDetailPanelProps {
   company: Company;
+  onEdit: (company: Company) => void;
+  onDelete: (id: string) => void;
 }
 
-export function CompanyDetailPanel({ company }: CompanyDetailPanelProps) {
+export function CompanyDetailPanel({ company, onEdit, onDelete }: CompanyDetailPanelProps) {
   const [imageError, setImageError] = React.useState(false);
 
   React.useEffect(() => {
@@ -69,15 +62,41 @@ export function CompanyDetailPanel({ company }: CompanyDetailPanelProps) {
         </div>
       </div>
 
-      {/* Temsilciler & Yetkililer */}
-      <div className="space-y-2.5">
-        <Label>Firma Yetkilileri</Label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {company.contacts.map(c => (
-            <ContactCard key={c.name} name={c.name} role={c.role} />
-          ))}
-        </div>
+      {/* Action Buttons: Düzenle & Sil */}
+      <div className="grid grid-cols-2 gap-2 pt-1 border-b border-white/5 pb-4">
+        <PermissionGate permission="companies.update">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            leftIcon={<Edit3 size={11} />} 
+            onClick={() => onEdit(company)}
+          >
+            Düzenle
+          </Button>
+        </PermissionGate>
+        <PermissionGate permission="companies.delete">
+          <Button 
+            variant="danger" 
+            size="sm" 
+            leftIcon={<Trash2 size={11} />} 
+            onClick={() => onDelete(company.id)}
+          >
+            Sil
+          </Button>
+        </PermissionGate>
       </div>
+
+      {/* Temsilciler & Yetkililer */}
+      {company.contacts && company.contacts.length > 0 && (
+        <div className="space-y-2.5">
+          <Label>Firma Yetkilileri</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {company.contacts.map(c => (
+              <ContactCard key={c.name} name={c.name} role={c.role} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Medya & Kreatif Ajansları */}
       <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4 text-[10px] font-semibold text-slate-400">
