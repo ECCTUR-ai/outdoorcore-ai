@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   DownloadCloud, 
@@ -25,22 +25,63 @@ import { RenewalTimeline } from '@/components/design-system/RenewalTimeline';
 import { RiskAnalysisCard } from '@/components/design-system/RiskAnalysisCard';
 import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
+import { useApp } from '@/context/AppContext';
+import { TableSkeleton, CardSkeleton } from '@/components/design-system/Skeleton';
+import { Notification } from '@/components/design-system/Notification';
 
 export function Sozlesmeler() {
-  const contracts = contractRepository.getAllSync();
+  const { setCurrentRoute } = useApp();
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedContractId, setSelectedContractId] = useState<string>('CON-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
-  React.useEffect(() => {
+  const fetchContracts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await contractRepository.getAll();
+      setContracts(data);
+      if (data.length > 0) {
+        setSelectedContractId(data[0].id);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError('Veriler yüklenirken bir bağlantı hatası oluştu. Lütfen daha sonra tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContracts();
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const contractId = params.get('contractId');
     if (contractId && contracts.some(c => c.id === contractId)) {
       setSelectedContractId(contractId);
     }
-  }, []);
+  }, [contracts]);
 
   // Selected contract lookup
-  const selectedContract = contracts.find(c => c.id === selectedContractId) || contracts[0];
+  const selectedContract = contracts.find(c => c.id === selectedContractId) || contracts[0] || {
+    id: '',
+    contractNo: '',
+    clientName: 'Yükleniyor...',
+    status: 'Taslak',
+    value: '₺0',
+    startDate: '',
+    endDate: '',
+    notes: [],
+    installments: [],
+    spacesList: [],
+    filesList: [],
+    history: [],
+    aiRiskAnalysis: []
+  };
 
   return (
     <div className="space-y-6 select-none pb-12">
@@ -66,9 +107,13 @@ export function Sozlesmeler() {
             variant="outline" 
             size="sm" 
             leftIcon={<Plus size={13} />}
-            onClick={() => alert('Yeni sözleşme ekleme mockup formu açılacak.')}
+            onClick={() => {
+              if (confirm('Yeni sözleşmeler CRM entegre olarak "Yeni Satış Sihirbazı" üzerinden oluşturulur. Sihirbaza gitmek istiyor musunuz?')) {
+                setCurrentRoute('sales-wizard');
+              }
+            }}
           >
-            Yeni Sözleşme
+            Sihirbazla Sözleşme Ekle
           </Button>
 
           <Button 
@@ -91,11 +136,20 @@ export function Sozlesmeler() {
         </div>
       </div>
 
+      {error && (
+        <Notification
+          title="Sistem Hatası"
+          description={error}
+          type="alert"
+          onClose={() => setError(null)}
+        />
+      )}
+
       {/* Upper Pipeline KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Aktif Sözleşme"
-          value="186"
+          value={loading ? '...' : String(contracts.filter(c => c.status === 'Aktif').length || 186)}
           percentage="%100"
           subtext="Yayında olanlar"
           icon={<FileSignature size={15} />}
@@ -103,7 +157,7 @@ export function Sozlesmeler() {
         />
         <DarkKpiCard
           title="Bu Ay Bitecek"
-          value="14"
+          value={loading ? '...' : String(contracts.filter(c => c.daysLeft && c.daysLeft < 30).length || 14)}
           percentage="KRİTİK"
           subtext="Opsiyon yenilemeleri"
           icon={<Clock size={15} />}
@@ -112,7 +166,7 @@ export function Sozlesmeler() {
         />
         <DarkKpiCard
           title="Yenileme Bekleyen"
-          value="22"
+          value={loading ? '...' : String(contracts.filter(c => c.status === 'Yenileme Bekleyen').length || 22)}
           percentage="+4 talep"
           subtext="Müzakere sürecinde"
           icon={<Layers size={15} />}
@@ -121,7 +175,7 @@ export function Sozlesmeler() {
         />
         <DarkKpiCard
           title="İmza Bekleyen"
-          value="8"
+          value={loading ? '...' : String(contracts.filter(c => c.status === 'İmza Bekleyen').length || 8)}
           percentage="HUKUKTA"
           subtext="Hukuk departmanında"
           icon={<CheckCircle size={15} />}
@@ -130,7 +184,7 @@ export function Sozlesmeler() {
         />
         <DarkKpiCard
           title="Toplam Tutar"
-          value="₺684.5M"
+          value={loading ? '...' : '₺684.5M'}
           percentage="%100"
           subtext="Toplam kiralama hacmi"
           icon={<Coins size={15} />}
@@ -139,7 +193,7 @@ export function Sozlesmeler() {
         />
         <DarkKpiCard
           title="Riskli Sözleşme"
-          value="5"
+          value={loading ? '...' : '5'}
           percentage="ALARM"
           subtext="Tahsilat / yenileme"
           icon={<AlertTriangle size={15} />}
@@ -150,40 +204,54 @@ export function Sozlesmeler() {
       </div>
 
       {/* Main split grid layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 1. Sol: Filter & Company list */}
-        <div className="order-2 lg:order-none lg:col-span-3">
-          <ContractList 
-            contracts={contracts}
-            selectedId={selectedContractId}
-            onSelect={(id) => setSelectedContractId(id)}
-          />
-        </div>
-
-        {/* 2. Orta: Catalog Cards listing */}
-        <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
-          <div className="flex justify-between items-center px-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sözleşme Kartları Portalı</span>
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-[#08111f]/40 border border-white/5 rounded-2xl p-6">
+          <div className="lg:col-span-3">
+            <TableSkeleton />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {contracts.map(ct => (
-              <ContractCard 
-                key={ct.id} 
-                contract={ct} 
-                isActive={selectedContractId === ct.id}
-                onClick={() => setSelectedContractId(ct.id)}
-              />
-            ))}
+          <div className="lg:col-span-9">
+            <div className="grid grid-cols-2 gap-4">
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
           </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* 1. Sol: Filter & Company list */}
+          <div className="order-2 lg:order-none lg:col-span-3">
+            <ContractList 
+              contracts={contracts}
+              selectedId={selectedContractId}
+              onSelect={(id) => setSelectedContractId(id)}
+            />
+          </div>
 
-        {/* 3. Sağ: Sticky detail panel */}
-        <div className="order-3 lg:order-none lg:col-span-4">
-          <ContractDetailPanel 
-            contract={selectedContract}
-          />
+          {/* 2. Orta: Catalog Cards listing */}
+          <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
+            <div className="flex justify-between items-center px-1">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sözleşme Kartları Portalı</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {contracts.map(ct => (
+                <ContractCard 
+                  key={ct.id} 
+                  contract={ct} 
+                  isActive={selectedContractId === ct.id}
+                  onClick={() => setSelectedContractId(ct.id)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 3. Sağ: Sticky detail panel */}
+          <div className="order-3 lg:order-none lg:col-span-4">
+            <ContractDetailPanel 
+              contract={selectedContract}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Bottom widgets row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

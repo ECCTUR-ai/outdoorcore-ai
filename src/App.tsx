@@ -6,6 +6,22 @@ import { CommandPalette } from '@/components/layout/CommandPalette';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { useAuth } from '@/auth/useAuth';
 import { Login } from '@/pages/Login';
+import { PermissionGate } from '@/components/design-system/PermissionGate';
+import { AlertTriangle } from 'lucide-react';
+
+function AccessDenied() {
+  return (
+    <div className="dark-glass-card border border-rose-500/10 p-8 rounded-3xl text-center max-w-md mx-auto my-12 space-y-4 select-none">
+      <div className="w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto text-rose-500">
+        <AlertTriangle size={24} />
+      </div>
+      <h4 className="text-sm font-black text-white uppercase tracking-wider">Yetkisiz Erişim</h4>
+      <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">
+        Bu sayfayı görüntülemek için gerekli yetkilere sahip değilsiniz. Lütfen sistem yöneticinizle iletişime geçin.
+      </p>
+    </div>
+  );
+}
 
 // Pages
 import { Dashboard } from '@/pages/Dashboard';
@@ -71,7 +87,11 @@ function AppContent() {
       case 'raporlar':
         return <Raporlar />;
       case 'finans':
-        return <Finans />;
+        return (
+          <PermissionGate permission="finance.view" fallback={<AccessDenied />}>
+            <Finans />
+          </PermissionGate>
+        );
       case 'bildirimler':
         return <Bildirimler />;
       case 'ai-assistant':
@@ -81,11 +101,23 @@ function AppContent() {
       case 'competitor-analysis':
         return <CompetitorAnalysis />;
       case 'executive-dashboard':
-        return <ExecutiveDashboard />;
+        return (
+          <PermissionGate permission="executive.view" fallback={<AccessDenied />}>
+            <ExecutiveDashboard />
+          </PermissionGate>
+        );
       case 'ayarlar':
-        return <Ayarlar />;
+        return (
+          <PermissionGate permission="roles.manage" fallback={<AccessDenied />}>
+            <Ayarlar />
+          </PermissionGate>
+        );
       case 'system-roles':
-        return <SystemRoles />;
+        return (
+          <PermissionGate permission="roles.manage" fallback={<AccessDenied />}>
+            <SystemRoles />
+          </PermissionGate>
+        );
       case 'sales-wizard':
         return <SalesWizard />;
       case 'design-system':

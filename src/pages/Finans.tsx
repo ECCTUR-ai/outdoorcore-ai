@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   DownloadCloud, 
@@ -36,35 +36,71 @@ import { FinanceActivityFeed } from '@/components/design-system/FinanceActivityF
 import { QuickFinanceActions } from '@/components/design-system/QuickFinanceActions';
 import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
+import { TableSkeleton, CardSkeleton } from '@/components/design-system/Skeleton';
+import { Notification } from '@/components/design-system/Notification';
 
 export function Finans() {
-  const financeData = financeRepository.getFinanceDataSync();
+  const [financeData, setFinanceData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('CMP-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
-  React.useEffect(() => {
+  const fetchFinanceData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await financeRepository.getFinanceData();
+      setFinanceData(data);
+      if (data && data.accounts && data.accounts.length > 0) {
+        setSelectedAccountId(data.accounts[0].id);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError('Finansal veriler yüklenirken bir bağlantı hatası oluştu. Lütfen daha sonra tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFinanceData();
+  }, []);
+
+  useEffect(() => {
+    if (!financeData) return;
     const params = new URLSearchParams(window.location.search);
     const companyId = params.get('companyId');
     const invoiceId = params.get('invoiceId');
     const paymentId = params.get('paymentId');
 
-    if (companyId && financeData.accounts.some(a => a.id === companyId)) {
+    if (companyId && financeData.accounts.some((a: any) => a.id === companyId)) {
       setSelectedAccountId(companyId);
     } else if (invoiceId) {
-      const found = financeData.accounts.find(a => a.invoices.some(inv => inv.id === invoiceId));
+      const found = financeData.accounts.find((a: any) => a.invoices.some((inv: any) => inv.id === invoiceId));
       if (found) {
         setSelectedAccountId(found.id);
       }
     } else if (paymentId) {
-      const found = financeData.accounts.find(a => a.collections.some(col => col.id === paymentId));
+      const found = financeData.accounts.find((a: any) => a.collections.some((col: any) => col.id === paymentId));
       if (found) {
         setSelectedAccountId(found.id);
       }
     }
-  }, []);
+  }, [financeData]);
 
   // Selected account lookup
-  const selectedAccount = financeData.accounts.find(a => a.id === selectedAccountId) || financeData.accounts[0];
+  const selectedAccount = financeData?.accounts.find((a: any) => a.id === selectedAccountId) || financeData?.accounts[0] || {
+    id: '',
+    name: 'Yükleniyor...',
+    totalInvoiced: '₺0',
+    totalCollected: '₺0',
+    balance: '₺0',
+    riskScore: 0,
+    invoices: [],
+    collections: [],
+    history: []
+  };
 
   return (
     <div className="space-y-6 select-none pb-12">
@@ -90,7 +126,7 @@ export function Finans() {
             variant="outline" 
             size="sm" 
             leftIcon={<Plus size={13} />}
-            onClick={() => alert('Yeni Fatura ekleme formu açılacak.')}
+            onClick={() => alert('Yeni fatura kayıtları CRM entegre olarak "Yeni Satış Sihirbazı" üzerinden oluşturulmaktadır.')}
           >
             Yeni Fatura
           </Button>
@@ -115,11 +151,20 @@ export function Finans() {
         </div>
       </div>
 
+      {error && (
+        <Notification
+          title="Sistem Hatası"
+          description={error}
+          type="alert"
+          onClose={() => setError(null)}
+        />
+      )}
+
       {/* Upper Financial KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Ciro"
-          value="₺684.5M"
+          value={loading ? '...' : '₺684.5M'}
           percentage="%100"
           subtext="Toplam kiralama hacmi"
           icon={<Coins size={15} />}
@@ -127,7 +172,7 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Tahsil Edilen"
-          value="₺612.0M"
+          value={loading ? '...' : '₺612.0M'}
           percentage="%89.4"
           subtext="Banka hesaplarına geçen"
           icon={<CheckCircle size={15} />}
@@ -136,7 +181,7 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Tahsilat Bekleyen"
-          value="₺58.0M"
+          value={loading ? '...' : '₺58.0M'}
           percentage="VADEDE"
           subtext="Faturalandırılmış tutar"
           icon={<Clock size={15} />}
@@ -145,7 +190,7 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Vadesi Geçen"
-          value="₺14.5M"
+          value={loading ? '...' : '₺14.5M'}
           percentage="ALARM"
           subtext="Gecikmeli ödemeler"
           icon={<SlidersHorizontal size={15} />}
@@ -154,7 +199,7 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Toplam Fatura"
-          value="248"
+          value={loading ? '...' : '248'}
           percentage="+12 bu ay"
           subtext="Kesilen fatura adeti"
           icon={<FileSignature size={15} />}
@@ -163,11 +208,11 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Nakit Akışı (Net)"
-          value="₺72.0M"
+          value={loading ? '...' : '₺72.0M'}
           percentage="+%12.4"
           subtext="Haziran net girdisi"
           icon={<TrendingUp size={15} />}
-          iconBgColor="bg-sky-500/10 text-sky-450 border-sky-500/10"
+          iconBgColor="bg-sky-500/10 text-sky-455 border-sky-550/10"
           glowColor="blue"
           sparkline={true}
         />
@@ -177,63 +222,74 @@ export function Finans() {
       <FinanceSummaryCard />
 
       {/* Grid Layout: Accounts dock, main graphs, detail panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sol Account list */}
-        <div className="order-2 lg:order-none lg:col-span-3">
-          <AccountList 
-            accounts={financeData.accounts}
-            selectedId={selectedAccountId}
-            onSelect={(id) => setSelectedAccountId(id)}
-          />
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-[#08111f]/40 border border-white/5 rounded-2xl p-6">
+          <div className="lg:col-span-3">
+            <TableSkeleton />
+          </div>
+          <div className="lg:col-span-9 space-y-4">
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Sol Account list */}
+            <div className="order-2 lg:order-none lg:col-span-3">
+              <AccountList 
+                accounts={financeData?.accounts || []}
+                selectedId={selectedAccountId}
+                onSelect={(id) => setSelectedAccountId(id)}
+              />
+            </div>
 
-        {/* Orta Nakit Akışı Area Chart & Donut */}
-        <div className="order-1 lg:order-none lg:col-span-5 space-y-6">
-          <CashFlowChart />
-          <CollectionDonut />
-        </div>
+            {/* Orta Nakit Akışı Area Chart & Donut */}
+            <div className="order-1 lg:order-none lg:col-span-5 space-y-6">
+              <CashFlowChart />
+              <CollectionDonut />
+            </div>
 
-        {/* Sağ Account detail panel */}
-        <div className="order-3 lg:order-none lg:col-span-4">
-          <AccountDetailPanel account={selectedAccount} />
-        </div>
-      </div>
+            {/* Sağ Account detail panel */}
+            <div className="order-3 lg:order-none lg:col-span-4">
+              <AccountDetailPanel account={selectedAccount} />
+            </div>
+          </div>
 
-      {/* Invoices and Upcoming Payments row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8">
-          <InvoiceTable />
-        </div>
-        <div className="lg:col-span-4">
-          <UpcomingPayments />
-        </div>
-      </div>
+          {/* Invoices and Upcoming Payments row */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8">
+              <InvoiceTable />
+            </div>
+            <div className="lg:col-span-4">
+              <UpcomingPayments />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Timelines and Leaderboards row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-4">
-          <PaymentTimeline />
+      {!loading && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-4">
+            <PaymentTimeline />
+          </div>
+          <div className="lg:col-span-4">
+            <TopRevenueCompanies />
+          </div>
+          <div className="lg:col-span-4 font-semibold text-slate-400">
+            <RiskCenter />
+          </div>
         </div>
-        <div className="lg:col-span-4">
-          <TopRevenueCompanies />
-        </div>
-        <div className="lg:col-span-4">
-          <RiskCenter />
-        </div>
-      </div>
+      )}
 
-      {/* Predictions and Activities row */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-6">
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FinancePredictionCard />
-        </div>
-        <div className="lg:col-span-3">
           <FinanceActivityFeed />
-        </div>
-        <div className="lg:col-span-3">
           <QuickFinanceActions />
         </div>
-      </div>
+      )}
 
       {/* Sliding AI Panel Drawer */}
       <AiInsightDrawer 

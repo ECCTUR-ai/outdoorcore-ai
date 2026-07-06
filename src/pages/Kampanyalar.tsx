@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   DownloadCloud, 
@@ -28,22 +28,66 @@ import { CampaignPerformanceCards } from '@/components/design-system/CampaignPer
 import { CampaignAiInsights } from '@/components/design-system/CampaignAiInsights';
 import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
+import { useApp } from '@/context/AppContext';
+import { TableSkeleton, CardSkeleton } from '@/components/design-system/Skeleton';
+import { Notification } from '@/components/design-system/Notification';
 
 export function Kampanyalar() {
-  const campaigns = campaignRepository.getAllSync();
+  const { setCurrentRoute } = useApp();
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('CAM-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
-  React.useEffect(() => {
+  const fetchCampaigns = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await campaignRepository.getAll();
+      setCampaigns(data);
+      if (data.length > 0) {
+        setSelectedCampaignId(data[0].id);
+      }
+    } catch (e: any) {
+      console.error(e);
+      setError('Veriler yüklenirken bir bağlantı hatası oluştu. Lütfen daha sonra tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, []);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const campaignId = params.get('campaignId');
     if (campaignId && campaigns.some(c => c.id === campaignId)) {
       setSelectedCampaignId(campaignId);
     }
-  }, []);
+  }, [campaigns]);
 
   // Selected campaign lookup
-  const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId) || campaigns[0];
+  const selectedCampaign = campaigns.find(c => c.id === selectedCampaignId) || campaigns[0] || {
+    id: '',
+    campaignName: 'Yükleniyor...',
+    clientName: '',
+    status: 'Planlandı',
+    budget: '₺0',
+    startDate: '',
+    endDate: '',
+    creativeFiles: [],
+    history: [],
+    metrics: { impressions: 0, clicks: 0, ctr: '0%' },
+    impressions: '0',
+    reach: '0',
+    frequency: 0,
+    airtimeHours: 0,
+    bestSpace: '',
+    riskySpace: ''
+  };
 
   return (
     <div className="space-y-6 select-none pb-12">
@@ -69,9 +113,13 @@ export function Kampanyalar() {
             variant="outline" 
             size="sm" 
             leftIcon={<Plus size={13} />}
-            onClick={() => alert('Yeni kampanya ekleme mockup formu açılacak.')}
+            onClick={() => {
+              if (confirm('Yeni kampanyalar CRM entegre olarak "Yeni Satış Sihirbazı" üzerinden oluşturulur. Sihirbaza gitmek istiyor musunuz?')) {
+                setCurrentRoute('sales-wizard');
+              }
+            }}
           >
-            Yeni Kampanya
+            Sihirbazla Kampanya Ekle
           </Button>
 
           <Button 
@@ -86,137 +134,163 @@ export function Kampanyalar() {
           <Button 
             variant="ghost" 
             size="sm" 
-            leftIcon={<DownloadCloud size={13} />}
-            onClick={() => alert('Kampanya Yayın Raporu (.xlsx) indiriliyor...')}
+            leftIcon={<SlidersHorizontal size={13} />}
+            onClick={() => alert('Kampanya filtreleme ayarları paneli tetiklendi.')}
           >
-            Rapor İndir
+            Filtreler
           </Button>
         </div>
       </div>
 
+      {error && (
+        <Notification
+          title="Sistem Hatası"
+          description={error}
+          type="alert"
+          onClose={() => setError(null)}
+        />
+      )}
+
       {/* Upper Pipeline KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
-          title="Aktif Kampanya"
-          value="68"
+          title="Toplam Kampanya"
+          value={loading ? '...' : String(campaigns.length)}
           percentage="%100"
-          subtext="Aktif yayında olan"
+          subtext="Toplam tescilli"
           icon={<Megaphone size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
         />
         <DarkKpiCard
-          title="Planlanan Kampanya"
-          value="24"
-          percentage="+5 yeni"
-          subtext="Rezerve takvimi"
-          icon={<Calendar size={15} />}
-          iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"
+          title="Aktif Yayınlar"
+          value={loading ? '...' : String(campaigns.filter(c => c.status === 'Aktif').length)}
+          percentage="CANLI"
+          subtext="Yayında olanlar"
+          icon={<Tv size={15} />}
+          iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-500/10"
           glowColor="green"
         />
         <DarkKpiCard
-          title="Tamamlanan Kampanya"
-          value="156"
-          percentage="ARŞİV"
-          subtext="Başarıyla bitenler"
-          icon={<CheckCheck size={15} />}
-          iconBgColor="bg-amber-500/10 text-amber-400 border-amber-400/10"
+          title="Planlanan"
+          value={loading ? '...' : String(campaigns.filter(c => c.status === 'Planlandı').length)}
+          percentage="+2 yeni"
+          subtext="Gelecek yayınlar"
+          icon={<Calendar size={15} />}
+          iconBgColor="bg-amber-500/10 text-amber-400 border-amber-500/10"
           glowColor="yellow"
         />
         <DarkKpiCard
-          title="Yayında Olan Alan"
-          value="112"
-          percentage="%74.6"
-          subtext="Aktif ekranlar"
-          icon={<Tv size={15} />}
-          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-400/10"
+          title="Tamamlanan"
+          value={loading ? '...' : String(campaigns.filter(c => c.status === 'Tamamlandı').length)}
+          percentage="%100"
+          subtext="Geçmiş arşiv"
+          icon={<CheckCircle size={15} />}
+          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
           glowColor="purple"
         />
         <DarkKpiCard
-          title="Toplam Bütçe"
-          value="₺248.5M"
-          percentage="%100"
-          subtext="Yıllık ciro hacmi"
+          title="Bütçe Hacmi"
+          value={loading ? '...' : '₺412.8M'}
+          percentage="+%8.2"
+          subtext="Yıllık yatırım"
           icon={<Coins size={15} />}
           iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
           glowColor="blue"
         />
         <DarkKpiCard
-          title="Yayın Başarısı"
-          value="%96.8"
-          percentage="+%1.4 artış"
-          subtext="Sistem ortalaması"
-          icon={<Percent size={15} />}
-          iconBgColor="bg-rose-500/10 text-rose-450 border-rose-500/10"
-          glowColor="red"
+          title="Ort. CTR"
+          value={loading ? '...' : '2.4%'}
+          percentage="YÜKSEK"
+          subtext="Geri dönüş oranı"
+          icon={<TrendingUp size={15} />}
+          iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"
+          glowColor="green"
           sparkline={true}
         />
       </div>
 
-      {/* Main split grid layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* 1. Sol: Filter & Company list */}
-        <div className="order-2 lg:order-none lg:col-span-3">
-          <CampaignList 
-            campaigns={campaigns}
-            selectedId={selectedCampaignId}
-            onSelect={(id) => setSelectedCampaignId(id)}
-          />
-        </div>
-
-        {/* 2. Orta: Catalog Cards listing */}
-        <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
-          <div className="flex justify-between items-center px-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kampanya Portalı</span>
+      {/* Main layout split grid */}
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-[#08111f]/40 border border-white/5 rounded-2xl p-6">
+          <div className="lg:col-span-3">
+            <TableSkeleton />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {campaigns.map(c => (
-              <CampaignCard 
-                key={c.id} 
-                campaign={c} 
-                isActive={selectedCampaignId === c.id}
-                onClick={() => setSelectedCampaignId(c.id)}
-              />
-            ))}
+          <div className="lg:col-span-9">
+            <div className="grid grid-cols-2 gap-4">
+              <CardSkeleton />
+              <CardSkeleton />
+            </div>
           </div>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* 1. Sol: Filter & Campaign list */}
+          <div className="order-2 lg:order-none lg:col-span-3">
+            <CampaignList 
+              campaigns={campaigns}
+              selectedId={selectedCampaignId}
+              onSelect={(id) => setSelectedCampaignId(id)}
+            />
+          </div>
 
-        {/* 3. Sağ: Sticky detail panel */}
-        <div className="order-3 lg:order-none lg:col-span-4">
-          <CampaignDetailPanel 
-            campaign={selectedCampaign}
-          />
-        </div>
-      </div>
+          {/* 2. Orta: Catalog Cards listing */}
+          <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
+            <div className="flex justify-between items-center px-1 text-left">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kampanya Portalı</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {campaigns.map(cp => (
+                <CampaignCard 
+                  key={cp.id} 
+                  campaign={cp} 
+                  isActive={selectedCampaignId === cp.id}
+                  onClick={() => setSelectedCampaignId(cp.id)}
+                />
+              ))}
+            </div>
+          </div>
 
-      {/* Bottom Performance widgets */}
-      <div className="space-y-4 text-left">
-        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Kampanya Yayın Performansı</span>
-        <CampaignPerformanceCards 
-          impressions={selectedCampaign.impressions}
-          reach={selectedCampaign.reach}
-          frequency={selectedCampaign.frequency}
-          airtimeHours={selectedCampaign.airtimeHours}
-          bestSpace={selectedCampaign.bestSpace}
-          riskySpace={selectedCampaign.riskySpace}
-        />
-      </div>
+          {/* 3. Sağ: Sticky detail panel */}
+          <div className="order-3 lg:order-none lg:col-span-4">
+            <CampaignDetailPanel 
+              campaign={selectedCampaign}
+            />
+          </div>
+        </div>
+      )}
 
-      {/* Bottom detail lists row splits */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-8 space-y-6">
-          <CampaignScheduleTimeline />
-          <CreativeFilesGrid files={selectedCampaign.creativeFiles} />
-        </div>
-        <div className="lg:col-span-4">
-          <CampaignAiInsights />
-        </div>
-      </div>
+      {/* Bottom widgets row */}
+      {!loading && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-8 space-y-6">
+              <CampaignScheduleTimeline />
+              <CreativeFilesGrid files={selectedCampaign.creativeFiles} />
+            </div>
+            <div className="lg:col-span-4">
+              <CampaignAiInsights />
+            </div>
+          </div>
+
+          <div className="space-y-4 text-left pt-6">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Kampanya Yayın Performansı</span>
+            <CampaignPerformanceCards 
+              impressions={selectedCampaign.impressions}
+              reach={selectedCampaign.reach}
+              frequency={selectedCampaign.frequency}
+              airtimeHours={selectedCampaign.airtimeHours}
+              bestSpace={selectedCampaign.bestSpace}
+              riskySpace={selectedCampaign.riskySpace}
+            />
+          </div>
+        </>
+      )}
 
       {/* Sliding AI Panel Drawer */}
       <AiInsightDrawer 
         isOpen={aiDrawerOpen}
         onClose={() => setAiDrawerOpen(false)}
-        selectedSpaceCode={selectedCampaign.clientName}
+        selectedSpaceCode={selectedCampaign.campaignName}
       />
     </div>
   );

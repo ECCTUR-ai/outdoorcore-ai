@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
 import { companies } from '@/data/companies';
 import { advertisingSpaces } from '@/data/advertisingSpaces';
 import { offers } from '@/data/offers';
-import { contracts } from '@/data/contracts';
+import { contracts, Contract } from '@/data/contracts';
 import { reservations, conflicts } from '@/data/reservations';
 import { campaigns } from '@/data/campaigns';
 import { financeData } from '@/data/finance';
@@ -960,6 +960,10 @@ export const contractRepository = {
             daysLeft: d.days_left,
             startDate: d.start_date,
             endDate: d.end_date,
+            logo: d.logo || '',
+            valueNumeric: d.value_numeric || 0,
+            progress: d.progress || 0,
+            aiRiskScore: d.ai_risk_score || 0,
             mediaAgency: d.media_agency,
             proposalId: d.proposal_id,
             reservationId: d.reservation_id,
@@ -969,7 +973,7 @@ export const contractRepository = {
             filesList: Array.isArray(d.files_list) ? d.files_list : [],
             history: Array.isArray(d.history) ? d.history : [],
             aiRiskAnalysis: Array.isArray(d.ai_risk_analysis) ? d.ai_risk_analysis : []
-          }));
+          })) as Contract[];
         }
       } catch (e) {
         console.warn('Supabase contracts fetch failed, using local fallback:', e);

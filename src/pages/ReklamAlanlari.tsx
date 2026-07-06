@@ -27,10 +27,13 @@ import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
 import { PermissionGate } from '@/components/design-system/PermissionGate';
 import { AdvertisingSpaceModal } from '@/components/design-system/AdvertisingSpaceModal';
+import { TableSkeleton } from '@/components/design-system/Skeleton';
+import { Notification } from '@/components/design-system/Notification';
 
 export function ReklamAlanlari() {
   const [advertisingSpaces, setAdvertisingSpaces] = useState<AdvertisingSpace[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalFilter, setTerminalFilter] = useState('');
@@ -45,6 +48,7 @@ export function ReklamAlanlari() {
 
   const fetchSpaces = async (selectFirst = false) => {
     setLoading(true);
+    setError(null);
     try {
       const data = await spaceRepository.list();
       setAdvertisingSpaces(data);
@@ -55,8 +59,9 @@ export function ReklamAlanlari() {
       } else {
         setSelectedCode('');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError('Veriler yüklenirken bir bağlantı hatası oluştu. Lütfen daha sonra tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -166,6 +171,15 @@ export function ReklamAlanlari() {
           </Button>
         </div>
       </div>
+
+      {error && (
+        <Notification
+          title="Sistem Hatası"
+          description={error}
+          type="alert"
+          onClose={() => setError(null)}
+        />
+      )}
 
       {/* 5 KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -301,53 +315,59 @@ export function ReklamAlanlari() {
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Envanter Listesi</span>
               </div>
 
-              <Table headers={['Alan Kodu', 'Ünite Tanımı', 'Lokasyon & Detay', 'Ölçü', 'Durum', 'Yayıncı Müşteri', 'Bitiş Tarihi', 'Fiyat', '']}>
+              {loading ? (
+                <div className="py-4">
+                  <TableSkeleton />
+                </div>
+              ) : (
+                <Table headers={['Alan Kodu', 'Ünite Tanımı', 'Lokasyon & Detay', 'Ölçü', 'Durum', 'Yayıncı Müşteri', 'Bitiş Tarihi', 'Fiyat', '']}>
 
-                {paginatedSpaces.map(space => {
-                  const isSelected = selectedCode === space.code;
-                  return (
-                    <TableRow 
-                      key={space.id} 
-                      onClick={() => setSelectedCode(space.code)}
-                      className={`cursor-pointer transition-colors duration-150 ${isSelected ? 'bg-white/3 border-l-2 border-l-blue-400' : 'border-b border-white/3 hover:bg-white/1'}`}
-                    >
-                      <TableCell className="font-black text-blue-450 text-[10px] uppercase">{space.code}</TableCell>
-                      <TableCell className="font-extrabold text-white">{space.name}</TableCell>
-                      <TableCell className="font-semibold text-slate-400">
-                        <div>{space.location}</div>
-                        <div className="text-[8px] text-slate-500">{space.type} Ekran | {space.traffic.toLocaleString('tr-TR')} yolcu/gün</div>
-                      </TableCell>
-                      <TableCell className="font-semibold text-slate-400">{space.size}</TableCell>
-                      <TableCell>
-                        <SpaceStatusBadge status={space.status} />
-                      </TableCell>
-                      <TableCell className="font-semibold text-white">{space.client}</TableCell>
-                      <TableCell className="font-semibold text-slate-400">{space.endDate || '-'}</TableCell>
-                      <TableCell className="font-black text-white">{space.price}</TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="minimal" 
-                          size="xs" 
-                          leftIcon={<Eye size={10} />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCode(space.code);
-                          }}
-                        >
-                          İncele
-                        </Button>
+                  {paginatedSpaces.map(space => {
+                    const isSelected = selectedCode === space.code;
+                    return (
+                      <TableRow 
+                        key={space.id} 
+                        onClick={() => setSelectedCode(space.code)}
+                        className={`cursor-pointer transition-colors duration-150 ${isSelected ? 'bg-white/3 border-l-2 border-l-blue-400' : 'border-b border-white/3 hover:bg-white/1'}`}
+                      >
+                        <TableCell className="font-black text-blue-450 text-[10px] uppercase">{space.code}</TableCell>
+                        <TableCell className="font-extrabold text-white">{space.name}</TableCell>
+                        <TableCell className="font-semibold text-slate-400">
+                          <div>{space.location}</div>
+                          <div className="text-[8px] text-slate-500">{space.type} Ekran | {space.traffic.toLocaleString('tr-TR')} yolcu/gün</div>
+                        </TableCell>
+                        <TableCell className="font-semibold text-slate-400">{space.size}</TableCell>
+                        <TableCell>
+                          <SpaceStatusBadge status={space.status} />
+                        </TableCell>
+                        <TableCell className="font-semibold text-white">{space.client}</TableCell>
+                        <TableCell className="font-semibold text-slate-400">{space.endDate || '-'}</TableCell>
+                        <TableCell className="font-black text-white">{space.price}</TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="minimal" 
+                            size="xs" 
+                            leftIcon={<Eye size={10} />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCode(space.code);
+                            }}
+                          >
+                            İncele
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {paginatedSpaces.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-slate-500 text-xs font-bold uppercase py-8">
+                        Reklam Alanı Bulunamadı
                       </TableCell>
                     </TableRow>
-                  );
-                })}
-                {paginatedSpaces.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center text-slate-500 text-xs font-bold uppercase py-8">
-                      Reklam Alanı Bulunamadı
-                    </TableCell>
-                  </TableRow>
-                )}
-              </Table>
+                  )}
+                </Table>
+              )}
 
               {/* Table Pagination row */}
               <div className="flex justify-between items-center pt-2.5 border-t border-white/5">

@@ -23,10 +23,13 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 import { PermissionGate } from '@/components/design-system/PermissionGate';
 import { OfferModal } from '@/components/design-system/OfferModal';
+import { TableSkeleton } from '@/components/design-system/Skeleton';
+import { Notification } from '@/components/design-system/Notification';
 
 export function Teklifler() {
   const [offers, setOffers] = useState<Offer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string>('');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
@@ -36,6 +39,7 @@ export function Teklifler() {
 
   const fetchOffers = async (selectFirst = false) => {
     setLoading(true);
+    setError(null);
     try {
       const data = await offerRepository.list();
       setOffers(data);
@@ -46,8 +50,9 @@ export function Teklifler() {
       } else {
         setSelectedOfferId('');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setError('Veriler yüklenirken bir bağlantı hatası oluştu. Lütfen daha sonra tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -153,6 +158,16 @@ export function Teklifler() {
         </div>
       </div>
 
+      {error && (
+        <Notification
+          title="Sistem Hatası"
+          description={error}
+          type="alert"
+          onClose={() => setError(null)}
+        />
+      )}
+
+      {/* bit */}
       {/* Upper Pipeline KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
@@ -217,15 +232,23 @@ export function Teklifler() {
         <div className="order-1 lg:order-none lg:col-span-9 space-y-6 flex flex-col">
           {/* Section 1: Horizontal scrollable Kanban pipeline */}
           <div className="w-full">
-            <OfferPipeline 
-              offers={offers}
-              selectedId={selectedOfferId}
-              onSelect={(id) => setSelectedOfferId(id)}
-            />
-            {offers.length === 0 && !loading && (
-              <div className="text-center text-slate-500 text-xs font-bold uppercase tracking-wider py-12 border border-dashed border-white/5 rounded-3xl bg-slate-900/10">
-                Hiç Teklif Bulunmamaktadır
+            {loading ? (
+              <div className="py-4 bg-[#08111f]/40 border border-white/5 rounded-2xl p-6">
+                <TableSkeleton />
               </div>
+            ) : (
+              <>
+                <OfferPipeline 
+                  offers={offers}
+                  selectedId={selectedOfferId}
+                  onSelect={(id) => setSelectedOfferId(id)}
+                />
+                {offers.length === 0 && (
+                  <div className="text-center text-slate-500 text-xs font-bold uppercase tracking-wider py-12 border border-dashed border-white/5 rounded-3xl bg-slate-900/10">
+                    Hiç Teklif Bulunmamaktadır
+                  </div>
+                )}
+              </>
             )}
           </div>
 
