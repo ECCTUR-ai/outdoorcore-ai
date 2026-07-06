@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { Offer } from '@/data/offers';
 import { offerRepository } from '@/repositories';
+import { createWorkflowEvent } from '@/automation/workflowEvents';
+import { workflowEngine } from '@/automation/workflowEngine';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { OfferPipeline } from '@/components/design-system/OfferPipeline';
 import { OfferDetailPanel } from '@/components/design-system/OfferDetailPanel';
@@ -94,8 +96,20 @@ export function Teklifler() {
 
   const handleStageChange = async (id: string, newStage: Offer['stage'], approved = false) => {
     try {
-      await offerRepository.update(id, { stage: newStage, approved });
+      const original = offers.find(o => o.id === id);
+      const isOfferApprovedTransition = original && original.stage === 'Onay Bekleniyor' && newStage === 'Sözleşme';
+      
+      await offerRepository.update(id, { stage: newStage, approved: approved || isOfferApprovedTransition });
       fetchOffers(false);
+
+      if (isOfferApprovedTransition) {
+        const event = createWorkflowEvent('offer.approved', 'offer', id, {
+          clientName: original.clientName,
+          campaignName: original.campaignName,
+          companyId: original.companyId
+        });
+        workflowEngine.dispatchWorkflowEvent(event);
+      }
     } catch (e: any) {
       alert(e.message || 'Aşama değiştirilirken hata oluştu.');
     }

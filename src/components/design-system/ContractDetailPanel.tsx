@@ -22,6 +22,8 @@ import {
 import { EntityLink } from './EntityLink';
 import { FileUpload } from './FileUpload';
 import { contractRepository, activityLogRepository } from '@/repositories';
+import { createWorkflowEvent } from '@/automation/workflowEvents';
+import { workflowEngine } from '@/automation/workflowEngine';
 
 interface ContractDetailPanelProps {
   contract: Contract;
@@ -263,7 +265,37 @@ export function ContractDetailPanel({ contract: initialContract }: ContractDetai
 
       {/* Bottom CTA Action keys */}
       <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
-        <Button variant="primary" size="sm" onClick={() => alert(`${contract.contractNo} düzenleme modalı açılacak.`)}>
+        {contract.status === 'İmza Bekleyen' && (
+          <Button 
+            variant="primary" 
+            size="sm" 
+            type="button"
+            className="col-span-2 bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-500 hover:to-teal-600 text-white font-black animate-pulse py-2.5"
+            onClick={async () => {
+              try {
+                // Update local storage status
+                const updated = await contractRepository.update(contract.id, { status: 'Aktif' });
+                alert('Sözleşme imzalandı ve Aktifleştirildi! Workflow Automation tetikleniyor.');
+                
+                // Dispatch event!
+                const event = createWorkflowEvent('contract.signed', 'contract', contract.id, {
+                  clientName: contract.clientName,
+                  campaignName: contract.campaignName,
+                  companyId: contract.companyId
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+                
+                // Refresh list
+                window.location.reload();
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          >
+            Sözleşmeyi İmzala & Aktifleştir
+          </Button>
+        )}
+        <Button variant="primary" size="sm" type="button" onClick={() => alert(`${contract.contractNo} düzenleme modalı açılacak.`)}>
           Sözleşmeyi Düzenle
         </Button>
         <Button variant="outline" size="sm" leftIcon={<FileText size={12} />} onClick={() => alert('PDF Sözleşme belgesi oluşturuluyor...')}>

@@ -17,6 +17,9 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { EntityLink } from './EntityLink';
+import { campaignRepository } from '@/repositories';
+import { createWorkflowEvent } from '@/automation/workflowEvents';
+import { workflowEngine } from '@/automation/workflowEngine';
 
 interface CampaignDetailPanelProps {
   campaign: Campaign;
@@ -186,7 +189,37 @@ export function CampaignDetailPanel({ campaign }: CampaignDetailPanelProps) {
 
       {/* Bottom CTA Action keys */}
       <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
-        <Button variant="primary" size="sm" onClick={() => alert(`${campaign.campaignName} düzenleme modalı açılacak.`)}>
+        {campaign.status === 'Planlandı' && (
+          <Button 
+            variant="primary" 
+            size="sm" 
+            type="button"
+            className="col-span-2 bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-500 hover:to-teal-650 text-white font-black animate-pulse py-2.5"
+            onClick={async () => {
+              try {
+                // Update local storage status
+                await campaignRepository.update(campaign.id, { status: 'Aktif' });
+                alert('Kampanya yayını başarıyla başlatıldı! Workflow Automation tetikleniyor.');
+                
+                // Dispatch event!
+                const event = createWorkflowEvent('campaign.started', 'campaign', campaign.id, {
+                  clientName: campaign.clientName,
+                  campaignName: campaign.campaignName,
+                  companyId: campaign.companyId
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+                
+                // Refresh list
+                window.location.reload();
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          >
+            Kampanyayı Başlat (Yayına Al)
+          </Button>
+        )}
+        <Button variant="primary" size="sm" type="button" onClick={() => alert(`${campaign.campaignName} düzenleme modalı açılacak.`)}>
           Kampanyayı Düzenle
         </Button>
         <Button variant="outline" size="sm" onClick={() => alert('Medya kütüphanesi açılıyor...')}>

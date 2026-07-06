@@ -24,6 +24,9 @@ import { TeamActivity } from '@/components/design-system/TeamActivity';
 import { QuickTaskActions } from '@/components/design-system/QuickTaskActions';
 import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
+import { AutomationActivityPanel } from '@/components/design-system/AutomationActivityPanel';
+import { createWorkflowEvent } from '@/automation/workflowEvents';
+import { workflowEngine } from '@/automation/workflowEngine';
 
 export function Bildirimler() {
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
@@ -196,6 +199,95 @@ export function Bildirimler() {
         <div className="lg:col-span-3">
           <TeamActivity />
         </div>
+      </div>
+
+      {/* Simulation Button Bar & Automation Activity log */}
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-indigo-950/20 p-5 rounded-3xl border border-indigo-500/15 text-left">
+          <div className="space-y-1">
+            <h3 className="text-xs font-black text-white uppercase tracking-widest leading-none flex items-center gap-1.5">
+              <Sparkles size={12} className="text-indigo-400" />
+              Demo Workflow Tetikleyici (Simülasyon)
+            </h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+              Aşağıdaki butonları kullanarak satış otomasyon kurallarını tetikleyebilir ve sonuçları anında izleyebilirsiniz.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="xs"
+              type="button"
+              onClick={() => {
+                const event = createWorkflowEvent('offer.approved', 'offer', 'PRP-1002', {
+                  clientName: 'Samsung Electronics',
+                  campaignName: 'Galaxy S26 Lansmanı'
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+              }}
+            >
+              Teklif Onaylandı
+            </Button>
+            <Button
+              variant="outline"
+              size="xs"
+              type="button"
+              onClick={() => {
+                const event = createWorkflowEvent('contract.signed', 'contract', 'CON-2005', {
+                  clientName: 'Türk Hava Yolları',
+                  campaignName: 'Global Gateway 2026'
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+              }}
+            >
+              Sözleşme İmzalandı
+            </Button>
+            <Button
+              variant="outline"
+              size="xs"
+              type="button"
+              onClick={() => {
+                const event = createWorkflowEvent('reservation.approved', 'reservation', 'RES-3008', {
+                  clientName: 'Mercedes-Benz',
+                  campaignName: 'EQS Premium Showcase'
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+              }}
+            >
+              Rezervasyon Onaylandı
+            </Button>
+            <Button
+              variant="outline"
+              size="xs"
+              type="button"
+              onClick={() => {
+                const event = createWorkflowEvent('campaign.started', 'campaign', 'CAM-4012', {
+                  clientName: 'PepsiCo Turkey',
+                  campaignName: 'Yaz Ferahlığı 2026'
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+              }}
+            >
+              Kampanya Başladı
+            </Button>
+            <Button
+              variant="outline"
+              size="xs"
+              type="button"
+              onClick={() => {
+                const event = createWorkflowEvent('invoice.due_soon', 'invoice', 'FTR-5067', {
+                  clientName: 'Vodafone Turkey',
+                  campaignName: 'Red Paket Tanıtımı'
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+              }}
+            >
+              Fatura Vadesi Yaklaştı
+            </Button>
+          </div>
+        </div>
+
+        <AutomationActivityPanel />
       </div>
 
       {/* Quick shortcuts action center */}

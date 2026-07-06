@@ -16,6 +16,9 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { EntityLink } from './EntityLink';
+import { createWorkflowEvent } from '@/automation/workflowEvents';
+import { workflowEngine } from '@/automation/workflowEngine';
+import { reservationRepository } from '@/repositories';
 
 interface ReservationDetailProps {
   reservation: Reservation;
@@ -116,7 +119,36 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
 
       {/* Bottom CTA Actions */}
       <div className="grid grid-cols-2 gap-2 pt-3.5 border-t border-white/5">
-        <Button variant="primary" size="sm" leftIcon={<FileEdit size={12} />} onClick={() => alert(`${reservation.spaceCode} rezervasyon düzenleme paneli açılacak.`)}>
+        {reservation.status === 'Yaklaşan' && (
+          <Button 
+            variant="primary" 
+            size="sm" 
+            type="button"
+            className="col-span-2 bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-500 hover:to-teal-650 text-white font-black animate-pulse py-2.5"
+            onClick={async () => {
+              try {
+                // Update local storage status
+                await reservationRepository.update(reservation.id, { status: 'Aktif' });
+                alert('Rezervasyon onaylandı ve Aktifleştirildi! Workflow Automation tetikleniyor.');
+                
+                // Dispatch event!
+                const event = createWorkflowEvent('reservation.approved', 'reservation', reservation.id, {
+                  clientName: reservation.clientName,
+                  companyId: reservation.companyId
+                });
+                workflowEngine.dispatchWorkflowEvent(event);
+                
+                // Refresh list
+                window.location.reload();
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          >
+            Rezervasyonu Onayla & Aktifleştir
+          </Button>
+        )}
+        <Button variant="primary" size="sm" leftIcon={<FileEdit size={12} />} type="button" onClick={() => alert(`${reservation.spaceCode} rezervasyon düzenleme paneli açılacak.`)}>
           Rezervasyonu Düzenle
         </Button>
         <Button variant="outline" size="sm" leftIcon={<FileText size={12} />} onClick={() => alert('Sözleşmeler sayfasına yönlendirilecek mockup.')}>

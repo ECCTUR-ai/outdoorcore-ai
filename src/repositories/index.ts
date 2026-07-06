@@ -1092,24 +1092,62 @@ export const reservationRepository = {
       }
     }
     return true;
+  },
+  async update(id: string, input: any) {
+    const local = getLocalData('reservations', reservations);
+    const idx = local.findIndex(r => r.id === id);
+    if (idx !== -1) {
+      local[idx] = { ...local[idx], ...input };
+      localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(local));
+      
+      // Sync in-memory mutations
+      const resIdx = reservations.findIndex(r => r.id === id);
+      if (resIdx !== -1) {
+        reservations[resIdx] = { ...reservations[resIdx], ...input };
+      }
+      return local[idx];
+    }
+    throw new Error('Reservation not found');
   }
 };
 
 export const campaignRepository = {
   getAllSync() {
-    return campaigns;
+    return getLocalData('campaigns', campaigns);
   },
   getByIdSync(id: string) {
-    return campaigns.find(c => c.id === id) || campaigns[0];
+    const local = this.getAllSync();
+    return local.find(c => c.id === id) || local[0];
   },
   async getAll() {
-    try {
-      const { data, error } = await supabase.from('campaigns').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return campaigns;
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.from('campaigns').select('*');
+        if (error) throw error;
+        if (data && data.length > 0) {
+          return data;
+        }
+      } catch (e) {
+        console.warn('Supabase campaigns fetch failed, using local fallback:', e);
+      }
     }
+    return getLocalData('campaigns', campaigns);
+  },
+  async update(id: string, input: any) {
+    const local = getLocalData('campaigns', campaigns);
+    const idx = local.findIndex(c => c.id === id);
+    if (idx !== -1) {
+      local[idx] = { ...local[idx], ...input };
+      localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify(local));
+      
+      // Sync in-memory mutations
+      const cIdx = campaigns.findIndex(c => c.id === id);
+      if (cIdx !== -1) {
+        campaigns[cIdx] = { ...campaigns[cIdx], ...input };
+      }
+      return local[idx];
+    }
+    throw new Error('Campaign not found');
   }
 };
 
