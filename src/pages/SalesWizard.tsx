@@ -27,6 +27,7 @@ import { Badge } from '@/components/design-system/Badge';
 import { 
   companyRepository, 
   spaceRepository,
+  reservationRepository,
   activityLogRepository 
 } from '@/repositories';
 import { Company } from '@/data/companies';
@@ -46,9 +47,13 @@ export function SalesWizard() {
 
   // Initial Workflow state
   const [state, setState] = useState<WorkflowState>({
-    currentStep: 'company',
+    currentStep: 'dates',
     completedSteps: [],
     data: {
+      dates: {
+        startDate: '06.07.2026',
+        endDate: '06.08.2026'
+      },
       company: null,
       selectedSpaces: [],
       offer: null,
@@ -79,7 +84,6 @@ export function SalesWizard() {
   }, []);
 
   const handleCompanySuccess = async (newCompany: Company) => {
-    // Reload list and set as selected
     try {
       const comps = await companyRepository.list();
       setCompaniesList(comps);
@@ -94,8 +98,9 @@ export function SalesWizard() {
 
   // Step transitions
   const stepsOrder: WizardStepId[] = [
-    'company',
+    'dates',
     'spaces',
+    'company',
     'offer',
     'contract',
     'reservation',
@@ -110,12 +115,36 @@ export function SalesWizard() {
     setWizardError(null);
 
     // Validate active step data before progressing
-    if (state.currentStep === 'company' && !state.data.company) {
-      setWizardError('Lütfen bir firma seçin veya yeni bir kayıt oluşturun.');
-      return;
+    if (state.currentStep === 'dates') {
+      if (!state.data.dates?.startDate || !state.data.dates?.endDate) {
+        setWizardError('Lütfen başlangıç ve bitiş tarihlerini zorunlu olarak giriniz.');
+        return;
+      }
+      // Initialize contract and reservation dates automatically on next step
+      setState(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          contract: prev.data.contract ? prev.data.contract : {
+            contractNo: 'SOZ-2026-' + Math.floor(1000 + Math.random() * 9000),
+            startDate: prev.data.dates?.startDate || '',
+            endDate: prev.data.dates?.endDate || '',
+            notes: ''
+          },
+          reservation: prev.data.reservation ? prev.data.reservation : {
+            startDate: prev.data.dates?.startDate || '',
+            endDate: prev.data.dates?.endDate || '',
+            notes: ''
+          }
+        }
+      }));
     }
     if (state.currentStep === 'spaces' && state.data.selectedSpaces.length === 0) {
       setWizardError('Lütfen en az bir reklam alanı seçin.');
+      return;
+    }
+    if (state.currentStep === 'company' && !state.data.company) {
+      setWizardError('Lütfen bir firma seçin veya yeni bir kayıt oluşturun.');
       return;
     }
     if (state.currentStep === 'offer' && !state.data.offer) {
@@ -181,11 +210,44 @@ export function SalesWizard() {
 
   const calculateTotalSpacesPrice = (): number => {
     return state.data.selectedSpaces.reduce((total, space) => {
-      // Parse monthly price (e.g. ₺1.850.000)
       const cleanNum = parseInt(space.price.replace(/[^0-9]/g, ''), 10) || 0;
       return total + cleanNum;
     }, 0);
   };
+
+  // Helper calculations for dynamic KPIs
+  const getKpis = () => {
+    const total = spacesList.length;
+    const start = state.data.dates?.startDate || '';
+    const end = state.data.dates?.endDate || '';
+    
+    // Filter available spaces based on reservation check
+    const available = spacesList.filter(s => 
+      reservationRepository.isSpaceAvailableSync(s.id, s.code, start, end)
+    );
+    const availableCount = available.length;
+    const occupiedCount = total - availableCount;
+    
+    // Premium available (type containing LED or Megaboard or price > 500k)
+    const premiumAvailable = available.filter(s => {
+      const p = parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0;
+      return s.type.toLowerCase().includes('led') || 
+             s.type.toLowerCase().includes('megaboard') || 
+             p > 500000;
+    }).length;
+
+    const selectedMonthlySum = calculateTotalSpacesPrice();
+
+    return {
+      total,
+      available: availableCount,
+      occupied: occupiedCount,
+      premiumAvailable,
+      selectedMonthlySum
+    };
+  };
+
+  const kpiData = getKpis();
 
   // ----------------------------------------------------
   // SUB-COMPONENTS DECLARATIONS
@@ -238,41 +300,45 @@ export function SalesWizard() {
   // Wizard KPI Bar Top Component
   function WizardKpiBar() {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Aktif Müşteri</span>
-          <div className="flex items-center gap-1.5 mt-2">
-            <Building2 size={13} className="text-indigo-400" />
-            <span className="text-xs font-black text-white truncate max-w-[90%]">
-              {state.data.company ? state.data.company.name : 'Seçilmedi'}
-            </span>
-          </div>
-        </div>
-
-        <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Seçilen Ekranlar</span>
+          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Toplam Alan</span>
           <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-sm font-black text-white">{state.data.selectedSpaces.length}</span>
-            <span className="text-[8px] text-slate-500 font-bold">Adet</span>
+            <span className="text-sm font-black text-white">{kpiData.total}</span>
+            <span className="text-[8px] text-slate-500 font-bold">Ünite</span>
           </div>
         </div>
 
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Toplam Fiyat</span>
+          <span className="text-[8.5px] font-black text-emerald-500 uppercase tracking-wider">Müsait Alan</span>
           <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-sm font-black text-emerald-450">
-              ₺{calculateTotalSpacesPrice().toLocaleString('tr-TR')}
-            </span>
-            <span className="text-[8px] text-slate-500 font-bold">Aylık</span>
+            <span className="text-sm font-black text-emerald-400">{kpiData.available}</span>
+            <span className="text-[8px] text-emerald-500 font-bold">Müsait</span>
           </div>
         </div>
 
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Süreç Aşaması</span>
-          <div className="flex items-center gap-1.5 mt-2">
-            <Badge variant="primary">
-              {WIZARD_STEPS.find(s => s.id === state.currentStep)?.label || '-'}
-            </Badge>
+          <span className="text-[8.5px] font-black text-rose-500 uppercase tracking-wider">Dolu Alan</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-sm font-black text-rose-450">{kpiData.occupied}</span>
+            <span className="text-[8px] text-rose-500 font-bold">Rezerve</span>
+          </div>
+        </div>
+
+        <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
+          <span className="text-[8.5px] font-black text-indigo-400 uppercase tracking-wider">Premium Müsait</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-sm font-black text-indigo-400">{kpiData.premiumAvailable}</span>
+            <span className="text-[8px] text-indigo-400 font-bold">Alan</span>
+          </div>
+        </div>
+
+        <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between col-span-2 md:col-span-1">
+          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Tahmini Aylık Toplam</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-sm font-black text-white">
+              ₺{kpiData.selectedMonthlySum.toLocaleString('tr-TR')}
+            </span>
           </div>
         </div>
       </div>
@@ -281,44 +347,233 @@ export function SalesWizard() {
 
   // Sidebar AI Recommendation box
   function WorkflowAiPanel() {
-    const getAiSuggestionText = () => {
+    const getAiSuggestions = () => {
+      const occupancyPercent = Math.round((kpiData.occupied / kpiData.total) * 100) || 0;
       switch (state.currentStep) {
-        case 'company':
-          return "Firma seçildiğinde CRM segment verileri analiz edilip doluluk durumuna göre en verimli teklif şablonu yüklenecektir.";
+        case 'dates':
+          return {
+            title: `Doluluk Oranı Analizi`,
+            text: `Seçilen tarihlerde genel envanter doluluk oranı %${occupancyPercent}. Kiralama için uygun alternatifler mevcut.`,
+            meta: `Tarih aralığı kontrolü yapılıyor`
+          };
         case 'spaces':
-          return "Tavsiye: THY ve Pegasus gibi havacılık firmaları için havalimanı iç hat CLP ve bagaj LED ekranları %35 daha yüksek dönüşüm skoru vermektedir.";
+          return {
+            title: `Premium Alan Önerileri`,
+            text: `En uygun premium alanlar: CIP Lounge LED ve Check-in Billboard envanterleridir. Bu envanterlerde doluluk riski düşüktür.`,
+            meta: `Alternatif tarih: Başlangıcı 5 gün öne çekmek opsiyonları %15 artırır.`
+          };
+        case 'company':
+          return {
+            title: `CRM Segment Analizi`,
+            text: `Firma seçildiğinde CRM segment verileri analiz edilip doluluk durumuna göre en verimli teklif şablonu yüklenecektir.`,
+            meta: `VIP CRM Segmentasyon Analizi`
+          };
         case 'offer':
-          return "Bütçe Önerisi: Bu reklam alanlarının liste fiyatı toplamı aylık ₺" + calculateTotalSpacesPrice().toLocaleString('tr-TR') + " seviyesindedir. VIP müşteriye %10 esneklik payı eklenebilir.";
+          return {
+            title: `Bütçe & Marj Değerlendirmesi`,
+            text: `Seçtiğiniz alanların toplam liste bedeli aylık ₺${kpiData.selectedMonthlySum.toLocaleString('tr-TR')}. VIP müşteriye %10 esneklik payı tanımlanabilir.`,
+            meta: `AI Fiyatlandırma Optimizasyonu`
+          };
         case 'contract':
-          return "Sözleşme tipi standart kiralama olmalıdır. İptal maddelerine 30 gün önceden yazılı ihbar zorunluluğu eklenmesi finansal riski düşürecektir.";
+          return {
+            title: `Sözleşme Maddeleri Önerisi`,
+            text: `Sözleşme tipi standart kiralama olmalıdır. İptal maddelerine 30 gün önceden yazılı ihbar zorunluluğu eklenmesi finansal riski düşürecektir.`,
+            meta: `Hukuki SLA risk tespiti`
+          };
         case 'reservation':
-          return "Çakışma Analizi: Seçtiğiniz tarih aralıklarında takvimde herhangi bir çakışma görülmemektedir. Rezervasyon yapmaya uygundur.";
+          return {
+            title: `Takvim Çakışma Analizi`,
+            text: `Seçilen tarih aralığında takvimde herhangi bir çakışma görülmemektedir. Rezervasyon yapmaya uygundur.`,
+            meta: `Rezervasyon müsaitliği doğrulandı`
+          };
         case 'campaign':
-          return "Kampanya Analizi: Yaz sezonu hedefleri için yaratıcı içeriklerde 'Mavi ve Gökyüzü' renk paletlerinin ağırlıklı kullanılması önerilir.";
+          return {
+            title: `Kampanya Kitle Hedefleme`,
+            text: `Yaz sezonu hedefleri için yaratıcı içeriklerde 'Mavi ve Gökyüzü' renk paletlerinin ağırlıklı kullanılması önerilir.`,
+            meta: `Görsel Dönüşüm Analizi`
+          };
         case 'finance':
-          return "Ödeme Şekli: VIP firma kaydı olduğu için faturalandırmada DBS (Doğrudan Borçlandırma Sistemi) veya 30 gün vadeli Havale önerilir.";
+          return {
+            title: `Finansal Planlama Önerisi`,
+            text: `VIP firma kaydı olduğu için faturalandırmada DBS (Doğrudan Borçlandırma Sistemi) veya 30 gün vadeli Havale önerilir.`,
+            meta: `DBS / Kredi limit kontrolü`
+          };
         default:
-          return "Tüm adımlar doğrulandı. İşlemi onayladığınızda Teklif, Rezervasyon, Kampanya ve Fatura kayıtları otomatik oluşturulacaktır.";
+          return {
+            title: `İş Akışı Doğrulaması`,
+            text: `Tüm adımlar başarıyla doğrulandı. Süreci onayladığınızda tüm veri kayıtları oluşturulup audit loglara aktarılacaktır.`,
+            meta: `Audit Loglama Aktif`
+          };
       }
     };
+
+    const sug = getAiSuggestions();
 
     return (
       <div className="dark-glass-card border border-blue-500/10 rounded-2xl p-5 space-y-3.5 shadow-sm shadow-blue-500/5 text-left">
         <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
           <Sparkles size={11} className="animate-pulse" />
-          AI Satış Asistanı Önerisi
+          {sug.title}
         </span>
         <p className="text-[10.5px] text-slate-350 font-semibold leading-relaxed m-0">
-          {getAiSuggestionText()}
+          {sug.text}
         </p>
         <div className="pt-2 border-t border-white/5 text-[8.5px] font-black uppercase text-blue-500">
-          Otomatik Analiz Aktif
+          {sug.meta}
         </div>
       </div>
     );
   }
 
-  // 1. Company step view
+  // Step 1: Kampanya Tarihi Step View
+  function DatesStep() {
+    const handleDateChange = (field: 'startDate' | 'endDate', val: string) => {
+      setState(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          dates: prev.data.dates ? {
+            ...prev.data.dates,
+            [field]: val
+          } : {
+            startDate: '06.07.2026',
+            endDate: '06.08.2026',
+            [field]: val
+          }
+        }
+      }));
+    };
+
+    if (!state.data.dates) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-500/10 text-left text-[10.5px] text-slate-400 font-semibold leading-relaxed">
+          Sihirbaza başlamak için kampanya tarih aralığını belirtin. Seçtiğiniz tarihlere göre müsait olan reklam alanları otomatik olarak filtrelenecektir.
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <FormGroup>
+            <Label htmlFor="wizard-camp-start-date">Kampanya Başlangıç Tarihi *</Label>
+            <Input
+              id="wizard-camp-start-date"
+              value={state.data.dates.startDate}
+              onChange={(e) => handleDateChange('startDate', e.target.value)}
+              placeholder="GG.AA.YYYY"
+              required
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="wizard-camp-end-date">Kampanya Bitiş Tarihi *</Label>
+            <Input
+              id="wizard-camp-end-date"
+              value={state.data.dates.endDate}
+              onChange={(e) => handleDateChange('endDate', e.target.value)}
+              placeholder="GG.AA.YYYY"
+              required
+            />
+          </FormGroup>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: Available Spaces Step View
+  function SpaceSelectionStep() {
+    const handleToggleSpace = (space: AdvertisingSpace) => {
+      const isSelected = state.data.selectedSpaces.some(s => s.id === space.id);
+      let updated: AdvertisingSpace[];
+      if (isSelected) {
+        updated = state.data.selectedSpaces.filter(s => s.id !== space.id);
+      } else {
+        updated = [...state.data.selectedSpaces, space];
+      }
+      
+      setState(prev => ({
+        ...prev,
+        data: {
+          ...prev.data,
+          selectedSpaces: updated,
+          offer: prev.data.offer ? {
+            ...prev.data.offer,
+            valueNumeric: updated.reduce((t, s) => t + (parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0), 0),
+            value: `₺` + updated.reduce((t, s) => t + (parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0), 0).toLocaleString('tr-TR')
+          } : null
+        }
+      }));
+    };
+
+    // Filter available spaces based on reservation check
+    const start = state.data.dates?.startDate || '';
+    const end = state.data.dates?.endDate || '';
+    const availableSpaces = spacesList.filter(s => 
+      reservationRepository.isSpaceAvailableSync(s.id, s.code, start, end)
+    );
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <Label>Müsait Reklam Alanlarını Seçin *</Label>
+          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/15 px-2 py-0.5 rounded-lg text-emerald-400">
+            Tarih Aralığında Müsait: {availableSpaces.length} Alan
+          </span>
+        </div>
+        
+        {availableSpaces.length === 0 ? (
+          <div className="p-8 text-center border border-dashed border-white/10 rounded-2xl text-slate-500 text-xs font-bold bg-[#08111f]/40">
+            Seçilen tarih aralığında müsait reklam alanı bulunmamaktadır. Lütfen kampanya tarihlerini güncelleyin.
+          </div>
+        ) : (
+          <div className="max-h-60 overflow-y-auto border border-white/10 rounded-2xl p-3.5 space-y-2 bg-[#08111f]/40 scrollbar-thin">
+            {availableSpaces.map(s => {
+              const isChecked = state.data.selectedSpaces.some(space => space.id === s.id);
+              return (
+                <label
+                  key={s.id}
+                  className="flex items-center gap-3.5 p-2.5 rounded-xl hover:bg-white/3 cursor-pointer select-none transition-colors duration-150 text-left"
+                >
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={() => handleToggleSpace(s)}
+                    className="w-4 h-4 rounded text-indigo-650 focus:ring-indigo-500 border-slate-700 bg-transparent"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10.5px] font-black text-white uppercase block">
+                        #{s.code} - {s.name}
+                      </span>
+                      <span className="text-[10px] font-black text-emerald-450">
+                        {s.price}
+                      </span>
+                    </div>
+                    <span className="text-[8px] font-bold text-slate-500 block uppercase mt-0.5">
+                      {s.location} | Tür: {s.type}
+                    </span>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+        )}
+
+        {state.data.selectedSpaces.length > 0 && (
+          <div className="space-y-2">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Seçilen Ekran Listesi ({state.data.selectedSpaces.length})</span>
+            <div className="flex flex-wrap gap-1.5">
+              {state.data.selectedSpaces.map(s => (
+                <span key={s.id} className="px-2.5 py-1 rounded-xl bg-indigo-950/20 border border-indigo-500/15 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
+                  #{s.code} - {s.price}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Step 3: Company step view
   function CompanyStep() {
     const handleSelectCompany = (cid: string) => {
       const found = companiesList.find(c => c.id === cid);
@@ -328,7 +583,6 @@ export function SalesWizard() {
           data: { 
             ...prev.data, 
             company: found,
-            // Pre-fill finance details from company if available
             finance: prev.data.finance ? prev.data.finance : {
               paymentMethod: 'Havale/EFT',
               installmentCount: 1,
@@ -413,84 +667,7 @@ export function SalesWizard() {
     );
   }
 
-  // 2. Spaces selection step view
-  function SpaceSelectionStep() {
-    const handleToggleSpace = (space: AdvertisingSpace) => {
-      const isSelected = state.data.selectedSpaces.some(s => s.id === space.id);
-      let updated: AdvertisingSpace[];
-      if (isSelected) {
-        updated = state.data.selectedSpaces.filter(s => s.id !== space.id);
-      } else {
-        updated = [...state.data.selectedSpaces, space];
-      }
-      
-      setState(prev => ({
-        ...prev,
-        data: {
-          ...prev.data,
-          selectedSpaces: updated,
-          // Update offer suggest values
-          offer: prev.data.offer ? {
-            ...prev.data.offer,
-            valueNumeric: updated.reduce((t, s) => t + (parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0), 0),
-            value: `₺` + updated.reduce((t, s) => t + (parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0), 0).toLocaleString('tr-TR')
-          } : null
-        }
-      }));
-    };
-
-    return (
-      <div className="space-y-4">
-        <Label>Kiralayacak Reklam Alanlarını Seçin *</Label>
-        <div className="max-h-60 overflow-y-auto border border-white/10 rounded-2xl p-3.5 space-y-2 bg-[#08111f]/40 scrollbar-thin">
-          {spacesList.map(s => {
-            const isChecked = state.data.selectedSpaces.some(space => space.id === s.id);
-            return (
-              <label
-                key={s.id}
-                className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-white/3 cursor-pointer select-none transition-colors duration-150 text-left"
-              >
-                <input
-                  type="checkbox"
-                  checked={isChecked}
-                  onChange={() => handleToggleSpace(s)}
-                  className="w-4 h-4 rounded text-indigo-650 focus:ring-indigo-500 border-slate-700 bg-transparent"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-white uppercase block">
-                      #{s.code} - {s.name}
-                    </span>
-                    <span className="text-[9.5px] font-black text-emerald-450">
-                      {s.price}
-                    </span>
-                  </div>
-                  <span className="text-[8px] font-bold text-slate-500 block uppercase mt-0.5">
-                    {s.location} | Tür: {s.type}
-                  </span>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-
-        {state.data.selectedSpaces.length > 0 && (
-          <div className="space-y-2">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Seçilen Ekran Listesi ({state.data.selectedSpaces.length})</span>
-            <div className="flex flex-wrap gap-1.5">
-              {state.data.selectedSpaces.map(s => (
-                <span key={s.id} className="px-2.5 py-1 rounded-xl bg-indigo-950/20 border border-indigo-500/15 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
-                  #{s.code} - {s.price}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // 3. Offer Step View
+  // Step 4: Offer Step View
   function OfferStep() {
     const totalSuggest = calculateTotalSpacesPrice();
 
@@ -606,7 +783,7 @@ export function SalesWizard() {
             id="wizard-offer-notes"
             value={state.data.offer.notes}
             onChange={(e) => handleChangeOfferField('notes', e.target.value)}
-            placeholder="Teklife ait notlar ve iskonto koşulları..."
+            placeholder="Teklife ait notlar..."
             rows={3}
           />
         </FormGroup>
@@ -614,26 +791,8 @@ export function SalesWizard() {
     );
   }
 
-  // 4. Contract Step View
+  // Step 5: Contract Step View
   function ContractStep() {
-    useEffect(() => {
-      if (!state.data.contract) {
-        const generatedNo = 'SOZ-2026-' + Math.floor(1000 + Math.random() * 9000);
-        setState(prev => ({
-          ...prev,
-          data: {
-            ...prev.data,
-            contract: {
-              contractNo: generatedNo,
-              startDate: new Date().toLocaleDateString('tr-TR'),
-              endDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toLocaleDateString('tr-TR'),
-              notes: ''
-            }
-          }
-        }));
-      }
-    }, []);
-
     const handleChangeContractField = (field: string, val: any) => {
       setState(prev => ({
         ...prev,
@@ -693,12 +852,12 @@ export function SalesWizard() {
         </div>
 
         <FormGroup>
-          <Label htmlFor="wizard-contract-notes">Sözleşme Özel Şartları / Notları</Label>
+          <Label htmlFor="wizard-contract-notes">Sözleşme Özel Notları</Label>
           <Textarea
             id="wizard-contract-notes"
             value={state.data.contract.notes}
             onChange={(e) => handleChangeContractField('notes', e.target.value)}
-            placeholder="Damga vergisi, gecikme cezası ve özel iptal maddeleri..."
+            placeholder="Damga vergisi vb..."
             rows={3}
           />
         </FormGroup>
@@ -706,24 +865,8 @@ export function SalesWizard() {
     );
   }
 
-  // 5. Reservation Step View
+  // Step 6: Reservation Step View
   function ReservationStep() {
-    useEffect(() => {
-      if (!state.data.reservation && state.data.contract) {
-        setState(prev => ({
-          ...prev,
-          data: {
-            ...prev.data,
-            reservation: {
-              startDate: prev.data.contract?.startDate || '',
-              endDate: prev.data.contract?.endDate || '',
-              notes: ''
-            }
-          }
-        }));
-      }
-    }, [state.data.contract]);
-
     const handleChangeReservationField = (field: string, val: any) => {
       setState(prev => ({
         ...prev,
@@ -768,11 +911,10 @@ export function SalesWizard() {
           </FormGroup>
         </div>
 
-        {/* Calendar conflict warning mock checks */}
         <div className="p-3.5 rounded-2xl bg-emerald-950/20 border border-emerald-500/10 flex items-start gap-2.5">
           <ShieldCheck size={16} className="text-emerald-450 shrink-0 mt-0.5" />
           <div className="text-left space-y-0.5 text-[10.5px]">
-            <span className="text-white font-extrabold uppercase block tracking-wider leading-none">Takvim Çakışma Kontrolü</span>
+            <span className="text-white font-extrabold uppercase block tracking-wider leading-none">Çakışma Kontrolü</span>
             <p className="text-slate-400 font-semibold m-0 mt-1 leading-normal">
               Seçilen reklam alanlarının hepsi belirtilen tarih aralığında boştadır. Herhangi bir rezervasyon çakışması bulunmadı.
             </p>
@@ -785,7 +927,7 @@ export function SalesWizard() {
             id="wizard-res-notes"
             value={state.data.reservation.notes}
             onChange={(e) => handleChangeReservationField('notes', e.target.value)}
-            placeholder="Görsel değişim periyotları, özel yayın koşulları notu..."
+            placeholder="Rezervasyon detayları..."
             rows={3}
           />
         </FormGroup>
@@ -793,7 +935,7 @@ export function SalesWizard() {
     );
   }
 
-  // 6. Campaign Step View
+  // Step 7: Campaign Step View
   function CampaignStep() {
     useEffect(() => {
       if (!state.data.campaign) {
@@ -857,7 +999,7 @@ export function SalesWizard() {
           </FormGroup>
 
           <FormGroup>
-            <Label htmlFor="wizard-camp-obj">Kampanya Hedefi / Amacı *</Label>
+            <Label htmlFor="wizard-camp-obj">Kampanya Hedefi *</Label>
             <Select
               id="wizard-camp-obj"
               value={state.data.campaign.objective}
@@ -877,33 +1019,15 @@ export function SalesWizard() {
             id="wizard-camp-audience"
             value={state.data.campaign.targetAudience}
             onChange={(e) => handleChangeCampaignField('targetAudience', e.target.value)}
-            placeholder="18-35 yaş, sık seyahat eden beyaz yakalılar..."
+            placeholder="Hedef kitle tanımı..."
           />
         </FormGroup>
       </div>
     );
   }
 
-  // 7. Finance Step View
+  // Step 8: Finance Step View
   function FinanceStep() {
-    useEffect(() => {
-      if (!state.data.finance && state.data.company) {
-        setState(prev => ({
-          ...prev,
-          data: {
-            ...prev.data,
-            finance: {
-              paymentMethod: 'Havale/EFT',
-              installmentCount: 1,
-              billingAddress: `${state.data.company?.city} (Merkez Ofis)`,
-              taxNo: state.data.company?.taxNo || '',
-              taxOffice: state.data.company?.taxOffice || ''
-            }
-          }
-        }));
-      }
-    }, [state.data.company]);
-
     const handleChangeFinanceField = (field: string, val: any) => {
       setState(prev => ({
         ...prev,
@@ -951,9 +1075,9 @@ export function SalesWizard() {
               onChange={(e) => handleChangeFinanceField('installmentCount', parseInt(e.target.value, 10) || 1)}
             >
               <option value="1">Tek Çekim (Peşin)</option>
-              <option value="3">3 Taksit (Vade farksız)</option>
+              <option value="3">3 Taksit</option>
               <option value="6">6 Taksit</option>
-              <option value="12">12 Taksit (Maksimum limit)</option>
+              <option value="12">12 Taksit</option>
             </Select>
           </FormGroup>
 
@@ -984,7 +1108,7 @@ export function SalesWizard() {
             id="wizard-fin-addr"
             value={state.data.finance.billingAddress}
             onChange={(e) => handleChangeFinanceField('billingAddress', e.target.value)}
-            placeholder="Fatura tebligat ve e-fatura gönderim adresi..."
+            placeholder="Adres girin..."
             rows={2.5}
             required
           />
@@ -993,13 +1117,13 @@ export function SalesWizard() {
     );
   }
 
-  // 8. Workflow summary step view
+  // Step 9: Workflow summary step view
   function WorkflowSummaryStep() {
-    const { company, selectedSpaces, offer, contract, reservation, campaign, finance } = state.data;
-    if (!company || selectedSpaces.length === 0 || !offer || !contract || !reservation || !campaign || !finance) {
+    const { dates, company, selectedSpaces, offer, contract, reservation, campaign, finance } = state.data;
+    if (!dates || !company || selectedSpaces.length === 0 || !offer || !contract || !reservation || !campaign || !finance) {
       return (
         <div className="p-4 text-center text-rose-500 font-bold">
-          Eksik adım bilgisi. Lütfen tüm adımları tek tek inceleyin.
+          Eksik adım bilgisi. Lütfen tüm adımları doldurun.
         </div>
       );
     }
@@ -1008,11 +1132,20 @@ export function SalesWizard() {
       <div className="space-y-4 text-xs text-left max-h-[480px] overflow-y-auto pr-1">
         <Notification
           title="Onay Bekleniyor"
-          description="Aşağıdaki bilgilerin doğruluğunu onayladıktan sonra satış sürecini başlatabilirsiniz. Sözleşme, fatura, teklif ve kampanya kayıtları oluşturulacaktır."
+          description="Aşağıdaki bilgilerin doğruluğunu onayladıktan sonra satış sürecini başlatabilirsiniz."
           type="info"
         />
 
         <div className="space-y-3">
+          {/* Dates Info */}
+          <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
+            <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Kampanya Tarihleri</span>
+            <div className="grid grid-cols-2 gap-2 text-[10px]">
+              <div><span className="text-slate-500 font-bold uppercase block">Başlangıç Tarihi</span> <span className="text-white font-extrabold">{dates.startDate}</span></div>
+              <div><span className="text-slate-500 font-bold uppercase block">Bitiş Tarihi</span> <span className="text-white font-extrabold">{dates.endDate}</span></div>
+            </div>
+          </div>
+
           {/* Company Details */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
             <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Firma Bilgisi</span>
@@ -1042,7 +1175,6 @@ export function SalesWizard() {
               <div><span className="text-slate-500 font-bold uppercase block">Kampanya Adı</span> <span className="text-white font-extrabold">{offer.campaignName}</span></div>
               <div><span className="text-slate-500 font-bold uppercase block">Tahmini Bütçe</span> <span className="text-white font-extrabold">{offer.value}</span></div>
               <div><span className="text-slate-500 font-bold uppercase block">Kapanış İhtimali</span> <span className="text-white font-extrabold">%{offer.closeProbability}</span></div>
-              <div><span className="text-slate-500 font-bold uppercase block">Kapanış Tarihi</span> <span className="text-white font-extrabold">{offer.closingDate}</span></div>
             </div>
           </div>
 
@@ -1052,7 +1184,6 @@ export function SalesWizard() {
             <div className="grid grid-cols-2 gap-2 text-[10px]">
               <div><span className="text-slate-500 font-bold uppercase block">Sözleşme No</span> <span className="text-white font-extrabold">{contract.contractNo}</span></div>
               <div><span className="text-slate-500 font-bold uppercase block">Sözleşme Süresi</span> <span className="text-white font-extrabold">{contract.startDate} - {contract.endDate}</span></div>
-              <div className="col-span-2"><span className="text-slate-500 font-bold uppercase block">Rezervasyon Notu</span> <span className="text-slate-300 font-semibold">{reservation.notes || 'Yok'}</span></div>
             </div>
           </div>
 
@@ -1087,7 +1218,6 @@ export function SalesWizard() {
           </p>
         </div>
 
-        {/* Created entities references */}
         <div className="p-4 bg-slate-950/40 border border-white/5 rounded-2xl text-left space-y-2.5 text-[10px] font-semibold text-slate-400">
           <div className="flex justify-between items-center py-1 border-b border-white/3">
             <span>Teklif Kaydı</span>
@@ -1118,7 +1248,6 @@ export function SalesWizard() {
             type="button"
             leftIcon={<FolderOpen size={12} />}
             onClick={() => {
-              // Redirect to contracts
               setCurrentRoute('sozlesmeler');
             }}
           >
@@ -1130,7 +1259,6 @@ export function SalesWizard() {
             type="button"
             leftIcon={<ArrowRight size={12} />}
             onClick={() => {
-              // Redirect to dashboard
               setCurrentRoute('dashboard');
             }}
           >
@@ -1144,10 +1272,12 @@ export function SalesWizard() {
   // Render the current step layout
   const renderStepContent = () => {
     switch (state.currentStep) {
-      case 'company':
-        return <CompanyStep />;
+      case 'dates':
+        return <DatesStep />;
       case 'spaces':
         return <SpaceSelectionStep />;
+      case 'company':
+        return <CompanyStep />;
       case 'offer':
         return <OfferStep />;
       case 'contract':
@@ -1161,7 +1291,7 @@ export function SalesWizard() {
       case 'summary':
         return <WorkflowSummaryStep />;
       default:
-        return <CompanyStep />;
+        return <DatesStep />;
     }
   };
 
@@ -1209,7 +1339,7 @@ export function SalesWizard() {
                       </span>
                     </div>
                     <Badge variant="primary" className="font-extrabold uppercase">
-                      Adım {currentStepIndex + 1} / 8
+                      Adım {currentStepIndex + 1} / 9
                     </Badge>
                   </div>
 

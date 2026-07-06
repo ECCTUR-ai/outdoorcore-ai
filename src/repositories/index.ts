@@ -1015,21 +1015,79 @@ export const contractRepository = {
   }
 };
 
+const parseDDMMYYYY = (dateStr: string): Date | null => {
+  if (!dateStr) return null;
+  const parts = dateStr.split('.');
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    return new Date(year, month, day);
+  }
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 export const reservationRepository = {
   getAllSync() {
-    return reservations;
+    return getLocalData('reservations', reservations);
   },
   getConflictsSync() {
     return conflicts;
   },
   async getAll() {
-    try {
-      const { data, error } = await supabase.from('reservations').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return reservations;
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.from('reservations').select('*');
+        if (error) throw error;
+        if (data && data.length > 0) {
+          return data.map((d: any) => ({
+            id: d.id,
+            spaceCode: d.space_code,
+            spaceName: d.space_name,
+            location: d.location,
+            clientName: d.client_name,
+            agencyName: d.agency_name,
+            startDate: d.start_date,
+            endDate: d.end_date,
+            durationDays: d.duration_days,
+            status: d.status,
+            budget: d.budget,
+            creativeFiles: d.creative_files || [],
+            aiRecommendation: d.ai_recommendation,
+            companyId: d.company_id,
+            spaceId: d.space_id,
+            offerId: d.offer_id,
+            contractId: d.contract_id,
+            campaignId: d.campaign_id
+          }));
+        }
+      } catch (e) {
+        console.warn('Supabase reservations fetch failed, using local:', e);
+      }
     }
+    return getLocalData('reservations', reservations);
+  },
+  isSpaceAvailableSync(spaceId: string, spaceCode: string, startDateStr: string, endDateStr: string): boolean {
+    const startA = parseDDMMYYYY(startDateStr);
+    const endA = parseDDMMYYYY(endDateStr);
+    if (!startA || !endA) return true;
+
+    const list = this.getAllSync();
+    for (const r of list) {
+      if (r.status === 'İptal') continue;
+      const matchSpace = (r.spaceId && r.spaceId === spaceId) || (r.spaceCode && r.spaceCode === spaceCode);
+      if (matchSpace) {
+        const startB = parseDDMMYYYY(r.startDate);
+        const endB = parseDDMMYYYY(r.endDate);
+        if (startB && endB) {
+          if (startA <= endB && endA >= startB) {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
   }
 };
 

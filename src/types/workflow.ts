@@ -2,8 +2,9 @@ import { Company } from '@/data/companies';
 import { AdvertisingSpace } from '@/data/advertisingSpaces';
 
 export type WizardStepId = 
-  | 'company'
+  | 'dates'
   | 'spaces'
+  | 'company'
   | 'offer'
   | 'contract'
   | 'reservation'
@@ -15,6 +16,10 @@ export interface WorkflowState {
   currentStep: WizardStepId;
   completedSteps: WizardStepId[];
   data: {
+    dates: {
+      startDate: string;
+      endDate: string;
+    } | null;
     company: Company | null;
     selectedSpaces: AdvertisingSpace[];
     offer: {

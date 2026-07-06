@@ -7,8 +7,9 @@ export interface StepConfig {
 }
 
 export const WIZARD_STEPS: StepConfig[] = [
+  { id: 'dates', label: 'Kampanya Tarihi', description: 'Kampanya başlangıç ve bitiş tarihlerinin planlanması.' },
+  { id: 'spaces', label: 'Müsait Reklam Alanları', description: 'Belirtilen tarihlerde çakışmasız ve müsait envanter seçimi.' },
   { id: 'company', label: 'Firma Bilgileri', description: 'Müşteri firma seçimi veya yeni kayıt oluşturma.' },
-  { id: 'spaces', label: 'Reklam Alanları', description: 'Rezerve edilecek reklam alanlarının envanterden seçilmesi.' },
   { id: 'offer', label: 'Teklif Detayları', description: 'Pipeline aşaması, bütçe ve kapanış olasılığı girişleri.' },
   { id: 'contract', label: 'Sözleşme', description: 'Sözleşme numarası, geçerlilik tarihleri ve şartları.' },
   { id: 'reservation', label: 'Rezervasyon', description: 'Tarih aralığı ve takvim çakışma kontrolleri.' },
@@ -18,7 +19,7 @@ export const WIZARD_STEPS: StepConfig[] = [
 ];
 
 export const MOCK_AI_SUGGESTIONS = [
-  "Bu firma daha önce VIP CRM segmentindeydi, %15 ek iskonto tanımlanabilir.",
-  "Seçilen envanterler için doluluk oranı yüksek olduğu için peşin ödemede ekstra avantajlar sunulabilir.",
-  "Temmuz döneminde planlanan kampanya, yolcu yoğunluğu nedeniyle yüksek dönüşüm getirecektir."
+  "Bu dönemde en yüksek doluluk oranı %88 seviyesindedir. CLP ve billboard alanları dolmak üzere.",
+  "En uygun premium alanlar: Havalimanı CIP Girişi ve Check-in LED Ekranlarıdır.",
+  "Alternatif tarih önerisi: Başlangıç tarihini 1 hafta ertelemek %15 daha fazla reklam alanı seçeneği sunar."
 ];
