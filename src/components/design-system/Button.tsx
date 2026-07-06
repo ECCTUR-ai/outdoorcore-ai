@@ -18,6 +18,9 @@ export function Button({
   rightIcon,
   className = '',
   disabled,
+  type,
+  form,
+  onClick,
   ...props
 }: ButtonProps) {
   const baseStyles = 'inline-flex items-center justify-center font-bold transition-all rounded-xl focus:outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none border duration-200';
@@ -41,7 +44,10 @@ export function Button({
 
   return (
     <button
+      type={type}
+      form={form}
       disabled={disabled || loading}
+      onClick={onClick}
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >

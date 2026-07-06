@@ -133,11 +133,11 @@ export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: Adv
   };
 
   const footerActions = (
-    <div className="flex gap-2.5">
-      <Button variant="outline" size="sm" onClick={onClose} disabled={loading}>
+    <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+      <Button variant="outline" size="sm" type="button" className="w-full sm:w-auto" onClick={onClose} disabled={loading}>
         İptal
       </Button>
-      <Button variant="primary" size="sm" onClick={handleSubmit(onSubmit)} loading={loading}>
+      <Button variant="primary" size="sm" type="submit" form="space-form" className="w-full sm:w-auto" loading={loading}>
         Kaydet
       </Button>
     </div>
@@ -151,7 +151,7 @@ export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: Adv
       footerActions={footerActions}
       size="lg"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form id="space-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {submitSuccess && (
           <Notification
             title="Başarılı"
