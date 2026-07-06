@@ -19,7 +19,8 @@ type RouteType =
   | 'maintenance'
   | 'competitor-analysis'
   | 'executive-dashboard'
-  | 'system-roles';
+  | 'system-roles'
+  | 'sales-wizard';
 
 interface AppContextProps {
   currentRoute: RouteType;

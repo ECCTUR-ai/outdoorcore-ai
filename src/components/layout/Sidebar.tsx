@@ -40,6 +40,7 @@ export function Sidebar() {
     { key: 'dashboard', label: 'Genel Bakış', icon: <LayoutDashboard size={13} />, permission: 'dashboard.view' },
     { key: 'executive-dashboard', label: 'CEO Dashboard', icon: <BarChart3 size={13} className="text-emerald-450" />, permission: 'executive.view' },
     { key: 'ai-assistant', label: 'AI Copilot', icon: <Sparkles size={13} className="text-blue-400" />, permission: 'ai.use' },
+    { key: 'sales-wizard', label: 'Yeni Satış', icon: <Sparkles size={13} className="text-indigo-400 animate-pulse" />, permission: 'offers.view' },
     { key: 'dashboard-home', label: 'Ana Sayfa', icon: <Home size={13} />, isMock: true, route: 'dashboard', permission: 'dashboard.view' },
     { key: 'reklam-alanlari-inv', label: 'Envanter', icon: <Archive size={13} />, isMock: true, route: 'reklam-alanlari', permission: 'spaces.view' },
     { key: 'alan-haritasi', label: 'Harita (Terminal)', icon: <Map size={13} />, permission: 'spaces.view' },

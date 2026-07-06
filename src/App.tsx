@@ -29,6 +29,7 @@ import { Maintenance } from '@/pages/Maintenance';
 import { CompetitorAnalysis } from '@/pages/CompetitorAnalysis';
 import { ExecutiveDashboard } from '@/pages/ExecutiveDashboard';
 import { SystemRoles } from '@/pages/SystemRoles';
+import { SalesWizard } from '@/pages/SalesWizard';
 
 function AppContent() {
   const { currentRoute } = useApp();
@@ -85,6 +86,8 @@ function AppContent() {
         return <Ayarlar />;
       case 'system-roles':
         return <SystemRoles />;
+      case 'sales-wizard':
+        return <SalesWizard />;
       case 'design-system':
         return <DesignSystemDemo />;
       default:
