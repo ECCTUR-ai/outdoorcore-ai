@@ -17,7 +17,12 @@ import {
   ArrowRight,
   ShieldCheck,
   AlertTriangle,
-  FolderOpen
+  FolderOpen,
+  Trash2,
+  Filter,
+  Layers,
+  Activity,
+  Maximize2
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/design-system/Button';
@@ -41,6 +46,17 @@ const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
 ];
+
+const SPACE_COORDINATES: Record<string, { top: string; left: string }> = {
+  'SG-001': { top: '25%', left: '15%' },
+  'SG-002': { top: '22%', left: '42%' },
+  'SG-003': { top: '35%', left: '26%' },
+  'SG-010': { top: '48%', left: '52%' },
+  'SG-018': { top: '45%', left: '76%' },
+  'SG-021': { top: '65%', left: '38%' },
+  'SG-023': { top: '78%', left: '68%' },
+  'SG-045': { top: '72%', left: '85%' }
+};
 
 const getDaysInMonth = (year: number, month: number): number => {
   return new Date(year, month + 1, 0).getDate();
@@ -77,6 +93,21 @@ export function SalesWizard() {
   const [companiesList, setCompaniesList] = useState<Company[]>([]);
   const [spacesList, setSpacesList] = useState<AdvertisingSpace[]>([]);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+
+  // Filters State for Step 2
+  const [filters, setFilters] = useState({
+    terminal: 'all',
+    floor: 'all',
+    type: 'all',
+    premium: false,
+    led: false,
+    lightbox: false,
+    digital: false,
+    minPrice: 0,
+    maxPrice: 3000000,
+    minTraffic: 0,
+    minVisibility: 'all'
+  });
 
   // Initial Workflow state
   const [state, setState] = useState<WorkflowState>({
@@ -153,7 +184,6 @@ export function SalesWizard() {
         setWizardError('Lütfen başlangıç ve bitiş tarihlerini zorunlu olarak giriniz.');
         return;
       }
-      // Initialize contract and reservation dates automatically on next step
       setState(prev => ({
         ...prev,
         data: {
@@ -248,6 +278,13 @@ export function SalesWizard() {
     }, 0);
   };
 
+  const isPremiumSpace = (s: AdvertisingSpace): boolean => {
+    const p = parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0;
+    return s.type.toLowerCase().includes('led') || 
+           s.type.toLowerCase().includes('megaboard') || 
+           p > 500000;
+  };
+
   // Helper calculations for dynamic KPIs
   const getKpis = () => {
     const total = spacesList.length;
@@ -259,28 +296,69 @@ export function SalesWizard() {
       reservationRepository.isSpaceAvailableSync(s.id, s.code, start, end)
     );
     const availableCount = available.length;
-    const occupiedCount = total - availableCount;
     
-    // Premium available (type containing LED or Megaboard or price > 500k)
-    const premiumAvailable = available.filter(s => {
-      const p = parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0;
-      return s.type.toLowerCase().includes('led') || 
-             s.type.toLowerCase().includes('megaboard') || 
-             p > 500000;
-    }).length;
-
+    const selectedCount = state.data.selectedSpaces.length;
+    
+    // Selected spaces which are premium
+    const premiumSelected = state.data.selectedSpaces.filter(isPremiumSpace).length;
+    
+    // Total monthly price of selected
     const selectedMonthlySum = calculateTotalSpacesPrice();
+
+    // Total traffic of selected spaces
+    const totalTraffic = state.data.selectedSpaces.reduce((total, s) => total + (s.traffic || 0), 0);
 
     return {
       total,
       available: availableCount,
-      occupied: occupiedCount,
-      premiumAvailable,
-      selectedMonthlySum
+      selectedCount,
+      premiumSelected,
+      selectedMonthlySum,
+      totalTraffic
     };
   };
 
   const kpiData = getKpis();
+
+  // Get filtered available spaces for Step 2
+  const getFilteredAvailableSpaces = (): AdvertisingSpace[] => {
+    const start = state.data.dates?.startDate || '';
+    const end = state.data.dates?.endDate || '';
+    const available = spacesList.filter(s => 
+      reservationRepository.isSpaceAvailableSync(s.id, s.code, start, end)
+    );
+
+    return available.filter(s => {
+      const p = parseInt(s.price.replace(/[^0-9]/g, ''), 10) || 0;
+      
+      // Terminal Filter
+      if (filters.terminal === 'ic-hatlar' && !s.location.toLowerCase().includes('i̇ç') && !s.location.toLowerCase().includes('ic')) return false;
+      if (filters.terminal === 'dis-hatlar' && !s.location.toLowerCase().includes('dış') && !s.location.toLowerCase().includes('dis')) return false;
+
+      // Floor Filter
+      if (filters.floor !== 'all' && !s.location.includes(filters.floor)) return false;
+
+      // Type Filter
+      if (filters.type !== 'all' && !s.type.toLowerCase().includes(filters.type.toLowerCase())) return false;
+
+      // Checkboxes
+      if (filters.premium && !isPremiumSpace(s)) return false;
+      if (filters.led && !s.type.toLowerCase().includes('led')) return false;
+      if (filters.lightbox && !s.type.toLowerCase().includes('lightbox') && !s.type.toLowerCase().includes('pano')) return false;
+      if (filters.digital && !s.type.toLowerCase().includes('led') && !s.type.toLowerCase().includes('dijital') && !s.type.toLowerCase().includes('digital')) return false;
+
+      // Ranges
+      if (p < filters.minPrice || p > filters.maxPrice) return false;
+      if (s.traffic < filters.minTraffic) return false;
+
+      // Visibility Filter
+      if (filters.minVisibility !== 'all' && s.visibility !== filters.minVisibility) return false;
+
+      return true;
+    });
+  };
+
+  const filteredAvailableSpaces = getFilteredAvailableSpaces();
 
   // ----------------------------------------------------
   // SUB-COMPONENTS DECLARATIONS
@@ -332,46 +410,52 @@ export function SalesWizard() {
 
   // Wizard KPI Bar Top Component
   function WizardKpiBar() {
+    const trafficFormatted = kpiData.totalTraffic > 1000000 
+      ? `${(kpiData.totalTraffic / 1000000).toFixed(1)}M` 
+      : kpiData.totalTraffic > 1000 
+      ? `${(kpiData.totalTraffic / 1000).toFixed(0)}K` 
+      : kpiData.totalTraffic.toString();
+
     return (
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Toplam Alan</span>
-          <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-sm font-black text-white">{kpiData.total}</span>
-            <span className="text-[8px] text-slate-500 font-bold">Ünite</span>
-          </div>
-        </div>
-
-        <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-emerald-500 uppercase tracking-wider">Müsait Alan</span>
+          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Müsait Alan</span>
           <div className="flex items-baseline gap-1 mt-2">
             <span className="text-sm font-black text-emerald-400">{kpiData.available}</span>
-            <span className="text-[8px] text-emerald-500 font-bold">Müsait</span>
+            <span className="text-[8px] text-emerald-500 font-bold">Boş</span>
           </div>
         </div>
 
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-rose-500 uppercase tracking-wider">Dolu Alan</span>
+          <span className="text-[8.5px] font-black text-indigo-400 uppercase tracking-wider">Seçilen Alan</span>
           <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-sm font-black text-rose-450">{kpiData.occupied}</span>
-            <span className="text-[8px] text-rose-500 font-bold">Rezerve</span>
+            <span className="text-sm font-black text-indigo-400">{kpiData.selectedCount}</span>
+            <span className="text-[8px] text-indigo-400 font-bold">Adet</span>
           </div>
         </div>
 
         <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-[8.5px] font-black text-indigo-400 uppercase tracking-wider">Premium Müsait</span>
+          <span className="text-[8.5px] font-black text-indigo-400 uppercase tracking-wider">Premium Seçili</span>
           <div className="flex items-baseline gap-1 mt-2">
-            <span className="text-sm font-black text-indigo-400">{kpiData.premiumAvailable}</span>
+            <span className="text-sm font-black text-indigo-400">{kpiData.premiumSelected}</span>
             <span className="text-[8px] text-indigo-400 font-bold">Alan</span>
           </div>
         </div>
 
-        <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between col-span-2 md:col-span-1">
-          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Tahmini Aylık Gelir</span>
+        <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between">
+          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Toplam Aylık Fiyat</span>
           <div className="flex items-baseline gap-1 mt-2">
             <span className="text-sm font-black text-white">
               ₺{kpiData.selectedMonthlySum.toLocaleString('tr-TR')}
             </span>
+          </div>
+        </div>
+
+        <div className="dark-glass-card border border-white/5 p-4 rounded-2xl flex flex-col justify-between col-span-2 md:col-span-1">
+          <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-wider">Tahmini Erişim</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-sm font-black text-white">{trafficFormatted}</span>
+            <span className="text-[8px] text-slate-500 font-bold">/ Gün</span>
           </div>
         </div>
       </div>
@@ -381,19 +465,19 @@ export function SalesWizard() {
   // Sidebar AI Recommendation box
   function WorkflowAiPanel() {
     const getAiSuggestions = () => {
-      const occupancyPercent = Math.round((kpiData.occupied / kpiData.total) * 100) || 0;
+      const occupancyPercent = Math.round(((spacesList.length - kpiData.available) / spacesList.length) * 100) || 0;
       switch (state.currentStep) {
         case 'dates':
           return {
             title: `Doluluk Oranı Analizi`,
-            text: `Doluluk %${occupancyPercent}. Bu tarihlerde ${kpiData.premiumAvailable} Premium Alan müsait. Alternatif tarihte %${kpiData.occupied > 0 ? 14 : 0} daha fazla boş alan var.`,
+            text: `Doluluk %${occupancyPercent}. Bu tarihlerde ${kpiData.available} Alan müsait. Alternatif tarihte %14 daha fazla boş alan var.`,
             meta: `Tarih aralığı kontrolü yapılıyor`
           };
         case 'spaces':
           return {
-            title: `Premium Alan Önerileri`,
-            text: `En uygun premium alanlar: CIP Lounge LED ve Check-in Billboard envanterleridir. Bu envanterlerde doluluk riski düşüktür.`,
-            meta: `Alternatif tarih: Başlangıcı 5 gün öne çekmek opsiyonları %15 artırır.`
+            title: `OutdoorCore AI Alan Önerileri`,
+            text: `Bu tarih aralığında ${kpiData.available} premium alan müsait. SG-021 + SG-045 birlikte kullanılırsa görünürlük %18 artar. Bütçeyi düşürmek için SG-006 alternatif olabilir. Check-in bölgesi Samsung benzeri markalar için yüksek performanslıdır.`,
+            meta: `Akıllı envanter önerileri`
           };
         case 'company':
           return {
@@ -659,7 +743,7 @@ export function SalesWizard() {
     );
   }
 
-  // Step 2: Available Spaces Step View
+  // Step 2: Available Spaces Interactive Selection Step View
   function SpaceSelectionStep() {
     const handleToggleSpace = (space: AdvertisingSpace) => {
       const isSelected = state.data.selectedSpaces.some(s => s.id === space.id);
@@ -684,76 +768,375 @@ export function SalesWizard() {
       }));
     };
 
+    const handleQuickFilter = (type: string) => {
+      switch (type) {
+        case 'premium':
+          setFilters(prev => ({ ...prev, premium: true, led: false, lightbox: false, maxPrice: 3000000 }));
+          break;
+        case 'visibility':
+          setFilters(prev => ({ ...prev, minVisibility: 'Çok Yüksek', premium: false }));
+          break;
+        case 'budget':
+          setFilters(prev => ({ ...prev, maxPrice: 400000, premium: false, led: false }));
+          break;
+        case 'led':
+          setFilters(prev => ({ ...prev, led: true, lightbox: false, premium: false }));
+          break;
+        case 'duty-free':
+          setFilters(prev => ({ ...prev, type: 'CLP', terminal: 'dis-hatlar' }));
+          break;
+        case 'check-in':
+          setFilters(prev => ({ ...prev, terminal: 'ic-hatlar' }));
+          break;
+        case 'baggage':
+          setFilters(prev => ({ ...prev, type: 'Lightbox' }));
+          break;
+        default:
+          break;
+      }
+    };
+
+    const resetFilters = () => {
+      setFilters({
+        terminal: 'all',
+        floor: 'all',
+        type: 'all',
+        premium: false,
+        led: false,
+        lightbox: false,
+        digital: false,
+        minPrice: 0,
+        maxPrice: 3000000,
+        minTraffic: 0,
+        minVisibility: 'all'
+      });
+    };
+
+    // Calculate available spaces (without sidebar filtering) to check if completely empty
     const start = state.data.dates?.startDate || '';
     const end = state.data.dates?.endDate || '';
-    const availableSpaces = spacesList.filter(s => 
+    const allAvailableCount = spacesList.filter(s => 
       reservationRepository.isSpaceAvailableSync(s.id, s.code, start, end)
-    );
+    ).length;
+
+    if (allAvailableCount === 0) {
+      return (
+        <div className="dark-glass-card border border-dashed border-rose-500/20 p-8 rounded-3xl text-center select-none space-y-4">
+          <div className="w-12 h-12 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto text-rose-500">
+            <AlertTriangle size={24} />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-black text-white uppercase tracking-wider">Müsait Reklam Alanı Bulunamadı</h4>
+            <p className="text-[10px] text-slate-500 font-semibold max-w-sm mx-auto leading-relaxed">
+              Seçtiğiniz tarih aralığında envanterimizde müsait reklam alanı bulunamadı. Lütfen Step 1 üzerinden tarihleri güncelleyin.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={() => {
+              // Automatically adjust to an alternative date in wizard state
+              setState(prev => ({
+                ...prev,
+                currentStep: 'dates',
+                data: {
+                  ...prev.data,
+                  dates: {
+                    startDate: '12.08.2026', // Alternative mock date suggestion
+                    endDate: '12.09.2026'
+                  }
+                }
+              }));
+            }}
+          >
+            Alternatif Tarih Öner
+          </Button>
+        </div>
+      );
+    }
 
     return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <Label>Müsait Reklam Alanlarını Seçin *</Label>
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest bg-emerald-500/10 border border-emerald-500/15 px-2 py-0.5 rounded-lg text-emerald-400">
-            Tarih Aralığında Müsait: {availableSpaces.length} Alan
-          </span>
-        </div>
-        
-        {availableSpaces.length === 0 ? (
-          <div className="p-8 text-center border border-dashed border-white/10 rounded-2xl text-slate-500 text-xs font-bold bg-[#08111f]/40">
-            Seçilen tarih aralığında müsait reklam alanı bulunmamaktadır. Lütfen kampanya tarihlerini güncelleyin.
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 text-left">
+        {/* Sol Kolon: Filtreler */}
+        <div className="lg:col-span-1 space-y-4 bg-white/2 border border-white/5 p-4 rounded-2xl">
+          <div className="flex justify-between items-center pb-2 border-b border-white/5">
+            <span className="text-[10px] font-black text-white uppercase tracking-wider flex items-center gap-1.5 leading-none">
+              <Filter size={11} className="text-indigo-400" />
+              Filtreler
+            </span>
+            <button onClick={resetFilters} className="text-[8.5px] font-black text-indigo-400 hover:text-white uppercase tracking-wider transition-colors cursor-pointer">
+              Temizle
+            </button>
           </div>
-        ) : (
-          <div className="max-h-60 overflow-y-auto border border-white/10 rounded-2xl p-3.5 space-y-2 bg-[#08111f]/40 scrollbar-thin">
-            {availableSpaces.map(s => {
-              const isChecked = state.data.selectedSpaces.some(space => space.id === s.id);
-              return (
-                <label
-                  key={s.id}
-                  className="flex items-center gap-3.5 p-2.5 rounded-xl hover:bg-white/3 cursor-pointer select-none transition-colors duration-150 text-left"
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    onChange={() => handleToggleSpace(s)}
-                    className="w-4 h-4 rounded text-indigo-650 focus:ring-indigo-500 border-slate-700 bg-transparent"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10.5px] font-black text-white uppercase block">
-                        #{s.code} - {s.name}
-                      </span>
-                      <span className="text-[10px] font-black text-emerald-450">
-                        {s.price}
-                      </span>
-                    </div>
-                    <span className="text-[8px] font-bold text-slate-500 block uppercase mt-0.5">
-                      {s.location} | Tür: {s.type}
-                    </span>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-        )}
 
-        {state.data.selectedSpaces.length > 0 && (
-          <div className="space-y-2">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Seçilen Ekran Listesi ({state.data.selectedSpaces.length})</span>
-            <div className="flex flex-wrap gap-1.5">
-              {state.data.selectedSpaces.map(s => (
-                <span key={s.id} className="px-2.5 py-1 rounded-xl bg-indigo-950/20 border border-indigo-500/15 text-[9px] font-black text-indigo-400 uppercase tracking-tighter">
-                  #{s.code} - {s.price}
-                </span>
+          <div className="space-y-3 text-[10px]">
+            <FormGroup>
+              <Label>Terminal</Label>
+              <Select value={filters.terminal} onChange={(e) => setFilters(prev => ({ ...prev, terminal: e.target.value }))}>
+                <option value="all">Tüm Terminaller</option>
+                <option value="ic-hatlar">İç Hatlar</option>
+                <option value="dis-hatlar">Dış Hatlar</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Kat (Sektör)</Label>
+              <Select value={filters.floor} onChange={(e) => setFilters(prev => ({ ...prev, floor: e.target.value }))}>
+                <option value="all">Tüm Katlar</option>
+                <option value="Giriş">Giriş Katı</option>
+                <option value="Lobi">Lobi / Duty Free</option>
+                <option value="Kapılar">Kapılar Sektörü</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label>Alan Tipi</Label>
+              <Select value={filters.type} onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}>
+                <option value="all">Tüm Tipler</option>
+                <option value="LED">LED Ekran</option>
+                <option value="CLP">CLP Pano</option>
+                <option value="Lightbox">Lightbox</option>
+                <option value="Billboard">Billboard</option>
+              </Select>
+            </FormGroup>
+
+            {/* Boolean checkboxes */}
+            <div className="space-y-1.5 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={filters.premium} onChange={(e) => setFilters(prev => ({ ...prev, premium: e.target.checked }))} className="w-3.5 h-3.5 rounded text-indigo-650 focus:ring-indigo-500 border-slate-700 bg-transparent" />
+                <span>Premium Alanlar</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={filters.led} onChange={(e) => setFilters(prev => ({ ...prev, led: e.target.checked }))} className="w-3.5 h-3.5 rounded text-indigo-650 focus:ring-indigo-500 border-slate-700 bg-transparent" />
+                <span>LED Ekranlar</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={filters.lightbox} onChange={(e) => setFilters(prev => ({ ...prev, lightbox: e.target.checked }))} className="w-3.5 h-3.5 rounded text-indigo-650 focus:ring-indigo-500 border-slate-700 bg-transparent" />
+                <span>Lightbox / Pano</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={filters.digital} onChange={(e) => setFilters(prev => ({ ...prev, digital: e.target.checked }))} className="w-3.5 h-3.5 rounded text-indigo-650 focus:ring-indigo-500 border-slate-700 bg-transparent" />
+                <span>Dijital Envanterler</span>
+              </label>
+            </div>
+
+            {/* Price max input */}
+            <FormGroup>
+              <Label>Maksimum Aylık Fiyat</Label>
+              <Input type="number" value={filters.maxPrice} onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: parseInt(e.target.value, 10) || 3000000 }))} />
+            </FormGroup>
+
+            {/* Visibility level */}
+            <FormGroup>
+              <Label>Görünürlük Seviyesi</Label>
+              <Select value={filters.minVisibility} onChange={(e) => setFilters(prev => ({ ...prev, minVisibility: e.target.value }))}>
+                <option value="all">Tümü</option>
+                <option value="Çok Yüksek">Çok Yüksek</option>
+                <option value="Yüksek">Yüksek</option>
+                <option value="Orta">Orta</option>
+              </Select>
+            </FormGroup>
+          </div>
+
+          {/* Quick Filters */}
+          <div className="pt-2 border-t border-white/5 space-y-2">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-wider block">Hızlı Filtreler</span>
+            <div className="flex flex-wrap gap-1">
+              {[
+                { key: 'premium', label: 'Premium' },
+                { key: 'visibility', label: 'Çok Görünen' },
+                { key: 'budget', label: 'Bütçe Dostu' },
+                { key: 'led', label: 'LED Ekran' },
+                { key: 'duty-free', label: 'Duty Free' },
+                { key: 'check-in', label: 'Check-in' },
+                { key: 'baggage', label: 'Bagaj Alım' }
+              ].map(q => (
+                <button
+                  key={q.key}
+                  type="button"
+                  onClick={() => handleQuickFilter(q.key)}
+                  className="px-2 py-0.8 rounded bg-white/3 border border-white/5 text-[8px] font-bold text-slate-400 hover:text-white hover:bg-indigo-650/20 hover:border-indigo-500/20 transition-all cursor-pointer"
+                >
+                  {q.label}
+                </button>
               ))}
             </div>
           </div>
-        )}
+        </div>
+
+        {/* Orta Kolon: Terminal Haritası + Kart Görünümü */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Terminal Haritası */}
+          <div className="relative w-full h-[280px] rounded-2xl bg-[#090d1f] border border-white/5 overflow-hidden shadow-inner">
+            <div className="absolute inset-0 blueprint-grid opacity-30" />
+            <div className="absolute inset-0 bg-radial-gradient from-transparent to-black/80 pointer-events-none" />
+
+            <svg className="absolute inset-0 w-full h-full text-blue-500/10" viewBox="0 0 800 400" fill="none">
+              <rect x="50" y="40" width="700" height="320" rx="30" stroke="currentColor" strokeWidth="2" strokeDasharray="6 3" />
+              <line x1="280" y1="40" x2="280" y2="360" stroke="currentColor" strokeWidth="1.2" strokeDasharray="4 4" />
+              <line x1="560" y1="40" x2="560" y2="360" stroke="currentColor" strokeWidth="1.2" strokeDasharray="4 4" />
+              
+              <rect x="80" y="80" width="160" height="240" rx="15" stroke="currentColor" strokeWidth="0.8" />
+              <rect x="310" y="80" width="220" height="100" rx="15" stroke="currentColor" strokeWidth="0.8" />
+              <rect x="310" y="220" width="220" height="100" rx="15" stroke="currentColor" strokeWidth="0.8" />
+              <rect x="590" y="80" width="130" height="240" rx="15" stroke="currentColor" strokeWidth="0.8" />
+
+              <text x="160" y="200" fill="currentColor" opacity="0.25" textAnchor="middle" className="text-[9px] font-black uppercase tracking-wider">İÇ HATLAR GİRİŞ</text>
+              <text x="420" y="130" fill="currentColor" opacity="0.25" textAnchor="middle" className="text-[9px] font-black uppercase tracking-wider">PASAPORT SEKTÖRÜ</text>
+              <text x="420" y="270" fill="currentColor" opacity="0.25" textAnchor="middle" className="text-[9px] font-black uppercase tracking-wider">DUTY FREE SEKTÖRÜ</text>
+              <text x="655" y="200" fill="currentColor" opacity="0.25" textAnchor="middle" className="text-[9px] font-black uppercase tracking-wider">DIŞ HATLAR</text>
+            </svg>
+
+            {/* Dynamic Available Status Pins */}
+            {filteredAvailableSpaces.map(s => {
+              const coords = SPACE_COORDINATES[s.code] || { top: '50%', left: '50%' };
+              const isSelected = state.data.selectedSpaces.some(selected => selected.id === s.id);
+              const isPrem = isPremiumSpace(s);
+
+              const colorClass = isSelected 
+                ? 'bg-indigo-600 border-indigo-500 glow-indigo text-white shadow-lg scale-110' 
+                : isPrem 
+                ? 'bg-blue-500 border-blue-450 glow-blue text-white' 
+                : 'bg-emerald-500 border-emerald-450 glow-green text-white';
+
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  style={{ top: coords.top, left: coords.left }}
+                  onClick={() => handleToggleSpace(s)}
+                  className="absolute transform -translate-x-1/2 -translate-y-1/2 group z-20 flex flex-col items-center cursor-pointer border-0 bg-transparent outline-none"
+                >
+                  <div className={`px-2 py-0.5 rounded-lg border text-[9px] font-black tracking-tighter shadow-md transition-all select-none hover:scale-115 ${colorClass}`}>
+                    {s.code}
+                  </div>
+
+                  {/* Tooltip */}
+                  <div className="absolute bottom-6 scale-0 group-hover:scale-100 transition-all origin-bottom bg-slate-950/95 border border-white/10 rounded-xl p-2.5 shadow-2xl w-48 text-left z-30 pointer-events-none">
+                    <span className="text-[9.5px] font-black text-white block truncate uppercase">{s.code} - {s.name}</span>
+                    <div className="flex justify-between items-center mt-1.5 pt-1 border-t border-white/5 text-[8.5px]">
+                      <span className="text-slate-400 font-bold uppercase">Aylık Fiyat:</span>
+                      <span className="text-emerald-400 font-black">{s.price}</span>
+                    </div>
+                    <div className="flex justify-between items-center mt-0.5 text-[8.5px]">
+                      <span className="text-slate-400 font-bold uppercase">Günlük Akış:</span>
+                      <span className="text-indigo-400 font-black">{s.traffic.toLocaleString('tr-TR')}</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Kart Görünümü */}
+          <div className="space-y-3.5">
+            <span className="text-[10px] font-black text-white uppercase tracking-wider block">Müsait Reklam Alanları Kartları ({filteredAvailableSpaces.length})</span>
+            {filteredAvailableSpaces.length === 0 ? (
+              <div className="p-8 text-center border border-dashed border-white/10 rounded-2xl text-slate-500 text-xs font-bold bg-[#08111f]/40">
+                Filtre koşullarına uyan müsait alan bulunamadı. Filtreleri temizleyebilirsiniz.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredAvailableSpaces.map(s => {
+                  const isSelected = state.data.selectedSpaces.some(selected => selected.id === s.id);
+                  const isPrem = isPremiumSpace(s);
+
+                  return (
+                    <div
+                      key={s.id}
+                      className={`dark-glass-card p-4 rounded-2xl flex flex-col justify-between text-xs space-y-3 text-left transition-all ${
+                        isSelected 
+                          ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-600/20' 
+                          : 'border-white/5'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-black text-white uppercase">#{s.code}</span>
+                            {isPrem && <Badge variant="danger" className="text-[7.5px] py-0">PREMIUM</Badge>}
+                            {isSelected && <Badge variant="success" className="text-[7.5px] py-0 bg-indigo-650/40 text-indigo-400 border-indigo-500/20">SEÇİLDİ</Badge>}
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-200 block truncate mt-0.5 max-w-[140px]">{s.name}</span>
+                        </div>
+                        <span className="text-[11px] font-black text-emerald-450">{s.price}</span>
+                      </div>
+
+                      <div className="space-y-1 text-[9px] font-bold text-slate-400 uppercase tracking-tighter">
+                        <div className="flex justify-between"><span>Lokasyon:</span><span className="text-slate-300 font-semibold">{s.location}</span></div>
+                        <div className="flex justify-between"><span>Tip:</span><span className="text-slate-300 font-semibold">{s.type}</span></div>
+                        <div className="flex justify-between"><span>Ölçü:</span><span className="text-slate-300 font-semibold">{s.size}</span></div>
+                        <div className="flex justify-between"><span>Görünürlük:</span><span className="text-indigo-400 font-bold">{s.visibility}</span></div>
+                        <div className="flex justify-between"><span>Yolcu Akışı:</span><span className="text-white font-extrabold">{s.traffic.toLocaleString('tr-TR')} / Gün</span></div>
+                      </div>
+
+                      <Button
+                        variant={isSelected ? 'outline' : 'primary'}
+                        size="xs"
+                        type="button"
+                        onClick={() => handleToggleSpace(s)}
+                        className="w-full text-[9px] uppercase tracking-wider py-1.5"
+                      >
+                        {isSelected ? 'Seçimi Kaldır' : 'Alan Seç'}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Sağ Kolon: Seçilen Alanlar Özeti + AI Önerileri */}
+        <div className="lg:col-span-1 space-y-4">
+          <div className="dark-glass-card border border-white/5 p-4.5 rounded-2xl space-y-3.5">
+            <span className="text-[10px] font-black text-white uppercase tracking-wider block pb-2 border-b border-white/5">Seçilen Alanlar</span>
+            
+            <div className="space-y-2 text-[10px] font-bold text-slate-400 uppercase">
+              <div className="flex justify-between">
+                <span>Toplam Seçilen:</span>
+                <span className="text-white font-extrabold">{kpiData.selectedCount} Adet</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Aylık Fiyat:</span>
+                <span className="text-emerald-400 font-extrabold">₺{kpiData.selectedMonthlySum.toLocaleString('tr-TR')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Premium Alan:</span>
+                <span className="text-indigo-400 font-extrabold">{kpiData.premiumSelected} Adet</span>
+              </div>
+            </div>
+
+            {state.data.selectedSpaces.length === 0 ? (
+              <div className="p-4 text-center text-slate-500 font-bold border border-dashed border-white/5 rounded-xl text-[9.5px]">
+                Henüz bir reklam alanı seçmediniz.
+              </div>
+            ) : (
+              <div className="space-y-1.5 max-h-32 overflow-y-auto scrollbar-thin">
+                {state.data.selectedSpaces.map(s => (
+                  <div key={s.id} className="flex justify-between items-center p-2 rounded-xl bg-white/2 border border-white/3 text-[9.5px]">
+                    <span className="text-white font-black uppercase">#{s.code} - {s.price}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSpace(s)}
+                      className="p-1 text-slate-500 hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all cursor-pointer border-0 bg-transparent outline-none"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <WorkflowAiPanel />
+        </div>
       </div>
     );
   }
 
-  // Step 3: Company step view
+  // 3. Company step view
   function CompanyStep() {
     const handleSelectCompany = (cid: string) => {
       const found = companiesList.find(c => c.id === cid);
@@ -1562,7 +1945,10 @@ export function SalesWizard() {
                       size="sm"
                       type="button"
                       onClick={goToNextStep}
-                      disabled={state.currentStep === 'dates' && (!state.data.dates?.startDate || !state.data.dates?.endDate)}
+                      disabled={
+                        (state.currentStep === 'dates' && (!state.data.dates?.startDate || !state.data.dates?.endDate)) ||
+                        (state.currentStep === 'spaces' && state.data.selectedSpaces.length === 0)
+                      }
                       rightIcon={<ChevronRight size={13} />}
                     >
                       İleri
