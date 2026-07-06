@@ -6,8 +6,9 @@ import { Button } from './Button';
 import { Notification } from './Notification';
 import { companySchema, CompanyFormData } from '@/utils/schemas';
 import { zodResolver } from '@/utils/resolver';
-import { companyRepository } from '@/repositories';
+import { companyRepository, activityLogRepository } from '@/repositories';
 import { Company } from '@/data/companies';
+import { FileUpload } from './FileUpload';
 
 interface CompanyModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export function CompanyModal({ isOpen, onClose, onSuccess, company }: CompanyMod
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors }
   } = useForm<CompanyFormData>({
     resolver: zodResolver(companySchema),
@@ -41,9 +44,12 @@ export function CompanyModal({ isOpen, onClose, onSuccess, company }: CompanyMod
       taxOffice: '',
       mediaAgency: '',
       creativeAgency: '',
-      notes: ''
+      notes: '',
+      logoUrl: ''
     }
   });
+
+  const watchLogoUrl = watch('logoUrl');
 
   // Load values when editing
   useEffect(() => {
@@ -64,7 +70,8 @@ export function CompanyModal({ isOpen, onClose, onSuccess, company }: CompanyMod
           taxOffice: company.taxOffice,
           mediaAgency: company.mediaAgency,
           creativeAgency: company.creativeAgency,
-          notes: company.notesList?.[0] || ''
+          notes: company.notesList?.[0] || '',
+          logoUrl: company.logoUrl || ''
         });
       } else {
         reset({
@@ -80,7 +87,8 @@ export function CompanyModal({ isOpen, onClose, onSuccess, company }: CompanyMod
           taxOffice: '',
           mediaAgency: '',
           creativeAgency: '',
-          notes: ''
+          notes: '',
+          logoUrl: ''
         });
       }
     }
@@ -148,6 +156,19 @@ export function CompanyModal({ isOpen, onClose, onSuccess, company }: CompanyMod
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormGroup className="col-span-1 md:col-span-2">
+            <FileUpload
+              bucket="logos"
+              label="Firma Logosu"
+              currentFileUrl={watchLogoUrl}
+              onUploadSuccess={(url) => {
+                setValue('logoUrl', url);
+                activityLogRepository.log(`Firma logosu yüklendi: ${url.split('/').pop()}`, 'logo.uploaded');
+              }}
+              onRemove={() => setValue('logoUrl', '')}
+            />
+          </FormGroup>
+
           <FormGroup>
             <Label htmlFor="name">Firma Adı *</Label>
             <Input

@@ -17,16 +17,17 @@ import {
   Zap
 } from 'lucide-react';
 import { maintenanceKpis, MaintenanceTask } from '@/data/maintenance';
-import { maintenanceRepository, spaceRepository } from '@/repositories';
+import { maintenanceRepository, spaceRepository, activityLogRepository } from '@/repositories';
 import { EntityLink } from '@/components/design-system/EntityLink';
 import { Badge } from '@/components/design-system/Badge';
 import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
+import { FileUpload } from '@/components/design-system/FileUpload';
 
 export function Maintenance() {
-  const maintenanceTasks = maintenanceRepository.getAllSync();
+  const [maintenanceTasks, setMaintenanceTasks] = useState<MaintenanceTask[]>(() => maintenanceRepository.getAllSync());
   const advertisingSpaces = spaceRepository.getAllSync();
-  const [selectedTask, setSelectedTask] = useState<MaintenanceTask>(maintenanceTasks[0]);
+  const [selectedTask, setSelectedTask] = useState<MaintenanceTask>(() => maintenanceTasks[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [terminalFilter, setTerminalFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -216,8 +217,9 @@ export function Maintenance() {
 
         {/* Sağ Panel: Maintenance task details view */}
         <div className="order-3 lg:order-none lg:col-span-3">
-          <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-4 text-left">
-            <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 text-slate-400">
+          {selectedTask ? (
+            <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-4 text-left">
+              <div className="flex items-center gap-1.5 pb-2 border-b border-white/5 text-slate-400">
               <Activity size={12} />
               <h4 className="text-xs font-black text-white uppercase tracking-wider">İş Emri Detayları</h4>
             </div>
@@ -266,6 +268,51 @@ export function Maintenance() {
                   ))}
                 </div>
               </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-white/5">
+                <span className="text-slate-500 font-bold uppercase block">Arıza Fotoğrafı</span>
+                {selectedTask.photoUrl ? (
+                  <div className="relative group rounded-xl overflow-hidden border border-white/5 max-h-36">
+                    <img src={selectedTask.photoUrl} alt="Arıza" className="w-full h-full object-cover max-h-32 mx-auto" />
+                    <button 
+                      onClick={async () => {
+                        try {
+                          const updated = await maintenanceRepository.update(selectedTask.id, {
+                            photoUrl: null
+                          });
+                          setSelectedTask(updated);
+                          setMaintenanceTasks(maintenanceRepository.getAllSync());
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }}
+                      className="absolute top-2 right-2 bg-slate-950/80 text-rose-500 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 cursor-pointer text-[8px] font-black uppercase tracking-wider"
+                    >
+                      Sil
+                    </button>
+                  </div>
+                ) : (
+                  <FileUpload
+                    bucket="maintenance"
+                    label=""
+                    allowedTypes={['image/png', 'image/jpeg', 'image/webp']}
+                    onUploadSuccess={async (url, path, file) => {
+                      try {
+                        const updated = await maintenanceRepository.update(selectedTask.id, {
+                          photoUrl: url
+                        });
+                        setSelectedTask(updated);
+                        setMaintenanceTasks(maintenanceRepository.getAllSync());
+                        
+                        const fileName = file ? file.name : url.split('/').pop() || 'photo.jpg';
+                        await activityLogRepository.log(`Bakım arıza fotoğrafı yüklendi: ${fileName} (#${selectedTask.id})`, 'maintenance.photo_uploaded');
+                      } catch (e) {
+                        console.error('Failed to update maintenance photo:', e);
+                      }
+                    }}
+                  />
+                )}
+              </div>
             </div>
 
             {/* AI Risk Analysis panel */}
@@ -299,7 +346,12 @@ export function Maintenance() {
               </p>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="dark-glass-card border border-white/5 rounded-2xl p-5 text-center text-slate-500 text-xs font-bold py-12">
+            Seçili iş emri bulunmuyor.
+          </div>
+        )}
+      </div>
       </div>
 
       {/* Alt panel: charts & dashboards */}

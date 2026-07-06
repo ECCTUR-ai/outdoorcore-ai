@@ -12,6 +12,7 @@ export interface MaintenanceTask {
   completionDate?: string;
   qrCode: string;
   aiRiskScore: number;
+  photoUrl?: string;
 }
 
 export const maintenanceTasks: MaintenanceTask[] = [

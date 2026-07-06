@@ -1,4 +1,4 @@
-import { supabase } from '@/utils/supabaseClient';
+import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
 import { companies } from '@/data/companies';
 import { advertisingSpaces } from '@/data/advertisingSpaces';
 import { offers } from '@/data/offers';
@@ -15,12 +15,6 @@ import { competitorsList, competitorKpis } from '@/data/competitors';
 // ----------------------------------------------------
 // PERSISTENCE AND CONTEXT HELPERS FOR FALLBACK DEMO
 // ----------------------------------------------------
-
-const isSupabaseConfigured = (): boolean => {
-  const url = import.meta.env.VITE_SUPABASE_URL;
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return !!(url && key && url !== 'https://placeholder.supabase.co' && key !== 'placeholder-key');
-};
 
 const getSessionInfo = () => {
   try {
@@ -55,6 +49,27 @@ const getLocalData = <T>(key: string, initialData: T[]): T[] => {
 };
 
 const setLocalData = <T>(key: string, data: T[]): void => {
+  try {
+    localStorage.setItem(`outdoorcore_mock_${key}`, JSON.stringify(data));
+  } catch (e) {
+    console.error(`Error writing mock data for ${key}:`, e);
+  }
+};
+
+const getLocalDataObject = <T>(key: string, initialData: T): T => {
+  try {
+    const stored = localStorage.getItem(`outdoorcore_mock_${key}`);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+    localStorage.setItem(`outdoorcore_mock_${key}`, JSON.stringify(initialData));
+  } catch (e) {
+    console.error(`Error reading mock data for ${key}:`, e);
+  }
+  return initialData;
+};
+
+const setLocalDataObject = <T>(key: string, data: T): void => {
   try {
     localStorage.setItem(`outdoorcore_mock_${key}`, JSON.stringify(data));
   } catch (e) {
@@ -920,19 +935,83 @@ export const offerRepository = {
 
 export const contractRepository = {
   getAllSync() {
-    return contracts;
+    return getLocalData('contracts', contracts);
   },
   getByIdSync(id: string) {
-    return contracts.find(c => c.id === id) || contracts[0];
+    const local = getLocalData('contracts', contracts);
+    return local.find(c => c.id === id) || local[0];
   },
   async getAll() {
-    try {
-      const { data, error } = await supabase.from('contracts').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return contracts;
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.from('contracts').select('*');
+        if (error) throw error;
+        if (data && data.length > 0) {
+          return data.map((d: any) => ({
+            id: d.id,
+            contractNo: d.contract_no,
+            companyId: d.company_id,
+            clientName: d.client_name,
+            campaignId: d.campaign_id,
+            campaignName: d.campaign_name,
+            status: d.status,
+            crmTier: d.crm_tier,
+            value: d.value,
+            daysLeft: d.days_left,
+            startDate: d.start_date,
+            endDate: d.end_date,
+            mediaAgency: d.media_agency,
+            proposalId: d.proposal_id,
+            reservationId: d.reservation_id,
+            notes: Array.isArray(d.notes) ? d.notes : [d.notes].filter(Boolean),
+            installments: Array.isArray(d.installments) ? d.installments : [],
+            spacesList: Array.isArray(d.spaces_list) ? d.spaces_list : [],
+            filesList: Array.isArray(d.files_list) ? d.files_list : [],
+            history: Array.isArray(d.history) ? d.history : [],
+            aiRiskAnalysis: Array.isArray(d.ai_risk_analysis) ? d.ai_risk_analysis : []
+          }));
+        }
+      } catch (e) {
+        console.warn('Supabase contracts fetch failed, using local fallback:', e);
+      }
     }
+    return getLocalData('contracts', contracts);
+  },
+  async update(id: string, input: any) {
+    const { organizationId, email } = getSessionInfo();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const payload = {
+          files_list: input.filesList,
+          status: input.status,
+          notes: input.notes,
+          updated_at: new Date().toISOString(),
+          updated_by: email
+        };
+        const { error } = await supabase
+          .from('contracts')
+          .update(payload)
+          .eq('id', id);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase contract update failed:', e);
+      }
+    }
+
+    const local = getLocalData('contracts', contracts);
+    const idx = local.findIndex((c: any) => c.id === id);
+    if (idx !== -1) {
+      local[idx] = {
+        ...local[idx],
+        ...input,
+        updated_at: new Date().toISOString(),
+        updated_by: email
+      };
+      setLocalData('contracts', local);
+      return local[idx];
+    }
+    throw new Error('Sözleşme bulunamadı.');
   }
 };
 
@@ -974,31 +1053,139 @@ export const campaignRepository = {
 
 export const financeRepository = {
   getFinanceDataSync() {
-    return financeData;
+    return getLocalDataObject('finance_data', financeData);
   },
-  async getAll() {
-    try {
-      const { data, error } = await supabase.from('finance').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return financeData;
+  async getFinanceData() {
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.from('finance_data').select('*').single();
+        if (error) throw error;
+        if (data) return data;
+      } catch (e) {
+        console.warn('Supabase finance fetch failed, using local:', e);
+      }
     }
+    return getLocalDataObject('finance_data', financeData);
+  },
+  async updateInvoicePdf(invoiceId: string, pdfUrl: string) {
+    const data = getLocalDataObject('finance_data', financeData);
+    let found = false;
+    for (const acc of data.accounts) {
+      const inv = acc.invoices.find((i: any) => i.id === invoiceId);
+      if (inv) {
+        (inv as any).pdfUrl = pdfUrl;
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      setLocalDataObject('finance_data', data);
+      
+      if (isSupabaseConfigured()) {
+        try {
+          await supabase.from('invoices').update({ pdf_url: pdfUrl }).eq('id', invoiceId);
+        } catch (e) {
+          console.warn('Failed to update invoice PDF in Supabase:', e);
+        }
+      }
+      return true;
+    }
+    throw new Error('Fatura bulunamadı.');
   }
 };
 
 export const mediaRepository = {
   getAllSync() {
-    return mediaAssets;
+    return getLocalData('media', mediaAssets);
   },
   async getAll() {
-    try {
-      const { data, error } = await supabase.from('media').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return mediaAssets;
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.from('media').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          return data.map((d: any) => ({
+            id: d.id,
+            name: d.name,
+            type: d.type || 'image',
+            size: d.size || '0 KB',
+            resolution: d.resolution || '1920x1080',
+            uploadedBy: d.uploaded_by || '',
+            uploadedDate: d.created_at ? new Date(d.created_at).toLocaleDateString('tr-TR') : '',
+            version: d.version || 'v1',
+            aiTags: Array.isArray(d.ai_tags) ? d.ai_tags : [],
+            companyId: d.company_id || '',
+            campaignId: d.campaign_id || '',
+            spaceIds: Array.isArray(d.space_ids) ? d.space_ids : [],
+            status: d.status || 'Pending',
+            versionsList: Array.isArray(d.versions_list) ? d.versions_list : [],
+            notes: d.notes || ''
+          }));
+        }
+      } catch (e) {
+        console.warn('Supabase media fetch failed, fallback to local:', e);
+      }
     }
+    return getLocalData('media', mediaAssets);
+  },
+  async create(input: any) {
+    const { organizationId, email } = getSessionInfo();
+    const newId = 'MED-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    const uiAsset = {
+      id: newId,
+      name: input.name,
+      type: input.type || 'image',
+      size: input.size || '0 KB',
+      resolution: input.resolution || '1920x1080',
+      uploadedBy: email,
+      uploadedDate: new Date().toLocaleDateString('tr-TR'),
+      version: input.version || 'v1',
+      aiTags: input.aiTags || [],
+      companyId: input.companyId || '',
+      campaignId: input.campaignId || '',
+      spaceIds: input.spaceIds || [],
+      status: 'Pending' as const,
+      versionsList: [{
+        version: input.version || 'v1',
+        date: new Date().toLocaleDateString('tr-TR'),
+        file: input.fileUrl || '',
+        uploader: email
+      }],
+      notes: input.notes || ''
+    };
+
+    if (isSupabaseConfigured()) {
+      try {
+        const payload = {
+          id: newId,
+          organization_id: organizationId,
+          name: input.name,
+          type: input.type,
+          size: input.size,
+          resolution: input.resolution || '1920x1080',
+          uploaded_by: email,
+          version: input.version || 'v1',
+          ai_tags: input.aiTags || [],
+          company_id: input.companyId || null,
+          campaign_id: input.campaignId || null,
+          space_ids: input.spaceIds || [],
+          status: 'Pending',
+          file_url: input.fileUrl || '',
+          notes: input.notes || '',
+          created_at: new Date().toISOString()
+        };
+        const { data, error } = await supabase.from('media').insert([payload]).select().single();
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase media creation failed, using mock fallback:', e);
+      }
+    }
+
+    const local = getLocalData('media', mediaAssets);
+    local.unshift(uiAsset);
+    setLocalData('media', local);
+    return uiAsset;
   }
 };
 
@@ -1034,16 +1221,72 @@ export const notificationRepository = {
 
 export const maintenanceRepository = {
   getAllSync() {
-    return maintenanceTasks;
+    return getLocalData('maintenance', maintenanceTasks);
   },
   async getAll() {
-    try {
-      const { data, error } = await supabase.from('maintenance').select('*');
-      if (error || !data || data.length === 0) throw error || new Error('No data');
-      return data;
-    } catch {
-      return maintenanceTasks;
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase.from('maintenance').select('*');
+        if (error) throw error;
+        if (data && data.length > 0) {
+          return data.map((d: any) => ({
+            id: d.id,
+            spaceCode: d.space_code,
+            spaceId: d.space_id,
+            assignedTechnician: d.assigned_technician,
+            issue: d.issue,
+            status: d.status,
+            urgency: d.urgency,
+            replacedParts: d.replaced_parts || [],
+            slaTimeMinutes: d.sla_time_minutes || 0,
+            scheduledDate: d.scheduled_date,
+            completionDate: d.completion_date,
+            qrCode: d.qr_code,
+            aiRiskScore: d.ai_risk_score || 0,
+            photoUrl: d.photo_url || undefined
+          }));
+        }
+      } catch (e) {
+        console.warn('Supabase maintenance fetch failed, using local:', e);
+      }
     }
+    return getLocalData('maintenance', maintenanceTasks);
+  },
+  async update(id: string, input: any) {
+    const { organizationId, email } = getSessionInfo();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const payload = {
+          photo_url: input.photoUrl,
+          status: input.status,
+          replaced_parts: input.replacedParts,
+          updated_at: new Date().toISOString(),
+          updated_by: email
+        };
+        const { error } = await supabase
+          .from('maintenance')
+          .update(payload)
+          .eq('id', id);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase maintenance update failed:', e);
+      }
+    }
+
+    const local = getLocalData('maintenance', maintenanceTasks);
+    const idx = local.findIndex((c: any) => c.id === id);
+    if (idx !== -1) {
+      local[idx] = {
+        ...local[idx],
+        ...input,
+        updated_at: new Date().toISOString(),
+        updated_by: email
+      };
+      setLocalData('maintenance', local);
+      return local[idx];
+    }
+    throw new Error('Bakım görevi bulunamadı.');
   }
 };
 

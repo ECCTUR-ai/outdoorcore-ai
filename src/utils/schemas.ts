@@ -17,7 +17,8 @@ export const companySchema = z.object({
   taxOffice: z.string().or(z.string().length(0)),
   mediaAgency: z.string().or(z.string().length(0)),
   creativeAgency: z.string().or(z.string().length(0)),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  logoUrl: z.string().optional()
 });
 
 export type CompanyFormData = z.infer<typeof companySchema>;

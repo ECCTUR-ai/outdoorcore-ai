@@ -20,12 +20,20 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { EntityLink } from './EntityLink';
+import { FileUpload } from './FileUpload';
+import { contractRepository, activityLogRepository } from '@/repositories';
 
 interface ContractDetailPanelProps {
   contract: Contract;
 }
 
-export function ContractDetailPanel({ contract }: ContractDetailPanelProps) {
+export function ContractDetailPanel({ contract: initialContract }: ContractDetailPanelProps) {
+  const [contract, setContract] = useState<Contract>(initialContract);
+
+  React.useEffect(() => {
+    setContract(initialContract);
+  }, [initialContract]);
+
   const tabs = [
     { key: 'general', label: 'Genel' },
     { key: 'payments', label: 'Ödeme Planı' },
@@ -168,15 +176,41 @@ export function ContractDetailPanel({ contract }: ContractDetailPanelProps) {
         )}
 
         {activeTab === 'files' && (
-          <div className="space-y-2">
-            {contract.filesList.map((file, index) => (
-              <div key={index} className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[9.5px] hover:bg-white/5 duration-100">
-                <span className="text-slate-300 font-bold truncate max-w-[200px]">{file}</span>
-                <span className="text-[7.5px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-black uppercase">
-                  {file.split('.').pop()?.toUpperCase()}
-                </span>
-              </div>
-            ))}
+          <div className="space-y-3">
+            <div className="space-y-2">
+              {contract.filesList.map((file, index) => (
+                <div key={index} className="p-2.5 rounded-xl bg-white/3 border border-white/5 flex items-center justify-between text-[9.5px] hover:bg-white/5 duration-100">
+                  <span className="text-slate-300 font-bold truncate max-w-[200px]">{file}</span>
+                  <span className="text-[7.5px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-black uppercase">
+                    {file.split('.').pop()?.toUpperCase()}
+                  </span>
+                </div>
+              ))}
+              {contract.filesList.length === 0 && (
+                <span className="text-[9.5px] text-slate-500 font-bold italic block text-center py-4">Ekli dosya bulunmuyor.</span>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-white/5">
+              <FileUpload
+                bucket="contracts"
+                label="Yeni PDF Sözleşme Yükle"
+                allowedTypes={['application/pdf']}
+                onUploadSuccess={async (url, path, file) => {
+                  const filename = file ? file.name : url.split('/').pop() || 'sozlesme.pdf';
+                  const updatedFiles = [...contract.filesList, filename];
+                  try {
+                    const updated = await contractRepository.update(contract.id, {
+                      filesList: updatedFiles
+                    });
+                    setContract(updated);
+                    await activityLogRepository.log(`Sözleşme dosyası yüklendi: ${filename} (#${contract.contractNo})`, 'contract.file_uploaded');
+                  } catch (e) {
+                    console.error('Failed to update contract files:', e);
+                  }
+                }}
+              />
+            </div>
           </div>
         )}
 

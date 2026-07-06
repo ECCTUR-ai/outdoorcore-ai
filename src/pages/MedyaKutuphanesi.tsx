@@ -23,21 +23,44 @@ import {
   Info
 } from 'lucide-react';
 import { MediaAsset } from '@/data/media';
-import { mediaRepository, companyRepository, campaignRepository } from '@/repositories';
+import { mediaRepository, companyRepository, campaignRepository, spaceRepository, activityLogRepository } from '@/repositories';
 import { EntityLink } from '@/components/design-system/EntityLink';
 import { Badge } from '@/components/design-system/Badge';
 import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
+import { Modal } from '@/components/design-system/Modal';
+import { FileUpload } from '@/components/design-system/FileUpload';
+import { Label, Input, Select, Textarea, FormGroup } from '@/components/design-system/Form';
+import { Notification } from '@/components/design-system/Notification';
 
 export function MedyaKutuphanesi() {
-  const mediaAssets = mediaRepository.getAllSync();
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>(() => mediaRepository.getAllSync());
   const companies = companyRepository.getAllSync();
   const campaigns = campaignRepository.getAllSync();
-  const [selectedAsset, setSelectedAsset] = useState<MediaAsset>(mediaAssets[0]);
+  const spaces = spaceRepository.getAllSync();
+
+  const [selectedAsset, setSelectedAsset] = useState<MediaAsset>(() => mediaAssets[0] as MediaAsset);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>('all');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>('all');
+
+  // Modal open states
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  // Form states
+  const [fileUrl, setFileUrl] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [fileType, setFileType] = useState<'video' | 'image' | 'pdf' | 'document'>('image');
+  const [fileSize, setFileSize] = useState('');
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [selectedCampaignId, setSelectedCampaignId] = useState('');
+  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
+  const [tagsText, setTagsText] = useState('');
+  const [versionValue, setVersionValue] = useState<'v1' | 'v2' | 'v3'>('v1');
+  const [notesValue, setNotesValue] = useState('');
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // KPI calculations
   const totalFiles = mediaAssets.length;
@@ -82,7 +105,75 @@ export function MedyaKutuphanesi() {
     }
   };
 
-  // Find linked objects labels
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fileUrl) {
+      setUploadError('Lütfen bir dosya yükleyin.');
+      return;
+    }
+    if (!fileName.trim()) {
+      setUploadError('Lütfen dosya adını girin.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setUploadError(null);
+
+    try {
+      const createdAsset = await mediaRepository.create({
+        name: fileName,
+        type: fileType,
+        size: fileSize || '0 KB',
+        resolution: '1920x1080',
+        version: versionValue,
+        aiTags: tagsText ? tagsText.split(',').map(t => t.trim()).filter(Boolean) : [],
+        companyId: selectedCompanyId,
+        campaignId: selectedCampaignId,
+        spaceIds: selectedSpaceIds,
+        fileUrl: fileUrl,
+        notes: notesValue
+      });
+
+      await activityLogRepository.log(`Kreatif medya dosyası yüklendi: ${createdAsset.name}`, 'media.uploaded');
+
+      // Refresh list
+      const freshList = mediaRepository.getAllSync();
+      setMediaAssets(freshList);
+      
+      // Auto select newly created asset
+      setSelectedAsset(createdAsset);
+
+      // Reset form
+      setFileUrl('');
+      setFileName('');
+      setFileSize('');
+      setFileType('image');
+      setSelectedCompanyId('');
+      setSelectedCampaignId('');
+      setSelectedSpaceIds([]);
+      setTagsText('');
+      setVersionValue('v1');
+      setNotesValue('');
+      
+      setIsUploadModalOpen(false);
+    } catch (err: any) {
+      setUploadError(err.message || 'Kayıt eklenirken hata oluştu.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const modalFooter = (
+    <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+      <Button variant="outline" size="sm" type="button" className="w-full sm:w-auto" onClick={() => setIsUploadModalOpen(false)} disabled={isSubmitting}>
+        İptal
+      </Button>
+      <Button variant="primary" size="sm" type="submit" form="media-form" className="w-full sm:w-auto" loading={isSubmitting}>
+        Kaydet
+      </Button>
+    </div>
+  );
+
   const getCompanyName = (cid: string) => companies.find(c => c.id === cid)?.name || cid;
   const getCampaignName = (camid: string) => campaigns.find(c => c.id === camid)?.campaignName || camid;
 
@@ -100,7 +191,7 @@ export function MedyaKutuphanesi() {
           <Button variant="outline" size="xs" leftIcon={<FolderOpen size={10} />} onClick={() => alert('Toplu arşiv indiriliyor...')}>
             Paket İndir
           </Button>
-          <Button variant="primary" size="xs" leftIcon={<Upload size={10} />} onClick={() => alert('Yeni kreatif dosya yükleme paneli açıldı.')}>
+          <Button variant="primary" size="xs" leftIcon={<Upload size={10} />} onClick={() => setIsUploadModalOpen(true)}>
             Yeni Medya Yükle
           </Button>
         </div>
@@ -454,6 +545,188 @@ export function MedyaKutuphanesi() {
           </div>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      <Modal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        title="Yeni Medya Kreatifi Yükle"
+        footerActions={modalFooter}
+        size="lg"
+      >
+        <form id="media-form" onSubmit={handleUploadSubmit} className="space-y-4 text-left">
+          {uploadError && (
+            <Notification
+              title="Hata"
+              description={uploadError}
+              type="alert"
+              onClose={() => setUploadError(null)}
+            />
+          )}
+
+          <FormGroup>
+            <FileUpload
+              bucket="media"
+              label="Dosya Seçin *"
+              currentFileUrl={fileUrl}
+              onUploadSuccess={(url, path, file) => {
+                setFileUrl(url);
+                if (file) {
+                  setFileName(file.name);
+                  const sizeMB = file.size / (1024 * 1024);
+                  setFileSize(sizeMB < 0.1 ? `${(file.size / 1024).toFixed(1)} KB` : `${sizeMB.toFixed(1)} MB`);
+                  
+                  if (file.type.startsWith('video/')) {
+                    setFileType('video');
+                  } else if (file.type === 'application/pdf') {
+                    setFileType('pdf');
+                  } else if (file.type.startsWith('image/')) {
+                    setFileType('image');
+                  } else {
+                    setFileType('document');
+                  }
+                }
+              }}
+              onRemove={() => {
+                setFileUrl('');
+                setFileName('');
+                setFileSize('');
+              }}
+            />
+          </FormGroup>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormGroup>
+              <Label htmlFor="media-name">Dosya Adı *</Label>
+              <Input
+                id="media-name"
+                value={fileName}
+                onChange={(e) => setFileName(e.target.value)}
+                placeholder="Dosya adını girin"
+                required
+              />
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="media-type">Tür *</Label>
+              <Select
+                id="media-type"
+                value={fileType}
+                onChange={(e) => setFileType(e.target.value as any)}
+              >
+                <option value="image">Görsel (PNG, JPG, WEBP, SVG)</option>
+                <option value="video">Video (MP4)</option>
+                <option value="pdf">PDF Doküman</option>
+                <option value="document">Diğer Belge</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="media-company">Bağlı Firma</Label>
+              <Select
+                id="media-company"
+                value={selectedCompanyId}
+                onChange={(e) => {
+                  setSelectedCompanyId(e.target.value);
+                  setSelectedCampaignId('');
+                }}
+              >
+                <option value="">Firma Seçin</option>
+                {companies.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="media-campaign">Bağlı Kampanya</Label>
+              <Select
+                id="media-campaign"
+                value={selectedCampaignId}
+                onChange={(e) => setSelectedCampaignId(e.target.value)}
+                disabled={!selectedCompanyId}
+              >
+                <option value="">Kampanya Seçin</option>
+                {campaigns
+                  .filter(c => c.companyId === selectedCompanyId)
+                  .map(c => (
+                    <option key={c.id} value={c.id}>{c.campaignName}</option>
+                  ))}
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="media-version">Versiyon *</Label>
+              <Select
+                id="media-version"
+                value={versionValue}
+                onChange={(e) => setVersionValue(e.target.value as any)}
+              >
+                <option value="v1">v1 (İlk Sürüm)</option>
+                <option value="v2">v2</option>
+                <option value="v3">v3</option>
+              </Select>
+            </FormGroup>
+
+            <FormGroup>
+              <Label htmlFor="media-tags">Etiketler (Virgülle Ayırın)</Label>
+              <Input
+                id="media-tags"
+                value={tagsText}
+                onChange={(e) => setTagsText(e.target.value)}
+                placeholder="Ulaşım, Gökyüzü, Lansman"
+              />
+            </FormGroup>
+          </div>
+
+          <FormGroup>
+            <Label>Bağlı Reklam Alanları</Label>
+            <div className="max-h-32 overflow-y-auto border border-white/10 rounded-2xl p-3 space-y-2 bg-white/2 scrollbar-thin">
+              {spaces.map(s => {
+                const isChecked = selectedSpaceIds.includes(s.id);
+                return (
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-3 p-1.5 rounded-xl hover:bg-white/5 cursor-pointer select-none transition-colors duration-150 text-left text-slate-350"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {
+                        setSelectedSpaceIds(prev => 
+                          isChecked 
+                            ? prev.filter(id => id !== s.id) 
+                            : [...prev, s.id]
+                        );
+                      }}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-700 bg-transparent"
+                    />
+                    <div className="text-[10px]">
+                      <span className="font-extrabold uppercase text-white block">
+                        #{s.code} - {s.name}
+                      </span>
+                      <span className="text-[8px] text-slate-500 block uppercase">
+                        {s.location}
+                      </span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="media-notes">Kreatif Notları</Label>
+            <Textarea
+              id="media-notes"
+              value={notesValue}
+              onChange={(e) => setNotesValue(e.target.value)}
+              placeholder="Kreatif tasarım, revizyon detayları veya konumlandırma notları..."
+              rows={2}
+            />
+          </FormGroup>
+        </form>
+      </Modal>
     </div>
   );
 }

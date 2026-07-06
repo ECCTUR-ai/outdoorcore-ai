@@ -1,13 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Table, TableRow, TableCell } from './Table';
 import { Badge } from './Badge';
 import { FileText, Send } from 'lucide-react';
 import { Button } from './Button';
-import { financeRepository } from '@/repositories';
+import { financeRepository, activityLogRepository } from '@/repositories';
 import { EntityLink } from './EntityLink';
+import { Modal } from './Modal';
+import { FileUpload } from './FileUpload';
 
 export function InvoiceTable() {
-  const financeData = financeRepository.getFinanceDataSync();
+  const [financeData, setFinanceData] = useState(() => financeRepository.getFinanceDataSync());
+  const [activeInvoice, setActiveInvoice] = useState<any | null>(null);
+
   // Flatten all invoices from accounts with company info
   const allInvoices = financeData.accounts.flatMap(account => 
     account.invoices.map(inv => ({
@@ -46,9 +50,24 @@ export function InvoiceTable() {
             </TableCell>
             <TableCell>
               <div className="flex gap-1.5 items-center">
-                <Button variant="outline" size="xs" onClick={() => alert(`${inv.invoiceNo} PDF görüntleniyor...`)}>
-                  PDF
-                </Button>
+                {(inv as any).pdfUrl ? (
+                  <Button variant="outline" size="xs" onClick={() => window.open((inv as any).pdfUrl, '_blank')}>
+                    PDF
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="xs" className="text-amber-500 border-amber-500/30 hover:bg-amber-500/10" onClick={() => setActiveInvoice(inv)}>
+                    PDF Yükle
+                  </Button>
+                )}
+                {(inv as any).pdfUrl && (
+                  <button 
+                    onClick={() => setActiveInvoice(inv)} 
+                    className="p-1 text-slate-405 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer text-[10px]"
+                    title="PDF Güncelle"
+                  >
+                    🔄
+                  </button>
+                )}
                 <Button variant="minimal" size="xs" leftIcon={<Send size={10} />} onClick={() => alert('Fatura maili müşteriye gönderildi.')}>
                   Gönder
                 </Button>
@@ -57,6 +76,50 @@ export function InvoiceTable() {
           </TableRow>
         ))}
       </Table>
+
+      {activeInvoice && (
+        <Modal
+          isOpen={!!activeInvoice}
+          onClose={() => setActiveInvoice(null)}
+          title={`Fatura PDF Yükle: ${activeInvoice.invoiceNo}`}
+          size="md"
+        >
+          <div className="space-y-4 text-left p-1">
+            <p className="text-[11px] text-slate-400 font-semibold leading-relaxed">
+              <strong>{activeInvoice.client}</strong> firmasına ait <strong>{activeInvoice.invoiceNo}</strong> numaralı fatura veya ödeme dekontu belgesini PDF olarak yükleyin.
+            </p>
+            
+            <FileUpload
+              bucket="invoices"
+              label="PDF Belgesi Seçin"
+              allowedTypes={['application/pdf']}
+              currentFileUrl={activeInvoice.pdfUrl}
+              onUploadSuccess={async (url, path, file) => {
+                try {
+                  await financeRepository.updateInvoicePdf(activeInvoice.id, url);
+                  
+                  const fileName = file ? file.name : url.split('/').pop() || 'fatura.pdf';
+                  await activityLogRepository.log(`Fatura PDF belgesi yüklendi: ${fileName} (#${activeInvoice.invoiceNo})`, 'invoice.file_uploaded');
+                  
+                  setFinanceData(financeRepository.getFinanceDataSync());
+                  setActiveInvoice(null);
+                } catch (e) {
+                  console.error('Failed to save invoice PDF:', e);
+                }
+              }}
+              onRemove={async () => {
+                try {
+                  await financeRepository.updateInvoicePdf(activeInvoice.id, '');
+                  setFinanceData(financeRepository.getFinanceDataSync());
+                  setActiveInvoice(null);
+                } catch (e) {
+                  console.error('Failed to clear invoice PDF:', e);
+                }
+              }}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
