@@ -12,7 +12,8 @@ import {
   TrendingUp,
   Percent
 } from 'lucide-react';
-import { offers, Offer } from '@/data/offers';
+import { Offer } from '@/data/offers';
+import { offerRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { OfferPipeline } from '@/components/design-system/OfferPipeline';
@@ -24,6 +25,7 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Teklifler() {
+  const offers = offerRepository.getAllSync();
   const [selectedOfferId, setSelectedOfferId] = useState<string>('OFF-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 

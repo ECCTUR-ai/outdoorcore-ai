@@ -3,10 +3,11 @@ import { useApp } from '@/context/AppContext';
 import { Bell, Mail, ChevronDown, Calendar, Search, Menu } from 'lucide-react';
 import { Avatar } from '../design-system/Avatar';
 import { Badge } from '../design-system/Badge';
-import { notificationsList } from '@/data/notifications';
-import { tasksList } from '@/data/tasks';
+import { notificationRepository, taskRepository } from '@/repositories';
 
 export function Header() {
+  const notificationsList = notificationRepository.getAllSync();
+  const tasksList = taskRepository.getAllSync();
   const { setCommandPaletteOpen, mobileSidebarOpen, setMobileSidebarOpen } = useApp();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 

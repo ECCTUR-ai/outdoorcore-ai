@@ -1,5 +1,6 @@
 import React from 'react';
-import { financeData, UpcomingPayment } from '@/data/finance';
+import { UpcomingPayment } from '@/data/finance';
+import { financeRepository } from '@/repositories';
 import { Badge } from './Badge';
 import { Clock } from 'lucide-react';
 import { EntityLink } from './EntityLink';
@@ -24,6 +25,7 @@ function UpcomingPaymentsRowLogo({ item }: { item: UpcomingPayment }) {
 }
 
 export function UpcomingPayments() {
+  const financeData = financeRepository.getFinanceDataSync();
   const items = financeData.upcomingPayments;
 
   return (

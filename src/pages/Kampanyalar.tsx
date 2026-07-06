@@ -15,7 +15,8 @@ import {
   Percent,
   Tv
 } from 'lucide-react';
-import { campaigns, Campaign } from '@/data/campaigns';
+import { Campaign } from '@/data/campaigns';
+import { campaignRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { CampaignCard } from '@/components/design-system/CampaignCard';
@@ -29,6 +30,7 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Kampanyalar() {
+  const campaigns = campaignRepository.getAllSync();
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('CAM-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 

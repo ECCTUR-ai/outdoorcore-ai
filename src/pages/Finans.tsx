@@ -18,7 +18,8 @@ import {
   Layers,
   FileSignature
 } from 'lucide-react';
-import { financeData, FinancialAccount } from '@/data/finance';
+import { FinancialAccount } from '@/data/finance';
+import { financeRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { FinanceSummaryCard } from '@/components/design-system/FinanceSummaryCard';
 import { CashFlowChart } from '@/components/design-system/CashFlowChart';
@@ -37,6 +38,7 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Finans() {
+  const financeData = financeRepository.getFinanceDataSync();
   const [selectedAccountId, setSelectedAccountId] = useState<string>('CMP-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 

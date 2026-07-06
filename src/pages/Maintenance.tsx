@@ -16,14 +16,16 @@ import {
   Sparkles,
   Zap
 } from 'lucide-react';
-import { maintenanceTasks, maintenanceKpis, MaintenanceTask } from '@/data/maintenance';
-import { advertisingSpaces } from '@/data/advertisingSpaces';
+import { maintenanceKpis, MaintenanceTask } from '@/data/maintenance';
+import { maintenanceRepository, spaceRepository } from '@/repositories';
 import { EntityLink } from '@/components/design-system/EntityLink';
 import { Badge } from '@/components/design-system/Badge';
 import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
 
 export function Maintenance() {
+  const maintenanceTasks = maintenanceRepository.getAllSync();
+  const advertisingSpaces = spaceRepository.getAllSync();
   const [selectedTask, setSelectedTask] = useState<MaintenanceTask>(maintenanceTasks[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [terminalFilter, setTerminalFilter] = useState('all');

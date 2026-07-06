@@ -1,5 +1,6 @@
 import React from 'react';
-import { tasksList, TaskItem } from '@/data/tasks';
+import { TaskItem } from '@/data/tasks';
+import { taskRepository } from '@/repositories';
 import { Badge } from './Badge';
 import { Sparkles, Calendar, CheckSquare } from 'lucide-react';
 import { EntityLink } from './EntityLink';
@@ -28,6 +29,7 @@ function TaskRowLogo({ task }: TaskRowLogoProps) {
 }
 
 export function TaskKanban() {
+  const tasksList = taskRepository.getAllSync();
   const columns: Array<TaskItem['status']> = ['Yapılacak', 'Devam Ediyor', 'Bekliyor', 'Tamamlandı'];
 
   return (

@@ -12,7 +12,8 @@ import {
   CalendarDays,
   FileSignature
 } from 'lucide-react';
-import { companies, Company } from '@/data/companies';
+import { Company } from '@/data/companies';
+import { companyRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { CompanyCard } from '@/components/design-system/CompanyCard';
@@ -22,6 +23,7 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function FirmalarMarkalar() {
+  const companies = companyRepository.getAllSync();
   const [selectedId, setSelectedId] = useState<string>('CMP-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 

@@ -1,8 +1,9 @@
 import React from 'react';
-import { financeData } from '@/data/finance';
+import { financeRepository } from '@/repositories';
 import { Activity, Clock } from 'lucide-react';
 
 export function FinanceActivityFeed() {
+  const financeData = financeRepository.getFinanceDataSync();
   const activities = financeData.activities;
 
   return (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { notificationsList } from '@/data/notifications';
+import { notificationRepository } from '@/repositories';
 import { 
   FileText, 
   FileSignature, 
@@ -15,6 +15,7 @@ import {
 import { EntityLink } from './EntityLink';
 
 export function NotificationTimeline() {
+  const notificationsList = notificationRepository.getAllSync();
   const getIcon = (category: string) => {
     switch (category) {
       case 'Teklif': return <FileText size={12} className="text-amber-400" />;

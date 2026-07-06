@@ -3,10 +3,11 @@ import { Table, TableRow, TableCell } from './Table';
 import { Badge } from './Badge';
 import { FileText, Send } from 'lucide-react';
 import { Button } from './Button';
-import { financeData } from '@/data/finance';
+import { financeRepository } from '@/repositories';
 import { EntityLink } from './EntityLink';
 
 export function InvoiceTable() {
+  const financeData = financeRepository.getFinanceDataSync();
   // Flatten all invoices from accounts with company info
   const allInvoices = financeData.accounts.flatMap(account => 
     account.invoices.map(inv => ({

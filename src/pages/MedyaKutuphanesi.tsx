@@ -22,15 +22,17 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
-import { mediaAssets, MediaAsset } from '@/data/media';
-import { companies } from '@/data/companies';
-import { campaigns } from '@/data/campaigns';
+import { MediaAsset } from '@/data/media';
+import { mediaRepository, companyRepository, campaignRepository } from '@/repositories';
 import { EntityLink } from '@/components/design-system/EntityLink';
 import { Badge } from '@/components/design-system/Badge';
 import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
 
 export function MedyaKutuphanesi() {
+  const mediaAssets = mediaRepository.getAllSync();
+  const companies = companyRepository.getAllSync();
+  const campaigns = campaignRepository.getAllSync();
   const [selectedAsset, setSelectedAsset] = useState<MediaAsset>(mediaAssets[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');

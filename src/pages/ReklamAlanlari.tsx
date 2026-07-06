@@ -14,7 +14,8 @@ import {
   ChevronRight,
   Eye
 } from 'lucide-react';
-import { advertisingSpaces, AdvertisingSpace } from '@/data/advertisingSpaces';
+import { AdvertisingSpace } from '@/data/advertisingSpaces';
+import { spaceRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { AdvertisingSpaceMap } from '@/components/design-system/AdvertisingSpaceMap';
@@ -26,6 +27,7 @@ import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
 
 export function ReklamAlanlari() {
+  const advertisingSpaces = spaceRepository.getAllSync();
   const [selectedCode, setSelectedCode] = useState<string>('SG-001');
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalFilter, setTerminalFilter] = useState('');

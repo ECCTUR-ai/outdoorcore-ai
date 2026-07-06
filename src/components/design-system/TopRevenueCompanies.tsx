@@ -1,5 +1,6 @@
 import React from 'react';
-import { financeData, FinancialAccount } from '@/data/finance';
+import { FinancialAccount } from '@/data/finance';
+import { financeRepository } from '@/repositories';
 import { Award } from 'lucide-react';
 import { EntityLink } from './EntityLink';
 
@@ -23,6 +24,7 @@ function TopRevenueRowLogo({ item }: { item: FinancialAccount }) {
 }
 
 export function TopRevenueCompanies() {
+  const financeData = financeRepository.getFinanceDataSync();
   const items = financeData.accounts;
 
   return (

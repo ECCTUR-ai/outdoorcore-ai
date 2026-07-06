@@ -17,13 +17,14 @@ import {
   Maximize2
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
-import { financeData } from '@/data/finance';
 import { reportsData } from '@/data/reports';
-import { tasksList } from '@/data/tasks';
+import { financeRepository, taskRepository } from '@/repositories';
 import { EntityLink } from '@/components/design-system/EntityLink';
 import { Badge } from '@/components/design-system/Badge';
 
 export function ExecutiveDashboard() {
+  const financeData = financeRepository.getFinanceDataSync();
+  const tasksList = taskRepository.getAllSync();
   const { setCurrentRoute } = useApp();
 
   const handleQuickAction = (route: string, param?: string) => {

@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Clock
 } from 'lucide-react';
-import { contracts, Contract } from '@/data/contracts';
+import { Contract } from '@/data/contracts';
+import { contractRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { ContractCard } from '@/components/design-system/ContractCard';
@@ -26,6 +27,7 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Sozlesmeler() {
+  const contracts = contractRepository.getAllSync();
   const [selectedContractId, setSelectedContractId] = useState<string>('CON-0001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 

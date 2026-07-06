@@ -14,7 +14,8 @@ import {
   FileSignature,
   Clock
 } from 'lucide-react';
-import { reservations, conflicts, Reservation } from '@/data/reservations';
+import { Reservation } from '@/data/reservations';
+import { reservationRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { ReservationTimeline } from '@/components/design-system/ReservationTimeline';
@@ -26,6 +27,8 @@ import { AiInsightDrawer } from '@/components/design-system/AiInsightDrawer';
 import { Button } from '@/components/design-system/Button';
 
 export function Rezervasyonlar() {
+  const reservations = reservationRepository.getAllSync();
+  const conflicts = reservationRepository.getConflictsSync();
   const [selectedSpaceCode, setSelectedSpaceCode] = useState<string>('SG-001');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 

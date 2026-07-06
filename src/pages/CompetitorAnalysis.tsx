@@ -16,11 +16,14 @@ import {
   Award,
   BookOpen
 } from 'lucide-react';
-import { competitorsList, competitorKpis, Competitor } from '@/data/competitors';
+import { Competitor } from '@/data/competitors';
+import { competitorRepository } from '@/repositories';
 import { Badge } from '@/components/design-system/Badge';
 import { Button } from '@/components/design-system/Button';
 
 export function CompetitorAnalysis() {
+  const competitorsList = competitorRepository.getAllSync();
+  const competitorKpis = competitorRepository.getKpisSync();
   const [selectedCompetitor, setSelectedCompetitor] = useState<Competitor>(competitorsList[0]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegion, setSelectedRegion] = useState('all');
