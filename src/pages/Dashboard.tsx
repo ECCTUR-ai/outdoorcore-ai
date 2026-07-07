@@ -24,6 +24,8 @@ import { TerminalMapMock } from '@/components/design-system/TerminalMapMock';
 import { Badge } from '@/components/design-system/Badge';
 import { Button } from '@/components/design-system/Button';
 import { Table, TableRow, TableCell } from '@/components/design-system/Table';
+import { Notification } from '@/components/design-system/Notification';
+import { TableSkeleton, CardSkeleton } from '@/components/design-system/Skeleton';
 import { 
   ResponsiveContainer, 
   PieChart, 
@@ -61,63 +63,149 @@ export function Dashboard() {
   const [bakimCount, setBakimCount] = useState(0);
   
   const [recentCampaignsList, setRecentCampaignsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasNoGlobalData, setHasNoGlobalData] = useState(false);
+  const [pipelineSteps, setPipelineSteps] = useState<any[]>([]);
+
+  // Default Date range: 01 Mayıs 2025 - 31 Mayıs 2025
+  const [dateRange, setDateRange] = useState({
+    start: '2025-05-01',
+    end: '2025-05-31'
+  });
 
   useEffect(() => {
-    const spaces = spaceRepository.getAllSync();
-    const offers = offerRepository.getAllSync();
-    const reservations = reservationRepository.getAllSync();
-    const campaigns = campaignRepository.getAllSync();
-    const finance = financeRepository.getFinanceDataSync();
-    
-    setSpacesCount(spaces.length);
-    const dolu = spaces.filter(s => s.status === 'dolu' || (s.status as string) === 'rezerve').length;
-    const bos = spaces.filter(s => s.status === 'bos').length;
-    const teklifStage = spaces.filter(s => s.status === 'teklif').length;
-    const bakim = spaces.filter(s => s.status === 'bakim').length;
-    
-    setDoluCount(dolu);
-    setBosCount(bos);
-    setTeklifCount(teklifStage);
-    setBakimCount(bakim);
-    
-    setOffersCount(offers.length);
-    
-    const activeRes = reservations.filter(r => r.status === 'Aktif' || (r.status as string) === 'Kesin Rezervasyon').length;
-    setReservationsCount(activeRes);
-    
-    const activeCamp = campaigns.filter(c => c.status === 'Aktif').length;
-    setCampaignsCount(activeCamp);
-    
-    // Calculate pending collections (balance of accounts)
-    let totalPending = 0;
-    if (finance && finance.accounts) {
-      finance.accounts.forEach((acc: any) => {
-        const val = parseFloat(acc.balance.replace(/[^\d]/g, '')) || 0;
-        totalPending += val;
-      });
-    }
-    setPendingCollections(totalPending);
-    
-    const rate = spaces.length > 0 ? (dolu / spaces.length) * 100 : 0;
-    setOccupancyRate(rate);
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [spaces, offers, reservations, campaigns, finance] = await Promise.all([
+          spaceRepository.list(),
+          offerRepository.list(),
+          reservationRepository.getAll(),
+          campaignRepository.getAll(),
+          financeRepository.getFinanceData()
+        ]);
 
-    // Map active campaigns for table view
-    const mappedCampTable = campaigns.map(c => {
-      const relatedSpace = spaces.find(s => s.id === (c.spaceIds && c.spaceIds[0]));
-      return {
-        code: relatedSpace?.code || 'SPC-001',
-        name: relatedSpace?.name || 'Giriş LED Ekran',
-        brand: c.clientName,
-        startDate: c.startDate,
-        endDate: c.endDate,
-        status: c.status,
-        progress: c.status === 'Aktif' ? 100 : 0
-      };
-    });
-    setRecentCampaignsList(mappedCampTable);
-  }, []);
+        const noData = offers.length === 0 && reservations.length === 0 && campaigns.length === 0;
+        setHasNoGlobalData(noData);
 
-  // Pie chart space status mappings
+        const datesOverlap = (startA: string, endA: string, startB: string, endB: string) => {
+          return startA <= endB && endA >= startB;
+        };
+
+        const filteredOffers = offers.filter((o: any) => {
+          const date = o.campaignStartDate || o.closingDate || o.created_at || '';
+          const dateStr = date.substring(0, 10);
+          return dateStr >= dateRange.start && dateStr <= dateRange.end;
+        });
+
+        const filteredReservations = reservations.filter((r: any) => {
+          const rStart = r.startDate || r.start_date || '';
+          const rEnd = r.endDate || r.end_date || '';
+          return datesOverlap(rStart.substring(0, 10), rEnd.substring(0, 10), dateRange.start, dateRange.end);
+        });
+
+        const filteredCampaigns = campaigns.filter((c: any) => {
+          const cStart = c.startDate || c.start_date || '';
+          const cEnd = c.endDate || c.end_date || '';
+          return datesOverlap(cStart.substring(0, 10), cEnd.substring(0, 10), dateRange.start, dateRange.end);
+        });
+
+        let totalPending = 0;
+        let paymentsCount = 0;
+        if (finance && finance.accounts) {
+          finance.accounts.forEach((acc: any) => {
+            const inRangeInvoices = (acc.invoices || []).filter((inv: any) => {
+              const invDate = inv.date || '';
+              let dateStr = invDate;
+              if (invDate.includes('.')) {
+                const parts = invDate.split('.');
+                dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+              }
+              return dateStr >= dateRange.start && dateStr <= dateRange.end;
+            });
+            
+            inRangeInvoices.forEach((inv: any) => {
+              if (inv.status !== 'Ödendi') {
+                const val = parseFloat((inv.amount || '0').replace(/[^0-9]/g, '')) || 0;
+                totalPending += val;
+                paymentsCount++;
+              }
+            });
+          });
+        }
+
+        const totalSpacesCount = spaces.length;
+        const occupiedSpaceIds = new Set<string>();
+        filteredReservations.forEach((r: any) => {
+          if (r.spaceId) {
+            occupiedSpaceIds.add(r.spaceId);
+          }
+        });
+        
+        const doluSpacesCount = occupiedSpaceIds.size;
+        const bosSpacesCount = Math.max(0, totalSpacesCount - doluSpacesCount);
+        const rate = totalSpacesCount > 0 ? (doluSpacesCount / totalSpacesCount) * 100 : 0;
+
+        setSpacesCount(totalSpacesCount);
+        setDoluCount(doluSpacesCount);
+        setBosCount(bosSpacesCount);
+        setTeklifCount(filteredOffers.length);
+        setBakimCount(spaces.filter((s: any) => s.status === 'bakim').length);
+
+        setOffersCount(filteredOffers.length);
+        setReservationsCount(filteredReservations.length);
+        setCampaignsCount(filteredCampaigns.length);
+        setPendingCollections(totalPending);
+        setOccupancyRate(rate);
+
+        const mappedCampTable = filteredCampaigns.map((c: any) => {
+          const relatedSpace = spaces.find((s: any) => s.id === (c.spaceIds && c.spaceIds[0]));
+          return {
+            code: relatedSpace?.code || 'SPC-001',
+            name: relatedSpace?.name || 'Giriş LED Ekran',
+            brand: c.clientName,
+            startDate: c.startDate,
+            endDate: c.endDate,
+            status: c.status,
+            progress: c.status === 'Aktif' ? 100 : 0
+          };
+        });
+        setRecentCampaignsList(mappedCampTable);
+
+        const steps = [
+          { name: 'Hazırlandı', count: filteredOffers.filter((o: any) => o.stage === 'Teklif Hazırlandı').length, budget: `₺ ${(filteredOffers.filter((o: any) => o.stage === 'Teklif Hazırlandı').reduce((sum: number, o: any) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
+          { name: 'Onaya Gönderildi', count: filteredOffers.filter((o: any) => o.stage === 'Onaya Gönderildi').length, budget: `₺ ${(filteredOffers.filter((o: any) => o.stage === 'Onaya Gönderildi').reduce((sum: number, o: any) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
+          { name: 'Sözleşme Bekliyor', count: filteredOffers.filter((o: any) => o.stage === 'Sözleşme Bekliyor').length, budget: `₺ ${(filteredOffers.filter((o: any) => o.stage === 'Sözleşme Bekliyor').reduce((sum: number, o: any) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
+          { name: 'Sözleşme İmzalandı', count: filteredOffers.filter((o: any) => o.stage === 'Sözleşme İmzalandı').length, budget: `₺ ${(filteredOffers.filter((o: any) => o.stage === 'Sözleşme İmzalandı').reduce((sum: number, o: any) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` }
+        ];
+        setPipelineSteps(steps);
+
+        console.log("DEBUG DASHBOARD METRICS:", {
+          dateRange,
+          loadedOffersCount: offers.length,
+          loadedReservationsCount: reservations.length,
+          loadedCampaignsCount: campaigns.length,
+          loadedPaymentsCount: paymentsCount,
+          calculatedDashboardSummary: {
+            filteredOffers: filteredOffers.length,
+            filteredReservations: filteredReservations.length,
+            filteredCampaigns: filteredCampaigns.length,
+            pendingCollections: totalPending,
+            occupancyRate: rate,
+            emptySpaces: bosSpacesCount
+          }
+        });
+
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [dateRange]);
+
   const spaceStatusData = [
     { name: 'Dolu', value: doluCount, color: '#10b981' },
     { name: 'Boş', value: bosCount, color: '#f59e0b' },
@@ -125,29 +213,62 @@ export function Dashboard() {
     { name: 'Bakımda', value: bakimCount, color: '#ef4444' }
   ];
 
-  // Gelir Dağılımı Alan Tipi
   const spaceTypeRevenueData = [
     { name: 'LED Ekran', value: doluCount > 0 ? 70 : 0, color: '#3b82f6' },
     { name: 'Lightbox', value: doluCount > 0 ? 30 : 0, color: '#8b5cf6' }
   ];
 
-  // Pipeline steps summary
-  const offersList = offerRepository.getAllSync();
-  const pipelineSteps = [
-    { name: 'Hazırlandı', count: offersList.filter(o => o.stage === 'Teklif Hazırlandı').length, budget: `₺${(offersList.filter(o => o.stage === 'Teklif Hazırlandı').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
-    { name: 'Onaya Gönderildi', count: offersList.filter(o => o.stage === 'Onaya Gönderildi').length, budget: `₺${(offersList.filter(o => o.stage === 'Onaya Gönderildi').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
-    { name: 'Sözleşme Bekliyor', count: offersList.filter(o => o.stage === 'Sözleşme Bekliyor').length, budget: `₺${(offersList.filter(o => o.stage === 'Sözleşme Bekliyor').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
-    { name: 'Sözleşme İmzalandı', count: offersList.filter(o => o.stage === 'Sözleşme İmzalandı').length, budget: `₺${(offersList.filter(o => o.stage === 'Sözleşme İmzalandı').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` }
-  ];
+  const hasNoDataInRange = 
+    offersCount === 0 && 
+    reservationsCount === 0 && 
+    campaignsCount === 0 && 
+    pendingCollections === 0;
 
   return (
     <div className="space-y-6 select-none pb-12 text-left">
+      {/* Top Header Section with Date Filters */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm text-left">
+        <div className="space-y-1">
+          <h2 className="text-sm font-black text-white uppercase tracking-widest leading-none">PERFORMANS DASHBOARD</h2>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Seçili tarih aralığına göre teklifler, rezervasyonlar, kampanyalar ve doluluk oranları analitiği.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto bg-[#12192B]/80 p-2.5 rounded-2xl border border-white/5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Başlangıç:</span>
+            <input 
+              type="date" 
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="bg-white/5 border border-white/5 rounded-xl px-2.5 py-1 text-[10px] font-bold text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Bitiş:</span>
+            <input 
+              type="date" 
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="bg-white/5 border border-white/5 rounded-xl px-2.5 py-1 text-[10px] font-bold text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {!loading && !hasNoGlobalData && hasNoDataInRange && (
+        <Notification
+          title="Seçili Tarih Aralığında Veri Yok"
+          description="Seçtiğiniz tarih aralığına (Mayıs 2025 veya diğer) ait herhangi bir teklif, rezervasyon, kampanya ya da finansal tahsilat kaydı bulunamadı."
+          type="alert"
+          onClose={() => {}}
+        />
+      )}
+
       {/* 6 KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Teklif"
-          value={String(offersCount)}
-          percentage="Canlı Veri"
+          value={loading ? '...' : String(offersCount)}
+          percentage="Seçili Dönem"
           subtext="Oluşturulan teklifler"
           icon={<FileText size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
@@ -155,25 +276,25 @@ export function Dashboard() {
         />
         <DarkKpiCard
           title="Aktif Rezervasyon"
-          value={String(reservationsCount)}
-          percentage="Kesinleşen"
+          value={loading ? '...' : String(reservationsCount)}
+          percentage="Seçili Dönem"
           subtext="Aktif rezervasyonlar"
           icon={<Bookmark size={15} />}
-          iconBgColor="bg-emerald-500/10 text-emerald-400 border-emerald-500/10"
+          iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"
           glowColor="green"
         />
         <DarkKpiCard
           title="Aktif Kampanya"
-          value={String(campaignsCount)}
+          value={loading ? '...' : String(campaignsCount)}
           percentage="Yayında"
           subtext="Yayındaki kampanyalar"
           icon={<CheckCheck size={15} />}
-          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
+          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-400/10"
           glowColor="purple"
         />
         <DarkKpiCard
           title="Tahsilat Bekleyen"
-          value={`₺ ${pendingCollections.toLocaleString('tr-TR')}`}
+          value={loading ? '...' : `₺ ${pendingCollections.toLocaleString('tr-TR')}`}
           percentage="Finans"
           subtext="Bekleyen ödemeler"
           icon={<Coins size={15} />}
@@ -182,7 +303,7 @@ export function Dashboard() {
         />
         <DarkKpiCard
           title="Doluluk Oranı"
-          value={`% ${occupancyRate.toFixed(1)}`}
+          value={loading ? '...' : `% ${occupancyRate.toFixed(1)}`}
           percentage="Oran"
           subtext="Dolu / Toplam alan"
           icon={<TrendingUp size={15} />}
@@ -191,7 +312,7 @@ export function Dashboard() {
         />
         <DarkKpiCard
           title="Boş Reklam Alanı"
-          value={String(bosCount)}
+          value={loading ? '...' : String(bosCount)}
           percentage="Müsait"
           subtext="Kiralanabilir alanlar"
           icon={<Circle size={15} />}
@@ -200,7 +321,13 @@ export function Dashboard() {
         />
       </div>
 
-      {offersCount === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+      ) : hasNoGlobalData ? (
         <div className="p-12 text-center rounded-[20px] bg-[#12192B] border border-white/5 space-y-6 max-w-2xl mx-auto mt-12 shadow-[0_20px_60px_rgba(0,0,0,.45)]">
           <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto text-blue-400">
             <Layers size={24} className="animate-pulse" />

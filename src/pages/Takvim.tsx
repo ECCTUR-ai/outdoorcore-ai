@@ -26,7 +26,9 @@ import {
   User,
   ShieldAlert,
   ChevronDown,
-  Building2
+  Building2,
+  Tv,
+  Percent
 } from 'lucide-react';
 import { CalendarEvent } from '@/types/calendar';
 import { calendarService } from '@/services/calendarService';
@@ -129,6 +131,10 @@ interface PlanningFilterCardProps {
   setFilterPriority: (val: string) => void;
   filterStatus: string;
   setFilterStatus: (val: string) => void;
+  searchQuery: string;
+  setSearchQuery: (val: string) => void;
+  filterNetwork: string;
+  setFilterNetwork: (val: string) => void;
   companiesList: any[];
   spacesList: any[];
   onReset: () => void;
@@ -146,6 +152,10 @@ export function PlanningFilterCard({
   setFilterPriority,
   filterStatus,
   setFilterStatus,
+  searchQuery,
+  setSearchQuery,
+  filterNetwork,
+  setFilterNetwork,
   companiesList,
   spacesList,
   onReset,
@@ -190,6 +200,12 @@ export function PlanningFilterCard({
     { value: 'çakışma', label: 'Çakışma / Riskli' }
   ];
 
+  const networkOptions = [
+    { value: '', label: 'Tümü' },
+    { value: 'Sabiha Gökçen Havalimanı', label: 'Sabiha Gökçen' },
+    { value: 'İstanbul Outdoor Network', label: 'İstanbul Outdoor Network' }
+  ];
+
   return (
     <div className="p-5 rounded-[20px] bg-[#12192B] border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,.45)] text-left space-y-4 select-none">
       <div className="flex justify-between items-center pb-3 border-b border-white/5">
@@ -206,6 +222,26 @@ export function PlanningFilterCard({
       </div>
 
       <div className="space-y-3.5">
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Arama</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Alan adı veya kod ara..."
+            className="w-full px-3.5 py-2.5 rounded-[14px] bg-[#182238] border border-white/5 text-white text-[11px] font-bold placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-all duration-200"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Network</span>
+          <CustomSelect 
+            value={filterNetwork} 
+            onChange={setFilterNetwork} 
+            options={networkOptions} 
+            leftIcon={<Layers size={13} />}
+          />
+        </div>
         <div className="space-y-1.5">
           <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Plan Türü</span>
           <CustomSelect 
@@ -516,6 +552,8 @@ export function Takvim() {
   const [filterSpace, setFilterSpace] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterNetwork, setFilterNetwork] = useState<string>('');
 
   // Fetch reference lists for filters and dropdowns
   const companiesList = companyRepository.getAllSync();
@@ -543,6 +581,19 @@ export function Takvim() {
     loadEvents();
   }, []);
 
+  // Filtered spaces list for occupancy matrix rows
+  const filteredSpaces = spacesList.filter(s => {
+    const matchesSearch = !searchQuery || 
+      s.code.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      s.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesNetwork = !filterNetwork || s.networkName === filterNetwork;
+    const matchesSpace = !filterSpace || s.id === filterSpace;
+    const matchesCompany = !filterCompany || s.companyId === filterCompany;
+    const matchesStatus = !filterStatus || s.status === filterStatus;
+    
+    return matchesSearch && matchesNetwork && matchesSpace && matchesCompany && matchesStatus;
+  });
+
   // Filter logic
   const filteredEvents = events.filter(e => {
     const matchesType = !filterType || e.type === filterType;
@@ -550,7 +601,20 @@ export function Takvim() {
     const matchesSpace = !filterSpace || e.spaceIds?.includes(filterSpace);
     const matchesPriority = !filterPriority || e.priority === filterPriority;
     const matchesStatus = !filterStatus || e.status.toLowerCase().includes(filterStatus.toLowerCase());
-    return matchesType && matchesCompany && matchesSpace && matchesPriority && matchesStatus;
+    
+    const matchesSearch = !searchQuery || 
+      e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (e.description && e.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+    let matchesNetwork = true;
+    if (filterNetwork && e.spaceIds && e.spaceIds.length > 0) {
+      matchesNetwork = e.spaceIds.some(sid => {
+        const sp = spacesList.find(s => s.id === sid);
+        return sp && sp.networkName === filterNetwork;
+      });
+    }
+    
+    return matchesType && matchesCompany && matchesSpace && matchesPriority && matchesStatus && matchesSearch && matchesNetwork;
   });
 
   // Selected event lookup
@@ -1171,6 +1235,29 @@ export function Takvim() {
     alert(`[Notification Engine] "${ev.title}" planı hakkında anlık bildirim tüm ilgili departmanlara gönderildi.`);
   };
 
+  // Dynamic KPIs calculations from spacesList
+  const totalSpacesCount = spacesList.length;
+  const bosSpacesCount = spacesList.filter(s => s.status === 'bos').length;
+  const opsiyonSpacesCount = spacesList.filter(s => s.status === 'teklif').length;
+  const rezerveSpacesCount = spacesList.filter(s => (s.status as string) === 'dolu' || (s.status as string) === 'rezerve').length;
+  
+  const totalOccupied = totalSpacesCount - bosSpacesCount;
+  const occupancyRate = totalSpacesCount > 0 ? (totalOccupied / totalSpacesCount) * 100 : 0;
+  
+  const monthlyRevenue = spacesList
+    .filter(s => (s.status as string) === 'dolu' || (s.status as string) === 'rezerve')
+    .reduce((sum, s) => {
+      const num = parseFloat((s.price || '0').replace(/[^0-9]/g, '')) || 0;
+      return sum + num;
+    }, 0);
+
+  const formatCurrency = (val: number) => {
+    if (val === 0) return '₺0';
+    if (val >= 1000000) return `₺ ${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `₺ ${(val / 1000).toFixed(0)}K`;
+    return `₺ ${val.toLocaleString('tr-TR')}`;
+  };
+
   return (
     <div className="space-y-6 pb-12 select-none bg-[#0B1020] p-6 rounded-[20px] border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,.45)]">
       {/* Top Header Section */}
@@ -1247,66 +1334,75 @@ export function Takvim() {
       )}
 
       {/* Upper KPI grid panels */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
         <DarkKpiCard
-          title="Bugünkü Plan"
-          value={String(events.filter(e => e.start === '2025-06-15').length)}
-          percentage="AKTİF"
-          subtext="Bugünkü işler"
-          icon={<CalendarIcon size={15} />}
+          title="Toplam Alan"
+          value={String(totalSpacesCount)}
+          percentage="100%"
+          subtext="Envanter büyüklüğü"
+          icon={<Layers size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border border-blue-500/10"
         />
         <DarkKpiCard
-          title="Bu Hafta Rezervasyon"
-          value={String(events.filter(e => e.type === 'reservation').length)}
-          percentage={`${events.filter(e => e.type === 'reservation' && e.status === 'Çakışma Riski').length} Çakışma`}
-          subtext="Kiralamalar"
-          icon={<CheckSquare size={15} />}
-          iconBgColor="bg-emerald-500/10 text-emerald-400 border border-emerald-500/10"
-          glowColor="green"
-        />
-        <DarkKpiCard
-          title="Aktif Kampanya"
-          value={String(events.filter(e => e.type === 'campaign' && e.status === 'Aktif').length)}
-          percentage="YAYINDA"
-          subtext="Görsel gösterimler"
-          icon={<Layers size={15} />}
-          iconBgColor="bg-indigo-500/10 text-indigo-400 border border-indigo-500/10"
+          title="Müsait Alan"
+          value={String(bosSpacesCount)}
+          percentage="BOŞ"
+          subtext="Kiralama bekleyen"
+          icon={<CalendarIcon size={15} />}
+          iconBgColor="bg-sky-500/10 text-sky-400 border border-sky-500/10"
           glowColor="blue"
         />
         <DarkKpiCard
-          title="Yaklaşan Sözleşme"
-          value={String(events.filter(e => e.type === 'contract_expiry').length)}
-          percentage="30 GÜN"
-          subtext="Yenileme süreçleri"
-          icon={<FileSignature size={15} />}
-          iconBgColor="bg-purple-500/10 text-purple-400 border border-purple-500/10"
-          glowColor="purple"
-        />
-        <DarkKpiCard
-          title="Vadesi Yaklaşan"
-          value={String(events.filter(e => e.type === 'invoice_due' && e.status === 'Bekliyor').length)}
-          percentage="GEÇİKMİŞ"
-          subtext="Fatura tahsilatları"
-          icon={<Coins size={15} />}
-          iconBgColor="bg-teal-500/10 text-teal-400 border border-teal-500/10"
+          title="Opsiyon Alan"
+          value={String(opsiyonSpacesCount)}
+          percentage="TEKLİF"
+          subtext="Rezerve edilmemiş"
+          icon={<Clock size={15} />}
+          iconBgColor="bg-amber-500/10 text-amber-400 border border-amber-500/10"
           glowColor="yellow"
         />
         <DarkKpiCard
-          title="Kritik Görev"
-          value={String(events.filter(e => e.priority === 'critical').length)}
-          percentage="HEMEN"
-          subtext="Yüksek öncelikliler"
-          icon={<Wrench size={15} />}
+          title="Rezerve Alan"
+          value={String(rezerveSpacesCount)}
+          percentage="SATIŞLI"
+          subtext="Sözleşmesi imzalı"
+          icon={<CheckSquare size={15} />}
           iconBgColor="bg-rose-500/10 text-rose-455 border border-rose-500/10"
           glowColor="red"
+        />
+        <DarkKpiCard
+          title="Yayında Alan"
+          value={String(spacesList.filter(s => s.status === 'dolu').length)}
+          percentage="CANLI"
+          subtext="Aktif gösterimler"
+          icon={<Tv size={15} />}
+          iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"
+          glowColor="green"
+        />
+        <DarkKpiCard
+          title="Doluluk Oranı"
+          value={`% ${occupancyRate.toFixed(1)}`}
+          percentage="ORAN"
+          subtext="Güncel doluluk"
+          icon={<SlidersHorizontal size={15} />}
+          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
+          glowColor="purple"
+        />
+        <DarkKpiCard
+          title="Bu Ay Gelir"
+          value={formatCurrency(monthlyRevenue)}
+          percentage="TAHMİNİ"
+          subtext="Aylık kiralama geliri"
+          icon={<Coins size={15} />}
+          iconBgColor="bg-teal-500/10 text-teal-400 border-teal-500/10"
+          glowColor="yellow"
         />
       </div>
 
       {/* Main splits: Left Filters + Center Calendar + Right Detail & AI recommendations */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Filter Options Panel */}
-        <div className="order-2 lg:order-none lg:col-span-3">
+        <div className="order-2 lg:order-none lg:col-span-2">
           <PlanningFilterCard
             filterType={filterType}
             setFilterType={setFilterType}
@@ -1318,6 +1414,10 @@ export function Takvim() {
             setFilterPriority={setFilterPriority}
             filterStatus={filterStatus}
             setFilterStatus={setFilterStatus}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            filterNetwork={filterNetwork}
+            setFilterNetwork={setFilterNetwork}
             companiesList={companiesList}
             spacesList={spacesList}
             onReset={() => {
@@ -1326,6 +1426,8 @@ export function Takvim() {
               setFilterSpace('');
               setFilterPriority('');
               setFilterStatus('');
+              setSearchQuery('');
+              setFilterNetwork('');
             }}
             filteredCount={filteredEvents.length}
           />
