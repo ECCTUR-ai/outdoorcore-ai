@@ -391,6 +391,7 @@ export function ReklamAlanlari() {
           <AdvertisingSpaceMap 
             selectedCode={selectedCode}
             onSelectCode={(code) => setSelectedCode(code)}
+            spaces={filteredSpaces}
           />
         </DarkDashboardCard>
       </div>
