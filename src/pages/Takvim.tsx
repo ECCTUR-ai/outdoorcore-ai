@@ -80,6 +80,7 @@ export function Takvim() {
   const [reservationType, setReservationType] = useState<'static' | 'led'>('static');
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submittingLed, setSubmittingLed] = useState(false);
 
   // Filter states
   const [filterType, setFilterType] = useState<string>('');
@@ -1268,17 +1269,17 @@ export function Takvim() {
             <div className="flex gap-2">
               <Button variant="outline" size="sm" type="button" onClick={() => setCreateModalOpen(false)}>İptal</Button>
               <Button
-                type="submit"
-                form="led-reservation-form"
+                type="button"
                 variant="primary"
                 size="sm"
                 className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
+                loading={submittingLed}
                 onClick={() => {
                   const formEl = document.getElementById('led-reservation-form') as HTMLFormElement;
                   if (formEl) formEl.requestSubmit();
                 }}
               >
-                Rezervasyon Oluştur
+                {submittingLed ? 'Oluşturuluyor...' : 'Rezervasyon Oluştur'}
               </Button>
             </div>
           ) : undefined
@@ -1318,8 +1319,11 @@ export function Takvim() {
 
           {eventInput.type === 'reservation' && reservationType === 'led' ? (
             <LedReservationForm
-              onSuccess={() => {
+              onSubmittingChange={(val) => setSubmittingLed(val)}
+              onSuccess={(createdSlot) => {
+                console.log("LED reservation created", createdSlot);
                 setCreateModalOpen(false);
+                setSubmittingLed(false);
                 loadEvents();
                 setSuccess('LED Playlist Slotu başarıyla oluşturuldu, anlık Proof of Play logları ve workflowlar tetiklendi.');
               }}

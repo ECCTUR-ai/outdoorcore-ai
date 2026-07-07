@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DigitalScreen, PlaylistSlot } from '@/types/digitalSignage';
 import { digitalScreenRepository } from '@/repositories/digitalScreenRepository';
 import { companyRepository } from '@/repositories';
@@ -11,11 +11,14 @@ interface LedReservationFormProps {
   onCancel: () => void;
   initialScreenId?: string;
   initialDateRange?: { startDate: string; endDate: string };
+  onSubmittingChange?: (submitting: boolean) => void;
 }
 
-export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initialDateRange }: LedReservationFormProps) {
+export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initialDateRange, onSubmittingChange }: LedReservationFormProps) {
   const screens = digitalScreenRepository.listScreens();
   const companies = companyRepository.getAllSync();
+
+  const submittingRef = useRef(false);
 
   // Form State
   const [companyId, setCompanyId] = useState('');
@@ -80,6 +83,11 @@ export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initi
       return;
     }
 
+    if (submittingRef.current) {
+      console.log("LED reservation submit ignored duplicate");
+      return;
+    }
+
     const avail = digitalScreenRepository.getAvailability(screenId, startDate, endDate);
     if (durationSeconds > avail.availableSeconds) {
       const msg = `Bu LED ekranda seçilen tarih aralığında sadece ${avail.availableSeconds} saniye boş slot var.`;
@@ -98,7 +106,9 @@ export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initi
       notes
     };
 
-    console.log("LED reservation submit", payload);
+    console.log("LED reservation submit started", payload);
+    submittingRef.current = true;
+    onSubmittingChange?.(true);
 
     try {
       const created = await digitalScreenRepository.createPlaylistSlot(payload);
@@ -106,6 +116,8 @@ export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initi
     } catch (err: any) {
       console.error("LED reservation error", err);
       setErrorMsg(err.message || 'Slot oluşturulurken bir hata oluştu.');
+      submittingRef.current = false;
+      onSubmittingChange?.(false);
     }
   };
 

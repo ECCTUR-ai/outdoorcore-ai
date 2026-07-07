@@ -108,8 +108,31 @@ export const digitalScreenRepository = {
     return screens[idx];
   },
 
+  dedupePlaylistSlots(slots: PlaylistSlot[]): PlaylistSlot[] {
+    const seenIds = new Set<string>();
+    const seenKeys = new Set<string>();
+    const deduped: PlaylistSlot[] = [];
+
+    for (const slot of slots) {
+      const uniqueKey = `${slot.screenId}_${slot.companyId}_${slot.startDate}_${slot.endDate}_${slot.durationSeconds}_${slot.creativeFileUrl}`;
+      if (seenIds.has(slot.slotId) || seenKeys.has(uniqueKey)) {
+        continue;
+      }
+      seenIds.add(slot.slotId);
+      seenKeys.add(uniqueKey);
+      deduped.push(slot);
+    }
+    return deduped;
+  },
+
   listPlaylistSlots(screenId?: string, dateRange?: { startDate: string; endDate: string }): PlaylistSlot[] {
     let slots = getLocalData(SLOTS_STORAGE_KEY, defaultSlots);
+    
+    const deduped = this.dedupePlaylistSlots(slots);
+    if (deduped.length !== slots.length) {
+      setLocalData(SLOTS_STORAGE_KEY, deduped);
+      slots = deduped;
+    }
     
     if (screenId) {
       slots = slots.filter(s => s.screenId === screenId);
@@ -202,6 +225,21 @@ export const digitalScreenRepository = {
     const screen = screens.find(s => s.screenId === input.screenId);
     if (!screen) throw new Error('LED Ekran bulunamadı.');
 
+    const allSlots = getLocalData<PlaylistSlot>(SLOTS_STORAGE_KEY, defaultSlots);
+    const existingSlot = allSlots.find(s => 
+      s.screenId === input.screenId &&
+      s.companyId === input.companyId &&
+      s.startDate === input.startDate &&
+      s.endDate === input.endDate &&
+      s.durationSeconds === input.durationSeconds &&
+      s.creativeFileUrl === (input.creativeFileUrl || 'creative-placeholder.mp4')
+    );
+
+    if (existingSlot) {
+      console.log("LED reservation submit ignored duplicate", existingSlot);
+      return existingSlot;
+    }
+
     // 1. Validation
     const availability = this.getAvailability(input.screenId, input.startDate, input.endDate);
     if (input.durationSeconds > availability.availableSeconds) {
@@ -214,7 +252,6 @@ export const digitalScreenRepository = {
     const price = this.calculateSlotPrice(input.screenId, input.durationSeconds, input.startDate, input.endDate);
 
     const slotId = 'SLT-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-    const allSlots = getLocalData<PlaylistSlot>(SLOTS_STORAGE_KEY, defaultSlots);
     
     const newSlot: PlaylistSlot = {
       slotId,
@@ -273,6 +310,7 @@ export const digitalScreenRepository = {
       console.warn('Failed to dispatch digital slot workflow/notification:', e);
     }
 
+    console.log("LED reservation created once", newSlot);
     return newSlot;
   }
 };

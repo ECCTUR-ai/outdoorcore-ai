@@ -62,6 +62,7 @@ export function ReklamAlanlari() {
   const [activeTab, setActiveTab] = useState<'static' | 'led' | 'playlist' | 'pop'>('static');
   const [selectedScreenId, setSelectedScreenId] = useState<string>('LED-001');
   const [ledModalOpen, setLedModalOpen] = useState(false);
+  const [submittingLed, setSubmittingLed] = useState(false);
   
   // LED list states
   const [screensList, setScreensList] = useState<any[]>([]);
@@ -661,26 +662,28 @@ export function ReklamAlanlari() {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" type="button" onClick={() => setLedModalOpen(false)}>İptal</Button>
             <Button
-              type="submit"
-              form="led-reservation-form"
+              type="button"
               variant="primary"
               size="sm"
               className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
+              loading={submittingLed}
               onClick={() => {
                 const formEl = document.getElementById('led-reservation-form') as HTMLFormElement;
                 if (formEl) formEl.requestSubmit();
               }}
             >
-              Rezervasyon Oluştur
+              {submittingLed ? 'Oluşturuluyor...' : 'Rezervasyon Oluştur'}
             </Button>
           </div>
         }
       >
         <LedReservationForm
           initialScreenId={selectedScreenId}
+          onSubmittingChange={(val) => setSubmittingLed(val)}
           onSuccess={(createdSlot) => {
             console.log("LED reservation created", createdSlot);
             setLedModalOpen(false);
+            setSubmittingLed(false);
             fetchLedData();
             setSuccess('LED Playlist Slotu başarıyla oluşturuldu, anlık Proof of Play logları ve workflowlar tetiklendi.');
           }}
