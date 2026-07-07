@@ -1273,6 +1273,10 @@ export function Takvim() {
                 variant="primary"
                 size="sm"
                 className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
+                onClick={() => {
+                  const formEl = document.getElementById('led-reservation-form') as HTMLFormElement;
+                  if (formEl) formEl.requestSubmit();
+                }}
               >
                 Rezervasyon Oluştur
               </Button>

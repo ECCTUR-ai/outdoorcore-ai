@@ -635,6 +635,10 @@ export function ReklamAlanlari() {
               variant="primary"
               size="sm"
               className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
+              onClick={() => {
+                const formEl = document.getElementById('led-reservation-form') as HTMLFormElement;
+                if (formEl) formEl.requestSubmit();
+              }}
             >
               Rezervasyon Oluştur
             </Button>
@@ -643,7 +647,8 @@ export function ReklamAlanlari() {
       >
         <LedReservationForm
           initialScreenId={selectedScreenId}
-          onSuccess={() => {
+          onSuccess={(createdSlot) => {
+            console.log("LED reservation created", createdSlot);
             setLedModalOpen(false);
             fetchLedData();
             setSuccess('LED Playlist Slotu başarıyla oluşturuldu, anlık Proof of Play logları ve workflowlar tetiklendi.');
