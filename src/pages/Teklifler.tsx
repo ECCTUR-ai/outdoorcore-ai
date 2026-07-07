@@ -12,7 +12,7 @@ import {
   Percent
 } from 'lucide-react';
 import { Offer } from '@/data/offers';
-import { offerRepository } from '@/repositories';
+import { offerRepository, activityLogRepository } from '@/repositories';
 import { createWorkflowEvent } from '@/automation/workflowEvents';
 import { workflowEngine } from '@/automation/workflowEngine';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
@@ -34,6 +34,21 @@ export function Teklifler() {
   const [error, setError] = useState<string | null>(null);
   const [selectedOfferId, setSelectedOfferId] = useState<string>('');
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   // CRUD Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -97,10 +112,30 @@ export function Teklifler() {
   const handleStageChange = async (id: string, newStage: Offer['stage'], approved = false) => {
     try {
       const original = offers.find(o => o.id === id);
-      const isOfferApprovedTransition = original && original.stage === 'Onay Bekleniyor' && newStage === 'Sözleşme';
+      if (!original) return;
+
+      const isOfferApprovedTransition = original.stage === 'Onay Bekleniyor' && newStage === 'Sözleşme';
       
+      // Dynamic messages
+      let toastMsg = `Teklif aşaması başarıyla "${newStage}" olarak güncellendi.`;
+      if (isOfferApprovedTransition || (original.stage === 'Onay Bekleniyor' && approved)) {
+        toastMsg = `Teklif başarıyla onaylandı ve Sözleşme aşamasına aktarıldı.`;
+        await activityLogRepository.log(`Teklif onaylandı: ${original.clientName} - ${original.campaignName}`, 'offers');
+      } else if (original.stage === 'Onay Bekleniyor' && newStage === 'Teklif Hazırlandı') {
+        toastMsg = `Teklif revizyona çekildi.`;
+        await activityLogRepository.log(`Teklif revizyona çekildi: ${original.clientName} - ${original.campaignName}`, 'offers');
+      } else if (newStage === 'Tamamlandı') {
+        toastMsg = `Teklif iptal edildi.`;
+        await activityLogRepository.log(`Teklif iptal edildi: ${original.clientName} - ${original.campaignName}`, 'offers');
+      } else {
+        await activityLogRepository.log(`Teklif aşaması güncellendi: ${original.clientName} - ${newStage}`, 'offers');
+      }
+
+      // Optimistic update of UI
+      setOffers(prev => prev.map(o => o.id === id ? { ...o, stage: newStage, approved: approved || isOfferApprovedTransition } : o));
+
+      // Database repository update
       await offerRepository.update(id, { stage: newStage, approved: approved || isOfferApprovedTransition });
-      fetchOffers(false);
 
       if (isOfferApprovedTransition) {
         const event = createWorkflowEvent('offer.approved', 'offer', id, {
@@ -110,8 +145,12 @@ export function Teklifler() {
         });
         workflowEngine.dispatchWorkflowEvent(event);
       }
+
+      setSuccess(toastMsg);
+      fetchOffers(false);
     } catch (e: any) {
-      alert(e.message || 'Aşama değiştirilirken hata oluştu.');
+      console.error(e);
+      setError(e.message || 'Aşama değiştirilirken hata oluştu.');
     }
   };
 
@@ -123,6 +162,15 @@ export function Teklifler() {
 
   return (
     <div className="space-y-6 select-none pb-12">
+      {success && (
+        <Notification
+          title="Başarılı"
+          description={success}
+          type="success"
+          onClose={() => setSuccess(null)}
+        />
+      )}
+
       {/* Top Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm text-left">
         <div className="space-y-1">

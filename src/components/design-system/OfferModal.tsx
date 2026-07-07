@@ -57,8 +57,10 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
   useEffect(() => {
     async function loadData() {
       try {
-        const companyList = await companyRepository.list();
-        const spaceList = await spaceRepository.list();
+        const [companyList, spaceList] = await Promise.all([
+          companyRepository.list(),
+          spaceRepository.list()
+        ]);
         setCompanies(companyList);
         setSpaces(spaceList);
       } catch (e) {
@@ -264,7 +266,8 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
             <Label htmlFor="closingDate">Beklenen Kapanış Tarihi *</Label>
             <Input
               id="closingDate"
-              placeholder="15 Haz 2025 veya YYYY-MM-DD"
+              type="date"
+              min={new Date().toISOString().split('T')[0]}
               error={errors.closingDate?.message}
               {...register('closingDate')}
             />

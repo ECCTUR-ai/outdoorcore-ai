@@ -33,13 +33,15 @@ export const workflowService = {
         notes: 'Yeni Satış Sihirbazı tarafından otomatik oluşturuldu.'
       });
 
-      // 3. Update Spaces Status in spaceRepository
-      for (const space of selectedSpaces) {
-        await spaceRepository.update(space.id, {
-          ...space,
-          status: 'teklif'
-        });
-      }
+      // 3. Update Spaces Status in spaceRepository in parallel
+      await Promise.all(
+        selectedSpaces.map(space => 
+          spaceRepository.update(space.id, {
+            ...space,
+            status: 'teklif'
+          })
+        )
+      );
 
       // 4. Save Contract via Local Fallback
       const mockContractId = 'CON-' + Math.random().toString(36).substring(2, 6).toUpperCase();

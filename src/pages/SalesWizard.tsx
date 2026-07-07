@@ -136,14 +136,31 @@ export function SalesWizard() {
 
   const [wizardResult, setWizardResult] = useState<any | null>(null);
   const [wizardError, setWizardError] = useState<string | null>(null);
+  const [wizardSuccess, setWizardSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (wizardSuccess) {
+      const timer = setTimeout(() => setWizardSuccess(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [wizardSuccess]);
+
+  useEffect(() => {
+    if (wizardError) {
+      const timer = setTimeout(() => setWizardError(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [wizardError]);
 
   // Fetch initial list of companies and spaces
   useEffect(() => {
     async function loadData() {
       try {
-        const comps = await companyRepository.list();
-        const spaces = await spaceRepository.list();
+        const [comps, spaces] = await Promise.all([
+          companyRepository.list(),
+          spaceRepository.list()
+        ]);
         setCompaniesList(comps);
         setSpacesList(spaces);
       } catch (e) {
@@ -271,12 +288,15 @@ export function SalesWizard() {
   };
 
   const commitWorkflow = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setWizardError(null);
+    setWizardSuccess(null);
     try {
       const res = await workflowService.commitSalesWorkflow(state);
       if (res.success) {
         setWizardResult(res.data);
+        setWizardSuccess('Satış süreci başarıyla tamamlandı! Tüm CRM, sözleşme, rezervasyon ve fatura kayıtları oluşturuldu.');
       } else {
         setWizardError(res.error || 'Satış süreci kaydedilemedi.');
       }
@@ -1577,9 +1597,10 @@ export function SalesWizard() {
             <Label htmlFor="wizard-offer-date">Kapanış Tarihi *</Label>
             <Input
               id="wizard-offer-date"
+              type="date"
+              min={new Date().toISOString().split('T')[0]}
               value={state.data.offer.closingDate}
               onChange={(e) => handleChangeOfferField('closingDate', e.target.value)}
-              placeholder="30.07.2025"
               required
             />
           </FormGroup>
@@ -2114,6 +2135,29 @@ export function SalesWizard() {
 
   return (
     <div className="space-y-6 text-left select-none pb-12">
+      {isSubmitting && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col justify-center items-center z-50 animate-fade-in select-none">
+          <div className="space-y-4 text-center">
+            <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto" />
+            <div className="space-y-1">
+              <p className="text-xs font-black text-white uppercase tracking-widest">Satış tamamlanıyor...</p>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                CRM, sözleşme, rezervasyon ve fatura kayıtları oluşturuluyor.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {wizardSuccess && (
+        <Notification
+          title="Başarılı"
+          description={wizardSuccess}
+          type="success"
+          onClose={() => setWizardSuccess(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm">
         <div className="space-y-1">
