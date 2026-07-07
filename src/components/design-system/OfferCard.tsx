@@ -51,7 +51,13 @@ export function OfferCard({ offer, isActive, onSelect }: OfferCardProps) {
         </div>
       )}
 
-      <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-white/5">
+      {/* Campaign Date Range */}
+      <div className="mt-2.5 text-[8.5px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5 leading-none">
+        <Target size={10} className="text-blue-400 shrink-0" />
+        <span className="truncate">Kampanya: {offer.campaignStartDate || offer.closingDate} - {offer.campaignEndDate || offer.closingDate}</span>
+      </div>
+
+      <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-white/5">
         <span className="text-xs font-black text-emerald-450 leading-none">{offer.value}</span>
         <div className="flex items-center gap-1 text-[8.5px] text-slate-500 font-bold uppercase tracking-wider shrink-0">
           <User size={10} />

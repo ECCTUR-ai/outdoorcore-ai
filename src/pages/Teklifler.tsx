@@ -202,12 +202,13 @@ export function Teklifler() {
       const spaceNames = original.spacesList && original.spacesList.length > 0 ? original.spacesList : ['SG-001'];
       
       const conflictedNames: string[] = [];
-      const closingDate = original.closingDate || new Date().toISOString().split('T')[0];
+      const startDate = original.campaignStartDate || original.closingDate || new Date().toISOString().split('T')[0];
+      const endDate = original.campaignEndDate || original.closingDate || new Date().toISOString().split('T')[0];
       
       for (let i = 0; i < spacesToCheck.length; i++) {
         const sId = spacesToCheck[i];
         const sCode = spaceNames[i] || 'SPC-CODE';
-        const available = reservationRepository.isSpaceAvailableSync(sId, sCode, closingDate, closingDate);
+        const available = reservationRepository.isSpaceAvailableSync(sId, sCode, startDate, endDate);
         if (!available) {
           conflictedNames.push(sCode);
         }
@@ -255,8 +256,11 @@ export function Teklifler() {
       await activityLogRepository.log(logMsg, 'offers');
 
       if (newStage === 'Sözleşme İmzalandı') {
-        const closingDate = original.closingDate || new Date().toISOString().split('T')[0];
-        const endD = new Date(new Date(closingDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const startDate = original.campaignStartDate || original.closingDate || new Date().toISOString().split('T')[0];
+        const endDate = original.campaignEndDate || original.closingDate || new Date().toISOString().split('T')[0];
+        
+        const diffTime = Math.abs(new Date(endDate).getTime() - new Date(startDate).getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
 
         // A. Contract record is created
         const contract = await contractRepository.create({
@@ -266,8 +270,8 @@ export function Teklifler() {
           campaignName: original.campaignName,
           status: 'signed',
           valueNumeric: original.valueNumeric,
-          startDate: closingDate,
-          endDate: endD,
+          startDate: startDate,
+          endDate: endDate,
           spacesList: original.spacesList,
           progress: 100
         });
@@ -278,9 +282,9 @@ export function Teklifler() {
           spaceName: original.spacesList[0] || 'SG-001',
           location: 'İstanbul Havalimanı',
           clientName: original.clientName,
-          startDate: closingDate,
-          endDate: endD,
-          durationDays: 30,
+          startDate: startDate,
+          endDate: endDate,
+          durationDays: diffDays,
           status: 'Kesin Rezervasyon',
           budget: original.value,
           companyId: original.companyId || 'CMP-0001',
@@ -307,8 +311,8 @@ export function Teklifler() {
           clientName: original.clientName,
           campaignName: original.campaignName,
           status: 'Kurulum Bekliyor',
-          startDate: closingDate,
-          endDate: endD,
+          startDate: startDate,
+          endDate: endDate,
           valueNumeric: original.valueNumeric,
           companyId: original.companyId || 'CMP-0001',
           contractId: contract.id
@@ -520,11 +524,20 @@ export function Teklifler() {
         onClose={() => setModalOpen(false)}
         offer={editingOffer}
         onSuccess={(savedOffer) => {
+          setOffers(prev => {
+            const exists = prev.some(o => o.id === savedOffer.id);
+            if (exists) {
+              return prev.map(o => o.id === savedOffer.id ? savedOffer : o);
+            } else {
+              return [savedOffer, ...prev];
+            }
+          });
+          setSelectedOfferId(savedOffer.id);
           fetchOffers(false);
           if (editingOffer) {
             showToast("Başarılı", "Teklif güncellendi.", "success");
           } else {
-            showToast("Başarılı", savedOffer.stage === 'Teklif Hazırlandı' ? "Teklif taslak olarak kaydedildi." : "Yeni teklif oluşturuldu.", "success");
+            showToast("Başarılı", "Yeni teklif oluşturuldu.", "success");
           }
         }}
       />

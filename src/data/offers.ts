@@ -10,6 +10,8 @@ export interface Offer {
   closeProbability: number;
   stage: 'Teklif Hazırlandı' | 'Onaya Gönderildi' | 'Sözleşme Bekliyor' | 'Sözleşme İmzalandı' | 'Operasyona Aktarıldı' | 'İptal';
   closingDate: string;
+  campaignStartDate?: string;
+  campaignEndDate?: string;
   details: string;
   priority: 'Yüksek' | 'Orta' | 'Düşük';
   // Global Relations

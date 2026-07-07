@@ -159,9 +159,31 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actio
         <div className="flex items-center gap-2">
           <span>Genel Toplam: <span className="text-white font-bold">₺ {(offer.grand_total || Math.round(offer.valueNumeric * 1.2)).toLocaleString('tr-TR')}</span></span>
         </div>
-        <div className="flex items-center gap-2 col-span-2">
-          <Calendar size={12} className="text-slate-500 shrink-0" />
-          <span className="truncate">Kapanış: {offer.closingDate}</span>
+        {/* Dates Block */}
+        <div className="col-span-2 space-y-2 border-t border-b border-white/3 py-2.5 my-1">
+          <div className="flex justify-between items-center text-[10px]">
+            <span className="text-slate-500 font-bold uppercase tracking-wider">Kampanya Başlangıç:</span>
+            <span className="text-white font-extrabold">{offer.campaignStartDate || offer.closingDate || '-'}</span>
+          </div>
+          <div className="flex justify-between items-center text-[10px]">
+            <span className="text-slate-500 font-bold uppercase tracking-wider">Kampanya Bitiş:</span>
+            <span className="text-white font-extrabold">{offer.campaignEndDate || offer.closingDate || '-'}</span>
+          </div>
+          <div className="flex justify-between items-center text-[10px]">
+            <span className="text-slate-500 font-bold uppercase tracking-wider">Beklenen Kapanış:</span>
+            <span className="text-white font-extrabold">{offer.closingDate || '-'}</span>
+          </div>
+          {(offer.contractId || ['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage)) && (
+            <div className="flex justify-between items-center text-[10px]">
+              <span className="text-slate-500 font-bold uppercase tracking-wider">Sözleşme İmza Tarihi:</span>
+              <span className="text-emerald-450 font-black">{offer.closingDate || '-'}</span>
+            </div>
+          )}
+          {(!offer.campaignStartDate || !offer.campaignEndDate) && (
+            <div className="mt-1 px-2.5 py-1.5 bg-yellow-500/10 border border-yellow-500/15 rounded-lg text-[8.5px] font-black text-yellow-400 uppercase tracking-wider">
+              ⚠️ Bu teklif eski tarih formatıyla oluşturulmuş.
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 col-span-2">
           <UserCheck size={12} className="text-slate-500 shrink-0" />

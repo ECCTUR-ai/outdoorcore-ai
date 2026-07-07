@@ -55,8 +55,8 @@ export type SpaceFormData = z.infer<typeof spaceSchema>;
 export const offerSchema = z.object({
   companyId: z.string().min(1, 'Firma seçilmelidir'),
   campaignName: z.string().min(2, 'Kampanya adı en az 2 karakter olmalıdır'),
-  value: z.string().min(1, 'Tahmini bütçe (yazılı) girilmelidir (örn: ₺8.500.000)'),
-  valueNumeric: z.coerce.number().min(1, 'Bütçe sayısal değeri 0\'dan büyük olmalıdır'),
+  value: z.string().optional(),
+  valueNumeric: z.coerce.number().optional(),
   stage: z.enum([
     'Teklif Hazırlandı',
     'Onaya Gönderildi',
@@ -66,6 +66,8 @@ export const offerSchema = z.object({
     'İptal'
   ]),
   closeProbability: z.coerce.number().min(0, 'İhtimal %0 ile %100 arasında olmalıdır').max(100, 'İhtimal %0 ile %100 arasında olmalıdır'),
+  campaignStartDate: z.string().min(1, 'Kampanya başlangıç tarihi seçilmelidir'),
+  campaignEndDate: z.string().min(1, 'Kampanya bitiş tarihi seçilmelidir'),
   closingDate: z.string().min(1, 'Beklenen kapanış tarihi seçilmelidir'),
   owner: z.string().min(1, 'Sorumlu temsilci seçilmelidir'),
   spaceIds: z.array(z.string()).min(1, 'En az bir önerilen reklam alanı seçilmelidir'),
@@ -77,6 +79,12 @@ export const offerSchema = z.object({
   vatAmount: z.coerce.number().optional(),
   grandTotal: z.coerce.number().optional(),
   customerBudget: z.coerce.number().optional()
+}).refine((data) => {
+  if (!data.campaignStartDate || !data.campaignEndDate) return true;
+  return new Date(data.campaignEndDate) >= new Date(data.campaignStartDate);
+}, {
+  message: "Kampanya bitiş tarihi başlangıç tarihinden önce olamaz",
+  path: ["campaignEndDate"]
 });
 
 export type OfferFormData = z.infer<typeof offerSchema>;

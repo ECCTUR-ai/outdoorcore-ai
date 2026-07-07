@@ -5,7 +5,7 @@ import { Button } from './Button';
 import { Notification } from './Notification';
 import { offerSchema, OfferFormData } from '@/utils/schemas';
 import { zodResolver } from '@/utils/resolver';
-import { offerRepository, companyRepository, spaceRepository } from '@/repositories';
+import { offerRepository, companyRepository, spaceRepository, reservationRepository } from '@/repositories';
 import { Company } from '@/data/companies';
 import { AdvertisingSpace } from '@/data/advertisingSpaces';
 import { Offer } from '@/data/offers';
@@ -130,6 +130,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
   const [companies, setCompanies] = useState<Company[]>([]);
   const [spaces, setSpaces] = useState<AdvertisingSpace[]>([]);
   const [selectedNetwork, setSelectedNetwork] = useState<string>('all');
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
 
   const {
     register,
@@ -147,6 +148,8 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
       valueNumeric: 0,
       stage: 'Teklif Hazırlandı',
       closeProbability: 50,
+      campaignStartDate: '',
+      campaignEndDate: '',
       closingDate: '',
       owner: 'Cemil Sezgin',
       spaceIds: [],
@@ -200,6 +203,8 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
           valueNumeric: offer.valueNumeric,
           stage: offer.stage,
           closeProbability: offer.closeProbability,
+          campaignStartDate: formatToInputDate(offer.campaignStartDate || ''),
+          campaignEndDate: formatToInputDate(offer.campaignEndDate || ''),
           closingDate: formatToInputDate(offer.closingDate || ''),
           owner: offer.owner,
           spaceIds: resolvedSpaceIds,
@@ -216,6 +221,8 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
           valueNumeric: 0,
           stage: 'Teklif Hazırlandı',
           closeProbability: 50,
+          campaignStartDate: new Date().toISOString().split('T')[0],
+          campaignEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           closingDate: new Date().toISOString().split('T')[0],
           owner: 'Cemil Sezgin',
           spaceIds: [],
@@ -257,6 +264,17 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
   }, [isOpen, onClose]);
 
   const handleSpaceToggle = (spaceId: string) => {
+    const start = watch('campaignStartDate');
+    const end = watch('campaignEndDate');
+    if (!start || !end) {
+      setWarningMessage("Önce kampanya başlangıç ve bitiş tarihlerini seçmelisiniz.");
+      setTimeout(() => {
+        const bodyEl = document.querySelector('.overflow-y-auto');
+        if (bodyEl) bodyEl.scrollTop = 0;
+      }, 50);
+      return;
+    }
+    setWarningMessage(null);
     const current = [...selectedSpaceIds];
     const idx = current.indexOf(spaceId);
     if (idx > -1) {
@@ -391,6 +409,31 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
                 />
               )}
 
+              {warningMessage && (
+                <Notification
+                  title="Dikkat"
+                  description={warningMessage}
+                  type="alert"
+                  onClose={() => setWarningMessage(null)}
+                />
+              )}
+
+              {Object.keys(errors).length > 0 && (
+                <Notification
+                  title="Eksik veya Hatalı Alanlar"
+                  description={`Lütfen formdaki eksik alanları doldurunuz: ${Object.entries(errors).map(([key, err]: any) => {
+                    if (key === 'companyId') return 'Firma';
+                    if (key === 'campaignName') return 'Kampanya Adı';
+                    if (key === 'campaignStartDate') return 'Kampanya Başlangıç Tarihi';
+                    if (key === 'campaignEndDate') return 'Kampanya Bitiş Tarihi';
+                    if (key === 'closingDate') return 'Beklenen Kapanış Tarihi';
+                    if (key === 'spaceIds') return 'En az bir reklam alanı';
+                    return err?.message || key;
+                  }).join(', ')}`}
+                  type="alert"
+                />
+              )}
+
               {/* Grid 1: Company, Campaign & Owner */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <CustomSelect
@@ -427,6 +470,37 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
                   ]}
                   error={errors.owner?.message}
                 />
+              </div>
+
+              {/* Campaign Dates Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormGroup>
+                  <Label htmlFor="campaignStartDate">Kampanya Başlangıç Tarihi *</Label>
+                  <input
+                    id="campaignStartDate"
+                    type="date"
+                    min={new Date().toISOString().split('T')[0]}
+                    className={`h-[52px] w-full bg-[#151B2D] border ${errors.campaignStartDate ? 'border-red-500/50' : 'border-white/8'} rounded-xl px-4 text-xs font-semibold text-white focus:outline-none focus:shadow-[0_0_12px_rgba(59,130,246,0.25)] focus:border-blue-500/50 transition-all duration-200 placeholder-white/35`}
+                    {...register('campaignStartDate')}
+                  />
+                  {errors.campaignStartDate?.message && (
+                    <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.campaignStartDate.message}</span>
+                  )}
+                </FormGroup>
+
+                <FormGroup>
+                  <Label htmlFor="campaignEndDate">Kampanya Bitiş Tarihi *</Label>
+                  <input
+                    id="campaignEndDate"
+                    type="date"
+                    min={watch('campaignStartDate') || new Date().toISOString().split('T')[0]}
+                    className={`h-[52px] w-full bg-[#151B2D] border ${errors.campaignEndDate ? 'border-red-500/50' : 'border-white/8'} rounded-xl px-4 text-xs font-semibold text-white focus:outline-none focus:shadow-[0_0_12px_rgba(59,130,246,0.25)] focus:border-blue-500/50 transition-all duration-200 placeholder-white/35`}
+                    {...register('campaignEndDate')}
+                  />
+                  {errors.campaignEndDate?.message && (
+                    <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.campaignEndDate.message}</span>
+                  )}
+                </FormGroup>
               </div>
 
               {/* Grid 2: Discount & Customer Budget */}
@@ -576,11 +650,29 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
                   {spaces.filter(s => selectedNetwork === 'all' || s.networkId === selectedNetwork).map(s => {
                     const isSelected = selectedSpaceIds.includes(s.id);
                     const isPremium = s.visibility === 'Çok Yüksek';
+                    
+                    const startVal = watch('campaignStartDate');
+                    const endVal = watch('campaignEndDate');
+                    const isConflicted = startVal && endVal
+                      ? !reservationRepository.isSpaceAvailableSync(s.id, s.code, startVal, endVal)
+                      : false;
+                    
+                    const isDisabled = isConflicted;
+
                     return (
                       <div
                         key={s.id}
-                        onClick={() => handleSpaceToggle(s.id)}
-                        className={`p-3.5 rounded-2xl border cursor-pointer select-none transition-all duration-150 text-left flex flex-col justify-between min-h-[110px] ${isSelected ? 'bg-blue-600/5 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.15)] text-white' : 'bg-[#151B2D] border-white/5 text-slate-350 hover:border-white/12 hover:scale-[1.01]'}`}
+                        onClick={() => {
+                          if (isDisabled) return;
+                          handleSpaceToggle(s.id);
+                        }}
+                        className={`p-3.5 rounded-2xl border select-none transition-all duration-150 text-left flex flex-col justify-between min-h-[110px] ${
+                          isDisabled
+                            ? 'bg-slate-900/50 border-white/5 opacity-55 cursor-not-allowed'
+                            : isSelected
+                              ? 'bg-blue-600/5 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.15)] text-white cursor-pointer'
+                              : 'bg-[#151B2D] border-white/5 text-slate-355 hover:border-white/12 hover:scale-[1.01] cursor-pointer'
+                        }`}
                       >
                         <div className="flex justify-between items-start">
                           <div className="space-y-0.5">
@@ -593,9 +685,15 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
                                 PREMIUM
                               </span>
                             )}
-                            <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${s.status === 'bos' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' : 'bg-red-500/10 text-red-400 border border-red-500/15'}`}>
-                              {s.status === 'bos' ? 'BOŞ' : s.status.toUpperCase()}
-                            </span>
+                            {isDisabled ? (
+                              <span className="text-[8px] font-black bg-red-500/20 text-red-400 border border-red-500/25 px-1.5 py-0.5 rounded uppercase">
+                                Bu tarihte dolu
+                              </span>
+                            ) : (
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${s.status === 'bos' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15' : 'bg-red-500/10 text-red-400 border border-red-500/15'}`}>
+                                {s.status === 'bos' ? 'BOŞ' : s.status.toUpperCase()}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex justify-between items-end mt-3 pt-2 border-t border-white/3">
