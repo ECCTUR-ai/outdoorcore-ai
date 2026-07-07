@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Bell, Mail, ChevronDown, Calendar, Search, Menu } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
+import { Bell, Mail, ChevronDown, Calendar, Search, Menu, Sun, Moon } from 'lucide-react';
 import { Avatar } from '../design-system/Avatar';
 import { Badge } from '../design-system/Badge';
 import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
@@ -193,6 +194,9 @@ export function Header() {
           )}
         </div>
 
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* User Card Dropdown */}
         <div className="flex items-center gap-1.5 border-l border-white/5 pl-2.5 md:pl-3.5 shrink-0 relative">
           <div 
@@ -276,5 +280,39 @@ export function Header() {
       {/* Profile details slideover */}
       <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
     </header>
+  );
+}
+
+function ThemeToggle() {
+  const { resolvedTheme, toggleTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  return (
+    <button
+      onClick={toggleTheme}
+      type="button"
+      className="flex items-center gap-1.5 px-2 py-1.5 bg-[#0b0f19]/60 dark:bg-white/5 border border-slate-200/50 dark:border-white/5 rounded-full cursor-pointer hover:border-slate-350 dark:hover:border-white/10 transition-all select-none h-8.5 shrink-0 outline-none"
+      title={isDark ? "Açık Temaya Geç" : "Koyu Temaya Geç"}
+    >
+      <div className="flex items-center gap-1 shrink-0">
+        <Moon size={10.5} className={`transition-colors duration-200 ${isDark ? 'text-blue-400' : 'text-slate-400'}`} />
+        <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 leading-none select-none">
+          Dark
+        </span>
+      </div>
+      
+      {/* Toggle Track and Thumb */}
+      <div className={`relative w-6.5 h-3.5 rounded-full border transition-colors duration-200 shrink-0 ${
+        isDark 
+          ? 'bg-blue-600/30 border-blue-500/20' 
+          : 'bg-slate-200 border-slate-300'
+      }`}>
+        <div className={`absolute top-0.25 left-0.25 w-2.5 h-2.5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+          isDark ? 'translate-x-0' : 'translate-x-3'
+        }`} />
+      </div>
+
+      <Sun size={10.5} className={`transition-colors duration-200 ${!isDark ? 'text-amber-500' : 'text-slate-500'} shrink-0`} />
+    </button>
   );
 }

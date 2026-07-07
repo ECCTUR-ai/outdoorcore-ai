@@ -1,5 +1,6 @@
 import React from 'react';
 import { AppProvider, useApp } from '@/context/AppContext';
+import { ThemeProvider } from '@/context/ThemeContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { CommandPalette } from '@/components/layout/CommandPalette';
@@ -133,12 +134,12 @@ function AppContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#08111f] text-slate-200 transition-colors duration-200 font-sans">
+    <div className="flex min-h-screen bg-transparent text-foreground transition-colors duration-200 font-sans">
       {/* Navigation Sidebar */}
       <Sidebar />
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0 bg-[#0f172a]">
+      <div className="flex-1 flex flex-col min-w-0 bg-background">
         <Header />
         {/* Page Content area */}
         <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto w-full overflow-x-hidden">
@@ -154,10 +155,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
-        <AppContent />
-      </AppProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <AppProvider>
+          <AppContent />
+        </AppProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

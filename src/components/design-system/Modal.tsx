@@ -70,8 +70,7 @@ export function Modal({
 
         {/* Footer */}
         <div 
-          className="sticky bottom-0 z-50 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-850 px-6 pt-4 pb-6 shrink-0"
-          style={{ backgroundColor: 'rgba(15, 23, 42, 0.98)' }}
+          className="sticky bottom-0 z-50 flex items-center justify-end gap-2.5 border-t border-slate-100 dark:border-slate-850 px-6 pt-4 pb-6 shrink-0 bg-white dark:bg-slate-950"
         >
           {footerActions ? footerActions : (
             <Button variant="outline" size="sm" type="button" onClick={onClose}>

@@ -88,7 +88,7 @@ export function Sidebar() {
       )}
 
       <aside
-        className={`dark-sidebar-gradient border-r border-white/5 h-screen shrink-0 sticky top-0 flex flex-col justify-between transition-all duration-300 z-50 bg-[#08111f] ${
+        className={`dark-sidebar-gradient border-r border-white/5 h-screen shrink-0 sticky top-0 flex flex-col justify-between transition-all duration-300 z-50 bg-transparent ${
           sidebarCollapsed ? 'md:w-16' : 'md:w-64'
         } ${
           mobileSidebarOpen ? 'fixed inset-y-0 left-0 w-64 translate-x-0' : 'fixed md:sticky inset-y-0 left-0 -translate-x-full md:translate-x-0'
