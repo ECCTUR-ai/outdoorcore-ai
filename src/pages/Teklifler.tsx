@@ -12,7 +12,7 @@ import {
   Percent
 } from 'lucide-react';
 import { Offer } from '@/data/offers';
-import { offerRepository, activityLogRepository } from '@/repositories';
+import { offerRepository, activityLogRepository, contractRepository, reservationRepository, campaignRepository, financeRepository, spaceRepository } from '@/repositories';
 import { createWorkflowEvent } from '@/automation/workflowEvents';
 import { workflowEngine } from '@/automation/workflowEngine';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
@@ -67,6 +67,9 @@ export function Teklifler() {
   const handleRemoveToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
+
+  const [signConfirmOpen, setSignConfirmOpen] = useState(false);
+  const [offerToSign, setOfferToSign] = useState<string | null>(null);
 
   // CRUD Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -159,6 +162,11 @@ export function Teklifler() {
       setCancelConfirmOpen(true);
       return;
     }
+    if (newStage === 'Sözleşme İmzalandı' && !approved) {
+      setOfferToSign(id);
+      setSignConfirmOpen(true);
+      return;
+    }
     await executeStageChange(id, newStage, approved);
   };
 
@@ -169,34 +177,63 @@ export function Teklifler() {
     setOfferToCancel(null);
   };
 
+  const handleSignConfirm = async () => {
+    if (!offerToSign) return;
+    setSignConfirmOpen(false);
+    await executeStageChange(offerToSign, 'Sözleşme İmzalandı', true);
+    setOfferToSign(null);
+  };
+
   const executeStageChange = async (id: string, newStage: Offer['stage'], approved = false) => {
     const original = offers.find(o => o.id === id);
     if (!original) return;
 
     let loadingKey: typeof actionLoading = null;
-    if (newStage === 'Onay Bekleniyor') loadingKey = 'sendApproval';
-    else if (newStage === 'Sözleşme' || newStage === 'Onaylandı') loadingKey = 'approve';
-    else if (newStage === 'Teklif Hazırlandı' || newStage === 'Revizyonda') loadingKey = 'revise';
-    else if (newStage === 'İptal' || newStage === 'Tamamlandı') loadingKey = 'cancel';
+    if (newStage === 'Onaya Gönderildi') loadingKey = 'sendApproval';
+    else if (newStage === 'Sözleşme İmzalandı') loadingKey = 'approve';
+    else if (newStage === 'Teklif Hazırlandı') loadingKey = 'revise';
+    else if (newStage === 'İptal') loadingKey = 'cancel';
 
     setActionLoading(loadingKey);
 
-    const isOfferApprovedTransition = original.stage === 'Onay Bekleniyor' && (newStage === 'Sözleşme' || newStage === 'Onaylandı');
+    // 1. Conflict Check on Signing
+    if (newStage === 'Sözleşme İmzalandı') {
+      const spacesToCheck = original.spaceIds && original.spaceIds.length > 0 ? original.spaceIds : ['SPC-0001'];
+      const spaceNames = original.spacesList && original.spacesList.length > 0 ? original.spacesList : ['SG-001'];
+      
+      const conflictedNames: string[] = [];
+      const closingDate = original.closingDate || new Date().toISOString().split('T')[0];
+      
+      for (let i = 0; i < spacesToCheck.length; i++) {
+        const sId = spacesToCheck[i];
+        const sCode = spaceNames[i] || 'SPC-CODE';
+        const available = reservationRepository.isSpaceAvailableSync(sId, sCode, closingDate, closingDate);
+        if (!available) {
+          conflictedNames.push(sCode);
+        }
+      }
+      
+      if (conflictedNames.length > 0) {
+        showToast("Çakışma Hatası", `Seçilen reklam alanlarından bazıları bu tarih aralığında artık müsait değil: ${conflictedNames.join(', ')}`, "error");
+        setActionLoading(null);
+        return;
+      }
+    }
 
     // Dynamic messages
     let toastTitle = "Aşama Güncellendi";
     let toastMsg = `Teklif aşaması başarıyla "${newStage}" olarak güncellendi.`;
     let logMsg = `Teklif aşaması değişti: ${original.clientName} - ${newStage}`;
 
-    if (newStage === 'Onay Bekleniyor') {
+    if (newStage === 'Onaya Gönderildi') {
       toastTitle = "Onaya Gönderildi";
       toastMsg = "Teklif onaya gönderildi.";
       logMsg = `Teklif onaya gönderildi: ${original.clientName} - ${original.campaignName}`;
-    } else if (isOfferApprovedTransition || approved) {
-      toastTitle = "Teklif Onaylandı";
-      toastMsg = "Teklif onaylandı. Rezervasyon ve sözleşme süreci başlatıldı.";
-      logMsg = `Teklif onaylandı: ${original.clientName} - ${original.campaignName}`;
-    } else if (newStage === 'Revizyonda') {
+    } else if (newStage === 'Sözleşme İmzalandı') {
+      toastTitle = "Sözleşme İmzalandı";
+      toastMsg = "Sözleşme imzalandı. Rezervasyon oluşturuldu.";
+      logMsg = `Sözleşme imzalandı ve rezervasyon oluşturuldu: ${original.clientName} - ${original.campaignName}`;
+    } else if (newStage === 'Teklif Hazırlandı') {
       toastTitle = "Revizyona Alındı";
       toastMsg = "Teklif revizyon aşamasına alındı.";
       logMsg = `Teklif revizyona çekildi: ${original.clientName} - ${original.campaignName}`;
@@ -208,31 +245,83 @@ export function Teklifler() {
 
     // Optimistic UI state update
     const previousOffers = [...offers];
-    setOffers(prev => prev.map(o => o.id === id ? { ...o, stage: newStage, approved: approved || isOfferApprovedTransition } : o));
+    setOffers(prev => prev.map(o => o.id === id ? { ...o, stage: newStage, approved: approved } : o));
 
     try {
       // Database update
-      await offerRepository.update(id, { stage: newStage, approved: approved || isOfferApprovedTransition });
+      await offerRepository.update(id, { stage: newStage, approved: approved });
       
       // Activity Logging
       await activityLogRepository.log(logMsg, 'offers');
 
-      if (isOfferApprovedTransition) {
-        // Dispatch workflow events
-        try {
-          const event = createWorkflowEvent('offer.approved', 'offer', id, {
-            clientName: original.clientName,
-            campaignName: original.campaignName,
-            companyId: original.companyId
-          });
-          workflowEngine.dispatchWorkflowEvent(event);
-        } catch (we) {
-          console.warn("Workflow engine dispatch failed: ", we);
-          showToast("Uyarı", "Teklif onaylandı ancak bağlı kayıtlar kontrol edilmeli.", "warning");
+      if (newStage === 'Sözleşme İmzalandı') {
+        const closingDate = original.closingDate || new Date().toISOString().split('T')[0];
+        const endD = new Date(new Date(closingDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        // A. Contract record is created
+        const contract = await contractRepository.create({
+          contractNo: 'CON-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+          companyId: original.companyId || 'CMP-0001',
+          clientName: original.clientName,
+          campaignName: original.campaignName,
+          status: 'signed',
+          valueNumeric: original.valueNumeric,
+          startDate: closingDate,
+          endDate: endD,
+          spacesList: original.spacesList,
+          progress: 100
+        });
+
+        // B. Reservation record is created
+        await reservationRepository.create({
+          spaceCode: original.spacesList[0] || 'SG-001',
+          spaceName: original.spacesList[0] || 'SG-001',
+          location: 'İstanbul Havalimanı',
+          clientName: original.clientName,
+          startDate: closingDate,
+          endDate: endD,
+          durationDays: 30,
+          status: 'Kesin Rezervasyon',
+          budget: original.value,
+          companyId: original.companyId || 'CMP-0001',
+          offerId: original.id,
+          contractId: contract.id
+        });
+
+        // C. Mark selected spaces as reserved
+        if (original.spaceIds) {
+          for (const sId of original.spaceIds) {
+            try {
+              await spaceRepository.update(sId, { status: 'rezerve' });
+            } catch (se) {
+              console.warn("Space update error", se);
+            }
+          }
         }
+
+        // D. Finance payment plan is created
+        await financeRepository.createPaymentPlan(original.companyId || 'CMP-0001', original.clientName, original.valueNumeric, contract.id);
+
+        // E. Campaign record is created
+        await campaignRepository.create({
+          clientName: original.clientName,
+          campaignName: original.campaignName,
+          status: 'Kurulum Bekliyor',
+          startDate: closingDate,
+          endDate: endD,
+          valueNumeric: original.valueNumeric,
+          companyId: original.companyId || 'CMP-0001',
+          contractId: contract.id
+        });
+
+        // Show multiple toasts
+        showToast("Sözleşme İmzalandı", "Sözleşme imzalandı. Rezervasyon oluşturuldu.", "success");
+        showToast("Reklam Alanları", "Reklam alanları firmaya kapatıldı.", "success");
+        showToast("Finans Planı", "Finans planı oluşturuldu.", "success");
+      } else {
+        showToast(toastTitle, toastMsg, "success");
       }
 
-      showToast(toastTitle, toastMsg, "success");
       fetchOffers(false);
     } catch (e: any) {
       // Rollback on error
@@ -349,7 +438,7 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Onay Bekleyen"
-          value={loading ? '...' : String(offers.filter(o => o.stage === 'Onay Bekleniyor').length)}
+          value={loading ? '...' : String(offers.filter(o => o.stage === 'Onaya Gönderildi').length)}
           percentage="KRİTİK"
           subtext="Müşteri onayında"
           icon={<CheckCircle size={15} />}
@@ -358,7 +447,7 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Kazanılan"
-          value={loading ? '...' : String(offers.filter(o => o.stage === 'Tamamlandı' || o.stage === 'Sözleşme').length)}
+          value={loading ? '...' : String(offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı').length)}
           percentage="+4 yeni"
           subtext="Sözleşmeye dönen"
           icon={<CheckCheck size={15} />}
@@ -435,7 +524,7 @@ export function Teklifler() {
           if (editingOffer) {
             showToast("Başarılı", "Teklif güncellendi.", "success");
           } else {
-            showToast("Başarılı", savedOffer.stage === 'Lead' ? "Teklif taslak olarak kaydedildi." : "Yeni teklif oluşturuldu.", "success");
+            showToast("Başarılı", savedOffer.stage === 'Teklif Hazırlandı' ? "Teklif taslak olarak kaydedildi." : "Yeni teklif oluşturuldu.", "success");
           }
         }}
       />
@@ -470,6 +559,17 @@ export function Teklifler() {
         confirmLabel="Teklifi İptal Et"
         cancelLabel="Vazgeç"
         loading={actionLoading === 'cancel'}
+      />
+
+      <ConfirmDialog
+        isOpen={signConfirmOpen}
+        onClose={() => setSignConfirmOpen(false)}
+        onConfirm={handleSignConfirm}
+        title="Sözleşme imzalandı mı?"
+        description="Bu işlem teklifte seçilen reklam alanlarını belirtilen tarih aralığı için firmaya kapatacak ve otomatik rezervasyon oluşturacaktır."
+        confirmLabel="Sözleşmeyi İmzala ve Rezervasyonu Oluştur"
+        cancelLabel="Vazgeç"
+        loading={actionLoading === 'approve'}
       />
 
       {/* Global Toast Notification Container */}

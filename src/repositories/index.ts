@@ -874,7 +874,7 @@ export const offerRepository = {
       if (oldStage !== local[idx].stage) {
         await auditLogRepository.log('offer.stage_changed', 'offer', id);
         await activityLogRepository.log(`Teklif aşaması değişti (Demo): ${local[idx].clientName} - ${local[idx].stage}`, 'offers');
-        if (local[idx].stage === 'Onay Bekleniyor') {
+        if (local[idx].stage === 'Onaya Gönderildi') {
           await activityLogRepository.log(`Teklif onaya gönderildi (Demo): ${local[idx].clientName}`, 'offers');
         }
       }
@@ -1026,6 +1026,24 @@ export const contractRepository = {
       return local[idx];
     }
     throw new Error('Sözleşme bulunamadı.');
+  },
+  async create(input: any) {
+    const { organizationId, email } = getSessionInfo();
+    const local = getLocalData('contracts', contracts);
+    const newId = input.id || 'CON-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const newRecord = {
+      id: newId,
+      ...input,
+      created_at: new Date().toISOString(),
+      created_by: email
+    };
+    local.push(newRecord);
+    setLocalData('contracts', local);
+    
+    // Sync in-memory contracts
+    contracts.push(newRecord);
+    
+    return newRecord;
   }
 };
 
@@ -1118,6 +1136,21 @@ export const reservationRepository = {
       return local[idx];
     }
     throw new Error('Reservation not found');
+  },
+  async create(input: any) {
+    const local = getLocalData('reservations', reservations);
+    const newId = input.id || 'RSV-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const newRecord = {
+      id: newId,
+      ...input
+    };
+    local.push(newRecord);
+    localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(local));
+    
+    // Sync in-memory mutations
+    reservations.push(newRecord);
+    
+    return newRecord;
   }
 };
 
@@ -1158,6 +1191,21 @@ export const campaignRepository = {
       return local[idx];
     }
     throw new Error('Campaign not found');
+  },
+  async create(input: any) {
+    const local = getLocalData('campaigns', campaigns);
+    const newId = input.id || 'CAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const newRecord = {
+      id: newId,
+      ...input
+    };
+    local.push(newRecord);
+    localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify(local));
+    
+    // Sync in-memory mutations
+    campaigns.push(newRecord);
+    
+    return newRecord;
   }
 };
 
@@ -1201,6 +1249,65 @@ export const financeRepository = {
       return true;
     }
     throw new Error('Fatura bulunamadı.');
+  },
+  async createPaymentPlan(companyId: string, clientName: string, amount: number, contractId: string) {
+    const data = getLocalDataObject('finance_data', financeData);
+    let acc = data.accounts.find((a: any) => a.companyId === companyId || a.id === companyId);
+    
+    const formattedAmount = `₺ ${amount.toLocaleString('tr-TR')}`;
+    const dateStr = new Date().toLocaleDateString('tr-TR');
+    
+    const newInvoice = {
+      id: 'INV-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+      invoiceNo: 'INV-2025-' + Math.floor(10000 + Math.random() * 90000),
+      date: dateStr,
+      amount: formattedAmount,
+      status: 'Bekliyor' as const
+    };
+
+    const newInstallment = {
+      installment: '1. Taksit',
+      dueDate: dateStr,
+      amount: formattedAmount,
+      status: 'Bekliyor' as const
+    };
+
+    if (acc) {
+      acc.invoices.push(newInvoice);
+      acc.paymentPlan.push(newInstallment);
+      if (!acc.linkedContractIds) acc.linkedContractIds = [];
+      acc.linkedContractIds.push(contractId);
+      const numericDebt = (parseFloat(acc.totalDebt.replace(/[^\d]/g, '')) || 0) + amount;
+      const numericBalance = (parseFloat(acc.balance.replace(/[^\d]/g, '')) || 0) + amount;
+      acc.totalDebt = `₺ ${numericDebt.toLocaleString('tr-TR')}`;
+      acc.balance = `₺ ${numericBalance.toLocaleString('tr-TR')}`;
+    } else {
+      const newAcc: any = {
+        id: companyId,
+        name: clientName,
+        logo: clientName.charAt(0),
+        logoUrl: '',
+        totalDebt: formattedAmount,
+        totalCollected: '₺ 0',
+        balance: formattedAmount,
+        riskScore: 1.0,
+        crmTier: 'Standard',
+        totalContracts: formattedAmount,
+        totalInvoicesCount: 1,
+        invoices: [newInvoice],
+        collections: [],
+        paymentPlan: [newInstallment],
+        receipts: [],
+        notes: ['Yeni finans ödeme planı başlatıldı.'],
+        companyId: companyId,
+        linkedContractIds: [contractId]
+      };
+      acc = newAcc;
+      data.accounts.push(newAcc);
+    }
+
+    setLocalDataObject('finance_data', data);
+    return acc;
   }
 };
 

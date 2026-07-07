@@ -19,19 +19,12 @@ interface OfferModalProps {
 }
 
 const STAGE_CONFIGS: Record<Offer['stage'], { label: string; bg: string; border: string; text: string }> = {
-  'Lead': { label: 'Lead', bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400' },
-  'İlk Görüşme': { label: 'İlk Görüşme', bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400' },
-  'İhtiyaç Analizi': { label: 'İhtiyaç Analizi', bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
-  'Teklif Hazırlandı': { label: 'Hazırlanıyor', bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400' },
-  'Sunum Yapıldı': { label: 'Sunum Yapıldı', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-400' },
-  'Pazarlık': { label: 'Pazarlık', bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400' },
-  'Onay Bekleniyor': { label: 'Onay Bekliyor', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400' },
-  'Onaylandı': { label: 'Onaylandı', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
-  'Sözleşme': { label: 'Sözleşme', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
-  'Rezervasyon': { label: 'Rezervasyon', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
-  'Revizyonda': { label: 'Revizyonda', bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
-  'İptal': { label: 'İptal', bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
-  'Tamamlandı': { label: 'Kazanıldı', bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-400' }
+  'Teklif Hazırlandı': { label: 'Teklif Hazırlandı', bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400' },
+  'Onaya Gönderildi': { label: 'Onaya Gönderildi', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400' },
+  'Sözleşme Bekliyor': { label: 'Sözleşme Bekliyor', bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
+  'Sözleşme İmzalandı': { label: 'Sözleşme İmzalandı', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+  'Operasyona Aktarıldı': { label: 'Operasyona Aktarıldı', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-400' },
+  'İptal': { label: 'İptal', bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' }
 };
 
 const formatToInputDate = (dateStr: string): string => {
@@ -149,7 +142,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
       campaignName: '',
       value: '',
       valueNumeric: 0,
-      stage: 'Lead',
+      stage: 'Teklif Hazırlandı',
       closeProbability: 50,
       closingDate: '',
       owner: 'Cemil Sezgin',
@@ -218,7 +211,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
           campaignName: '',
           value: '',
           valueNumeric: 0,
-          stage: 'Lead',
+          stage: 'Teklif Hazırlandı',
           closeProbability: 50,
           closingDate: new Date().toISOString().split('T')[0],
           owner: 'Cemil Sezgin',
@@ -255,7 +248,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
   };
 
   const handleSaveDraft = () => {
-    setValue('stage', 'Lead');
+    setValue('stage', 'Teklif Hazırlandı');
     handleSubmit(onSubmit)();
   };
 

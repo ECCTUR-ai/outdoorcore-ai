@@ -8,7 +8,7 @@ export interface Offer {
   owner: string;
   lastActivity: string;
   closeProbability: number;
-  stage: 'Lead' | 'İlk Görüşme' | 'İhtiyaç Analizi' | 'Teklif Hazırlandı' | 'Sunum Yapıldı' | 'Pazarlık' | 'Onay Bekleniyor' | 'Onaylandı' | 'Sözleşme' | 'Rezervasyon' | 'Revizyonda' | 'İptal' | 'Tamamlandı';
+  stage: 'Teklif Hazırlandı' | 'Onaya Gönderildi' | 'Sözleşme Bekliyor' | 'Sözleşme İmzalandı' | 'Operasyona Aktarıldı' | 'İptal';
   closingDate: string;
   details: string;
   priority: 'Yüksek' | 'Orta' | 'Düşük';
@@ -40,7 +40,7 @@ export const offers: Offer[] = [
     owner: 'Cemil Sezgin',
     lastActivity: 'Teklif revize edildi',
     closeProbability: 78,
-    stage: 'Onay Bekleniyor',
+    stage: 'Onaya Gönderildi',
     closingDate: '15 Haz 2025',
     priority: 'Yüksek',
     details: '3 alan, 30 gün yayın. LED video + lightbox paketi. Medya kiti dahil.',
@@ -60,7 +60,7 @@ export const offers: Offer[] = [
     owner: 'Cemil Sezgin',
     lastActivity: 'Pazarlık toplantısı yapıldı',
     closeProbability: 82,
-    stage: 'Pazarlık',
+    stage: 'Sözleşme Bekliyor',
     closingDate: '30 Haz 2025',
     priority: 'Yüksek',
     details: '3 dev LED ekran kiralama, uzun vadeli yenileme teklifi.',
@@ -100,7 +100,7 @@ export const offers: Offer[] = [
     owner: 'Ayşe Kaya',
     lastActivity: 'Sunum tarihi oluşturuldu',
     closeProbability: 71,
-    stage: 'Sunum Yapıldı',
+    stage: 'Sözleşme Bekliyor',
     closingDate: '05 Haz 2025',
     priority: 'Yüksek',
     details: '2 premium alan, 30 gün yayın. Dış hat çıkış LED ve CIP salonları.',
@@ -120,7 +120,7 @@ export const offers: Offer[] = [
     owner: 'Ahmet Demir',
     lastActivity: 'Fiyat revizyonu bekliyor',
     closeProbability: 52,
-    stage: 'İhtiyaç Analizi',
+    stage: 'Teklif Hazırlandı',
     closingDate: '10 Tem 2025',
     priority: 'Düşük',
     details: 'Baskılı lightbox üniteleri ve bagaj alım LED alanları.',
