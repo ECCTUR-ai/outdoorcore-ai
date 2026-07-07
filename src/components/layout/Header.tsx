@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp, DateRangeType, DateRangeState } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
-import { Bell, Mail, ChevronDown, Calendar, Search, Menu, Sun, Moon } from 'lucide-react';
+import { Bell, Mail, ChevronDown, Calendar, Search, Menu, Sun, Moon, Sparkles } from 'lucide-react';
 import { Avatar } from '../design-system/Avatar';
 import { Badge } from '../design-system/Badge';
 import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
@@ -135,6 +135,35 @@ export function Header() {
           title="Komut Paleti (Ctrl+K)"
         >
           <Search size={12} />
+        </button>
+
+        {/* Purple Outdoor AI Pilot Button */}
+        <button
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('toggle_ai_pilot'));
+          }}
+          className="flex items-center gap-1.5 px-3 h-9 bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/25 rounded-xl text-purple-400 font-black text-[9.5px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
+          title="Outdoor AI Pilot"
+        >
+          <Sparkles size={11} className="animate-pulse" />
+          <span className="hidden sm:inline">AI Pilot</span>
+        </button>
+
+        {/* Demo Reset Button */}
+        <button
+          onClick={() => {
+            if (confirm('Tüm veritabanı demo verileriyle sıfırlanacaktır. Emin misiniz?')) {
+              import('@/services/demoSeedingService').then(({ demoSeedingService }) => {
+                demoSeedingService.resetDemoData();
+                alert('Demo verisi başarıyla yüklendi ve tüm modüller senkronize edildi.');
+                window.location.reload();
+              });
+            }
+          }}
+          className="flex items-center gap-1.5 px-3 h-9 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/25 rounded-xl text-emerald-450 font-black text-[9.5px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
+          title="Demo Veriyi Sıfırla"
+        >
+          <span>Demo Sıfırla</span>
         </button>
 
         {/* Date Selector range */}

@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { CommandPalette } from '@/components/layout/CommandPalette';
+import { FloatingAiPilot } from '@/components/design-system/FloatingAiPilot';
 import { AuthProvider } from '@/auth/AuthProvider';
 import { useAuth } from '@/auth/useAuth';
 import { Login } from '@/pages/Login';
@@ -156,6 +157,9 @@ function AppContent() {
 
       {/* Global Command Palette dialog shortcut */}
       <CommandPalette />
+
+      {/* Global Floating AI Pilot Assistant */}
+      <FloatingAiPilot />
     </div>
   );
 }

@@ -206,7 +206,7 @@ export function Sidebar() {
         {(!sidebarCollapsed || mobileSidebarOpen) && (
           <button
             onClick={() => {
-              setCurrentRoute('ai-assistant');
+              window.dispatchEvent(new CustomEvent('toggle_ai_pilot'));
               setMobileSidebarOpen(false);
             }}
             className="mx-3.5 mb-4 p-3.5 bg-gradient-to-br from-blue-950/20 to-indigo-950/30 border border-blue-500/10 rounded-2xl text-left select-none hover:border-blue-500/35 transition-all cursor-pointer block"

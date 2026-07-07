@@ -50,6 +50,10 @@ export interface AdvertisingSpace {
   dimensions?: string;
   direction?: string;
   availabilityStatus?: 'müsait' | 'opsiyon' | 'rezerve' | 'bakımda';
+
+  priceNumeric?: number;
+  gazeTime?: number;
+  visibilityIndex?: number;
 }
 
 export const advertisingSpaces: AdvertisingSpace[] = [

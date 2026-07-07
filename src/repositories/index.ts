@@ -27,6 +27,13 @@ if (typeof window !== 'undefined') {
     });
     localStorage.setItem('outdoorcore_demo_last_reset_time', currentResetTime);
   }
+  
+  if (!localStorage.getItem('outdoorcore_mock_companies')) {
+    // Dynamic import to prevent circular dependency lock
+    import('@/services/demoSeedingService').then(({ demoSeedingService }) => {
+      demoSeedingService.resetDemoData();
+    });
+  }
 }
 
 // One-time run: Cancel associated reservations & campaigns of cancelled offers + Supabase cleanup for Tatilbudur
