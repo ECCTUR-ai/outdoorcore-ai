@@ -6,7 +6,7 @@ import { Button } from './Button';
 import { Notification } from './Notification';
 import { spaceSchema, SpaceFormData } from '@/utils/schemas';
 import { zodResolver } from '@/utils/resolver';
-import { spaceRepository } from '@/repositories';
+import { spaceRepository, digitalScreenRepository } from '@/repositories';
 import { AdvertisingSpace } from '@/data/advertisingSpaces';
 
 interface AdvertisingSpaceModalProps {
@@ -120,6 +120,44 @@ export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: Adv
       } else {
         result = await spaceRepository.create(data);
       }
+
+      if (data.type === 'LED') {
+        const monthlyBasePrice = parseInt(data.price.replace(/[^0-9]/g, ''), 10) || 0;
+        
+        let totalM2 = 0;
+        const sizeStr = data.size || '';
+        const numbers = sizeStr.replace(/,/g, '.').match(/\d+(\.\d+)?/g);
+        if (numbers && numbers.length >= 2) {
+          const w = parseFloat(numbers[0]);
+          const h = parseFloat(numbers[1]);
+          if (!isNaN(w) && !isNaN(h)) {
+            totalM2 = parseFloat((w * h).toFixed(1));
+          }
+        }
+
+        const screenVisibility = (data.visibility === 'Çok Yüksek' || data.visibility === 'Yüksek' || data.visibility === 'Orta')
+          ? data.visibility
+          : 'Yüksek';
+
+        const screenStatus = data.status === 'bakim' ? 'maintenance' : 'active';
+
+        digitalScreenRepository.createScreen({
+          screenCode: data.code,
+          name: data.name,
+          location: data.location,
+          terminal: data.terminal || '',
+          floor: data.floor || '',
+          totalM2: totalM2,
+          resolution: data.resolution || '3840x2160 (4K UHD)',
+          loopDurationSeconds: 120,
+          monthlyBasePrice: monthlyBasePrice,
+          dailyTraffic: data.traffic || 0,
+          visibility: screenVisibility,
+          status: screenStatus,
+          notes: data.notes || ''
+        });
+      }
+
       setSubmitSuccess(true);
       setTimeout(() => {
         onSuccess(result);

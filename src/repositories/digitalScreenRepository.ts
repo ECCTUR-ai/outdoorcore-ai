@@ -47,6 +47,67 @@ export const digitalScreenRepository = {
     return getLocalData(SCREENS_STORAGE_KEY, defaultScreens);
   },
 
+  createScreen(input: {
+    screenCode: string;
+    name: string;
+    location: string;
+    terminal: string;
+    floor: string;
+    totalM2?: number;
+    resolution?: string;
+    loopDurationSeconds?: number;
+    monthlyBasePrice: number;
+    dailyTraffic?: number;
+    visibility: 'Çok Yüksek' | 'Yüksek' | 'Orta';
+    status: 'active' | 'maintenance' | 'inactive';
+    notes?: string;
+  }): DigitalScreen {
+    const screens = this.listScreens();
+    const existing = screens.find(s => s.screenCode === input.screenCode);
+    if (existing) {
+      return this.updateScreen(existing.screenId, input);
+    }
+
+    const newScreen: DigitalScreen = {
+      screenId: input.screenCode,
+      screenCode: input.screenCode,
+      name: input.name,
+      location: input.location,
+      terminal: input.terminal,
+      floor: input.floor,
+      totalM2: input.totalM2 || 0,
+      resolution: input.resolution || '3840x2160 (4K UHD)',
+      loopDurationSeconds: input.loopDurationSeconds || 120,
+      monthlyBasePrice: input.monthlyBasePrice,
+      dailyTraffic: input.dailyTraffic || 0,
+      visibility: input.visibility,
+      status: 'active',
+      notes: input.notes || ''
+    };
+
+    screens.push(newScreen);
+    setLocalData(SCREENS_STORAGE_KEY, screens);
+    return newScreen;
+  },
+
+  updateScreen(id: string, input: Partial<DigitalScreen>): DigitalScreen {
+    const screens = this.listScreens();
+    const idx = screens.findIndex(s => s.screenId === id);
+    if (idx === -1) {
+      throw new Error('LED Ekran bulunamadı.');
+    }
+
+    screens[idx] = {
+      ...screens[idx],
+      ...input,
+      screenId: id,
+      screenCode: input.screenCode || screens[idx].screenCode
+    };
+
+    setLocalData(SCREENS_STORAGE_KEY, screens);
+    return screens[idx];
+  },
+
   listPlaylistSlots(screenId?: string, dateRange?: { startDate: string; endDate: string }): PlaylistSlot[] {
     let slots = getLocalData(SLOTS_STORAGE_KEY, defaultSlots);
     

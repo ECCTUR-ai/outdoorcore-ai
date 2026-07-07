@@ -618,7 +618,10 @@ export function ReklamAlanlari() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         space={editingSpace}
-        onSuccess={() => fetchSpaces(false)}
+        onSuccess={() => {
+          fetchSpaces(false);
+          fetchLedData();
+        }}
       />
 
       {/* LED Reservation Modal */}
