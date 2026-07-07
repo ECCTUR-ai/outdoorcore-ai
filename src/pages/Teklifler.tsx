@@ -249,12 +249,6 @@ export function Teklifler() {
     setOffers(prev => prev.map(o => o.id === id ? { ...o, stage: newStage, approved: approved } : o));
 
     try {
-      // Database update
-      await offerRepository.update(id, { stage: newStage, approved: approved });
-      
-      // Activity Logging
-      await activityLogRepository.log(logMsg, 'offers');
-
       if (newStage === 'Sözleşme İmzalandı') {
         const startDate = original.campaignStartDate || original.closingDate || new Date().toISOString().split('T')[0];
         const endDate = original.campaignEndDate || original.closingDate || new Date().toISOString().split('T')[0];
@@ -276,21 +270,38 @@ export function Teklifler() {
           progress: 100
         });
 
-        // B. Reservation record is created
-        await reservationRepository.create({
-          spaceCode: original.spacesList[0] || 'SG-001',
-          spaceName: original.spacesList[0] || 'SG-001',
-          location: 'İstanbul Havalimanı',
-          clientName: original.clientName,
-          startDate: startDate,
-          endDate: endDate,
-          durationDays: diffDays,
-          status: 'Kesin Rezervasyon',
-          budget: original.value,
-          companyId: original.companyId || 'CMP-0001',
-          offerId: original.id,
-          contractId: contract.id
-        });
+        // B. Reservation records are created (one per selected advertising space)
+        const reservationIds: string[] = [];
+        const allSpaces = spaceRepository.getAllSync();
+        const selectedSpaces = (original.spaceIds || []).map(sId => allSpaces.find(s => s.id === sId)).filter(Boolean) as any[];
+
+        if (selectedSpaces.length === 0) {
+          throw new Error("Teklifte seçilmiş herhangi bir reklam alanı bulunmamaktadır.");
+        }
+
+        for (const space of selectedSpaces) {
+          const resPayload = {
+            spaceId: space.id,
+            spaceCode: space.code,
+            spaceName: space.name,
+            location: space.location || 'İstanbul',
+            clientName: original.clientName,
+            startDate: startDate,
+            endDate: endDate,
+            durationDays: diffDays,
+            status: 'Kesin Rezervasyon',
+            budget: `₺ ${(space.price || '0').replace(/[^0-9]/g, '')}`,
+            companyId: original.companyId || 'CMP-0001',
+            offerId: original.id,
+            contractId: contract.id
+          };
+          console.log("RESERVATION CREATE PAYLOAD", resPayload);
+          const rObj = await reservationRepository.create(resPayload);
+          if (!rObj || !rObj.id) {
+            throw new Error("Rezervasyon kaydı oluşturulamadı.");
+          }
+          reservationIds.push(rObj.id);
+        }
 
         // C. Mark selected spaces as reserved
         if (original.spaceIds) {
@@ -307,7 +318,7 @@ export function Teklifler() {
         await financeRepository.createPaymentPlan(original.companyId || 'CMP-0001', original.clientName, original.valueNumeric, contract.id);
 
         // E. Campaign record is created
-        await campaignRepository.create({
+        const campaign = await campaignRepository.create({
           clientName: original.clientName,
           campaignName: original.campaignName,
           status: 'Kurulum Bekliyor',
@@ -318,19 +329,38 @@ export function Teklifler() {
           contractId: contract.id
         });
 
+        // F. Save stage change and linked reference IDs to Offer DB
+        await offerRepository.update(id, {
+          stage: newStage,
+          approved: approved,
+          contractId: contract.id,
+          reservationId: reservationIds[0],
+          campaignId: campaign.id
+        });
+
         // Show multiple toasts
         showToast("Sözleşme İmzalandı", "Sözleşme imzalandı. Rezervasyon oluşturuldu.", "success");
         showToast("Reklam Alanları", "Reklam alanları firmaya kapatıldı.", "success");
         showToast("Finans Planı", "Finans planı oluşturuldu.", "success");
       } else {
+        // Standard Stage Change
+        await offerRepository.update(id, { stage: newStage, approved: approved });
         showToast(toastTitle, toastMsg, "success");
       }
 
+      // Log success event activity
+      await activityLogRepository.log(logMsg, 'offers');
+
       fetchOffers(false);
     } catch (e: any) {
+      console.error("STAGE CHANGE ERROR", e);
       // Rollback on error
       setOffers(previousOffers);
-      showToast("Hata", e.message || "Aşama güncellenirken hata oluştu.", "error");
+      if (newStage === 'Sözleşme İmzalandı') {
+        showToast("Hata", "Sözleşme imzalandı ancak rezervasyon oluşturulamadı. İşlem geri alındı.", "error");
+      } else {
+        showToast("Hata", e.message || "Aşama güncellenirken hata oluştu.", "error");
+      }
     } finally {
       setActionLoading(null);
     }
