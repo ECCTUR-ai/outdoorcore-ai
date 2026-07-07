@@ -102,6 +102,28 @@ export function Finans() {
     history: []
   };
 
+  // Dynamic calculations from real repository data
+  const accounts = financeData?.accounts || [];
+  const totalCiro = accounts.reduce((sum: number, acc: any) => sum + (parseFloat((acc.totalDebt || '0').replace(/[^0-9]/g, '')) || 0), 0);
+  const totalCollected = accounts.reduce((sum: number, acc: any) => sum + (parseFloat((acc.totalCollected || '0').replace(/[^0-9]/g, '')) || 0), 0);
+  const totalPending = accounts.reduce((sum: number, acc: any) => sum + (parseFloat((acc.balance || '0').replace(/[^0-9]/g, '')) || 0), 0);
+  
+  const totalOverdue = accounts.reduce((sum: number, acc: any) => {
+    const overdueAmt = (acc.invoices || [])
+      .filter((inv: any) => inv.status === 'Gecikti')
+      .reduce((s: number, inv: any) => s + (parseFloat((inv.amount || '0').replace(/[^0-9]/g, '')) || 0), 0);
+    return sum + overdueAmt;
+  }, 0);
+  
+  const totalInvoicesCount = accounts.reduce((sum: number, acc: any) => sum + (acc.invoices?.length || 0), 0);
+
+  const formatCurrency = (val: number) => {
+    if (val === 0) return '₺0';
+    if (val >= 1000000) return `₺ ${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `₺ ${(val / 1000).toFixed(0)}K`;
+    return `₺ ${val.toLocaleString('tr-TR')}`;
+  };
+
   return (
     <div className="space-y-6 select-none pb-12">
       {/* Top Header Section */}
@@ -164,7 +186,7 @@ export function Finans() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Toplam Ciro"
-          value={loading ? '...' : '₺684.5M'}
+          value={loading ? '...' : formatCurrency(totalCiro)}
           percentage="%100"
           subtext="Toplam kiralama hacmi"
           icon={<Coins size={15} />}
@@ -172,8 +194,8 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Tahsil Edilen"
-          value={loading ? '...' : '₺612.0M'}
-          percentage="%89.4"
+          value={loading ? '...' : formatCurrency(totalCollected)}
+          percentage={totalCiro > 0 ? `%${((totalCollected / totalCiro) * 100).toFixed(1)}` : '%0'}
           subtext="Banka hesaplarına geçen"
           icon={<CheckCircle size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"
@@ -181,7 +203,7 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Tahsilat Bekleyen"
-          value={loading ? '...' : '₺58.0M'}
+          value={loading ? '...' : formatCurrency(totalPending)}
           percentage="VADEDE"
           subtext="Faturalandırılmış tutar"
           icon={<Clock size={15} />}
@@ -190,7 +212,7 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Vadesi Geçen"
-          value={loading ? '...' : '₺14.5M'}
+          value={loading ? '...' : formatCurrency(totalOverdue)}
           percentage="ALARM"
           subtext="Gecikmeli ödemeler"
           icon={<SlidersHorizontal size={15} />}
@@ -199,8 +221,8 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Toplam Fatura"
-          value={loading ? '...' : '248'}
-          percentage="+12 bu ay"
+          value={loading ? '...' : String(totalInvoicesCount)}
+          percentage="ADET"
           subtext="Kesilen fatura adeti"
           icon={<FileSignature size={15} />}
           iconBgColor="bg-purple-500/10 text-purple-400 border-purple-400/10"
@@ -208,9 +230,9 @@ export function Finans() {
         />
         <DarkKpiCard
           title="Nakit Akışı (Net)"
-          value={loading ? '...' : '₺72.0M'}
+          value={loading ? '...' : formatCurrency(totalCollected - totalOverdue)}
           percentage="+%12.4"
-          subtext="Haziran net girdisi"
+          subtext="Cari net girdi"
           icon={<TrendingUp size={15} />}
           iconBgColor="bg-sky-500/10 text-sky-455 border-sky-550/10"
           glowColor="blue"
@@ -230,6 +252,16 @@ export function Finans() {
           <div className="lg:col-span-9 space-y-4">
             <CardSkeleton />
             <CardSkeleton />
+          </div>
+        </div>
+      ) : accounts.length === 0 ? (
+        <div className="p-8 text-center bg-[#12192B] border border-white/5 rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,.45)] space-y-4 select-none col-span-12">
+          <div className="w-16 h-16 rounded-full bg-slate-900/60 border border-white/5 flex items-center justify-center text-slate-500 mx-auto">
+            <Coins size={32} />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-black text-white uppercase tracking-wider">Henüz finansal hesap kaydı bulunmuyor.</h4>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sözleşme imzalandığında bu ekran otomatik dolacaktır.</p>
           </div>
         </div>
       ) : (

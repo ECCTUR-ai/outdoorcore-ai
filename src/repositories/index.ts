@@ -14,15 +14,18 @@ import { competitorsList, competitorKpis } from '@/data/competitors';
 import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
 import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 
+import resetTimeConfig from '@/data/resetTime.json';
+
 if (typeof window !== 'undefined') {
-  const RESET_VERSION = 'v1_demo_reset_2026_07_07';
-  if (localStorage.getItem('outdoorcore_demo_version') !== RESET_VERSION) {
+  const lastResetTime = localStorage.getItem('outdoorcore_demo_last_reset_time');
+  const currentResetTime = String(resetTimeConfig.resetTime);
+  if (lastResetTime !== currentResetTime) {
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('outdoorcore_mock_') || key === 'finance_data') {
         localStorage.removeItem(key);
       }
     });
-    localStorage.setItem('outdoorcore_demo_version', RESET_VERSION);
+    localStorage.setItem('outdoorcore_demo_last_reset_time', currentResetTime);
   }
 }
 

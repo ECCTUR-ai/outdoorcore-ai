@@ -110,6 +110,15 @@ async function main() {
     console.log('Kaynak dosyalar (offers.ts, reservations.ts, contracts.ts, campaigns.ts, finance.ts) temizlenmiş başlangıç için sıfırlandı.');
   }
 
+  // Trigger local storage reset on next browser load
+  const resetConfigPath = path.resolve(process.cwd(), 'src/data/resetTime.json');
+  try {
+    fs.writeFileSync(resetConfigPath, JSON.stringify({ resetTime: Date.now() }, null, 2), 'utf-8');
+    console.log('- Local Storage reset tetikleyici güncellendi (src/data/resetTime.json)');
+  } catch (err) {
+    console.error('Local Storage tetikleyici güncellenirken hata:', err.message);
+  }
+
   // Auto control report
   console.log('\nOTOMATİK KONTROL RAPORU:');
   console.log('--------------------------------------------------');

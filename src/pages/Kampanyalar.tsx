@@ -222,50 +222,58 @@ export function Kampanyalar() {
             </div>
           </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* 1. Sol: Filter & Campaign list */}
-          <div className="order-2 lg:order-none lg:col-span-3">
-            <CampaignList 
-              campaigns={campaigns}
-              selectedId={selectedCampaignId}
-              onSelect={(id) => setSelectedCampaignId(id)}
-            />
+      ) : campaigns.length === 0 ? (
+        <div className="p-8 text-center bg-[#12192B] border border-white/5 rounded-[20px] shadow-[0_20px_60px_rgba(0,0,0,.45)] space-y-4 select-none">
+          <div className="w-16 h-16 rounded-full bg-slate-900/60 border border-white/5 flex items-center justify-center text-slate-500 mx-auto">
+            <Megaphone size={32} />
           </div>
-
-          {/* 2. Orta: Catalog Cards listing */}
-          <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
-            <div className="flex justify-between items-center px-1 text-left">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kampanya Portalı</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {campaigns.map(cp => (
-                <CampaignCard 
-                  key={cp.id} 
-                  campaign={cp} 
-                  isActive={selectedCampaignId === cp.id}
-                  onClick={() => setSelectedCampaignId(cp.id)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* 3. Sağ: Sticky detail panel */}
-          <div className="order-3 lg:order-none lg:col-span-4">
-            <CampaignDetailPanel 
-              campaign={selectedCampaign}
-            />
+          <div className="space-y-1">
+            <h4 className="text-xs font-black text-white uppercase tracking-wider">Henüz kampanya bulunmuyor.</h4>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sözleşme imzalandığında bu ekran otomatik dolacaktır.</p>
           </div>
         </div>
-      )}
-
-      {/* Bottom widgets row */}
-      {!loading && (
+      ) : (
         <>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* 1. Sol: Filter & Campaign list */}
+            <div className="order-2 lg:order-none lg:col-span-3">
+              <CampaignList 
+                campaigns={campaigns}
+                selectedId={selectedCampaignId}
+                onSelect={(id) => setSelectedCampaignId(id)}
+              />
+            </div>
+
+            {/* 2. Orta: Catalog Cards listing */}
+            <div className="order-1 lg:order-none lg:col-span-5 space-y-4">
+              <div className="flex justify-between items-center px-1 text-left">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kampanya Portalı</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {campaigns.map(cp => (
+                  <CampaignCard 
+                    key={cp.id} 
+                    campaign={cp} 
+                    isActive={selectedCampaignId === cp.id}
+                    onClick={() => setSelectedCampaignId(cp.id)}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Sağ: Sticky detail panel */}
+            <div className="order-3 lg:order-none lg:col-span-4">
+              <CampaignDetailPanel 
+                campaign={selectedCampaign}
+              />
+            </div>
+          </div>
+
+          {/* Bottom widgets row */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div className="lg:col-span-8 space-y-6">
               <CampaignScheduleTimeline />
-              <CreativeFilesGrid files={selectedCampaign.creativeFiles} />
+              <CreativeFilesGrid files={selectedCampaign.creativeFiles || []} />
             </div>
             <div className="lg:col-span-4">
               <CampaignAiInsights />
