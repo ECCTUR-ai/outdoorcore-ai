@@ -18,7 +18,11 @@ export function ContractList({ contracts, selectedId, onSelect }: ContractListPr
     const matchesSearch = c.clientName.toLowerCase().includes(search.toLowerCase()) || 
                           c.contractNo.toLowerCase().includes(search.toLowerCase()) ||
                           c.campaignName.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === '' || c.status === statusFilter;
+    const matchesStatus = statusFilter === '' || 
+                          c.status === statusFilter ||
+                          (statusFilter === 'Aktif' && (c.status === 'active' || c.status === 'signed' || c.status === 'Aktif')) ||
+                          (statusFilter === 'İmza Bekleyen' && (c.status === 'pending' || c.status === 'İmza Bekleyen')) ||
+                          (statusFilter === 'cancelled' && (c.status === 'cancelled' || c.status === 'İptal'));
     const matchesCrm = crmFilter === '' || c.crmTier === crmFilter;
     return matchesSearch && matchesStatus && matchesCrm;
   });
@@ -45,6 +49,7 @@ export function ContractList({ contracts, selectedId, onSelect }: ContractListPr
             <option value="İmza Bekleyen">İmza Bekleyen</option>
             <option value="Yenileme Bekleyen">Yenileme Bekleyen</option>
             <option value="Riskli">Kritik Risk</option>
+            <option value="cancelled">İptal Edilmiş</option>
           </Select>
           <Select value={crmFilter} onChange={(e) => setCrmFilter(e.target.value)} className="h-9 px-2 text-[9px]">
             <option value="">CRM Segment</option>

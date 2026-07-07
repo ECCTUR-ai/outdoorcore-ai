@@ -1081,12 +1081,51 @@ export const offerRepository = {
 // OTHER REPOSITORIES (PRESERVED MOCK WITH FALLBACK)
 // ----------------------------------------------------
 
+const normalizeContractStatus = (status: string | null | undefined): string => {
+  if (!status) return 'draft';
+  const s = status.trim().toLowerCase();
+  if (s === 'aktif' || s === 'active') return 'active';
+  if (s === 'sozlesme imzalandi' || s === 'sözleşme imzalandı' || s === 'signed' || s === 'imzalandı' || s === 'imzalandi') return 'signed';
+  if (s === 'sozlesme bekliyor' || s === 'sözleşme bekliyor' || s === 'pending') return 'pending';
+  if (s === 'iptal' || s === 'cancelled' || s === 'iptal edildi') return 'cancelled';
+  if (s === 'expired' || s === 'süresi dolmuş' || s === 'süresi doldu') return 'expired';
+  if (s === 'draft' || s === 'taslak') return 'draft';
+  return s;
+};
+
 export const contractRepository = {
   getAllSync() {
-    return getLocalData('contracts', contracts);
+    const data = getLocalData('contracts', contracts);
+    return data.map((d: any) => ({
+      id: d.id || '',
+      contractNo: d.contractNo || '',
+      companyId: d.companyId || '',
+      clientName: d.clientName || 'Bilinmeyen Müşteri',
+      campaignId: d.campaignId || '',
+      campaignName: d.campaignName || '',
+      status: normalizeContractStatus(d.status),
+      crmTier: d.crmTier || '',
+      value: d.value || '₺0',
+      daysLeft: d.daysLeft || 0,
+      startDate: d.startDate || '',
+      endDate: d.endDate || '',
+      logo: d.logo || '',
+      valueNumeric: d.valueNumeric || 0,
+      progress: d.progress || 0,
+      aiRiskScore: d.aiRiskScore || 0,
+      mediaAgency: d.mediaAgency || '',
+      proposalId: d.proposalId || '',
+      reservationId: d.reservationId || '',
+      notes: Array.isArray(d.notes) ? d.notes : [d.notes].filter(Boolean),
+      installments: Array.isArray(d.installments) ? d.installments : [],
+      spacesList: Array.isArray(d.spacesList) ? d.spacesList : [],
+      filesList: Array.isArray(d.filesList) ? d.filesList : [],
+      history: Array.isArray(d.history) ? d.history : [],
+      aiRiskAnalysis: Array.isArray(d.aiRiskAnalysis) ? d.aiRiskAnalysis : []
+    })) as Contract[];
   },
   getByIdSync(id: string) {
-    const local = getLocalData('contracts', contracts);
+    const local = this.getAllSync();
     return local.find(c => c.id === id) || local[0];
   },
   async getAll() {
@@ -1096,25 +1135,25 @@ export const contractRepository = {
         if (error) throw error;
         if (data && data.length > 0) {
           return data.map((d: any) => ({
-            id: d.id,
-            contractNo: d.contract_no,
-            companyId: d.company_id,
-            clientName: d.client_name,
-            campaignId: d.campaign_id,
-            campaignName: d.campaign_name,
-            status: d.status,
-            crmTier: d.crm_tier,
-            value: d.value,
-            daysLeft: d.days_left,
-            startDate: d.start_date,
-            endDate: d.end_date,
+            id: d.id || '',
+            contractNo: d.contract_no || '',
+            companyId: d.company_id || '',
+            clientName: d.client_name || 'Bilinmeyen Müşteri',
+            campaignId: d.campaign_id || '',
+            campaignName: d.campaign_name || '',
+            status: normalizeContractStatus(d.status),
+            crmTier: d.crm_tier || '',
+            value: d.value || '₺0',
+            daysLeft: d.days_left || 0,
+            startDate: d.start_date || '',
+            endDate: d.end_date || '',
             logo: d.logo || '',
             valueNumeric: d.value_numeric || 0,
             progress: d.progress || 0,
             aiRiskScore: d.ai_risk_score || 0,
-            mediaAgency: d.media_agency,
-            proposalId: d.proposal_id,
-            reservationId: d.reservation_id,
+            mediaAgency: d.media_agency || '',
+            proposalId: d.proposal_id || '',
+            reservationId: d.reservation_id || '',
             notes: Array.isArray(d.notes) ? d.notes : [d.notes].filter(Boolean),
             installments: Array.isArray(d.installments) ? d.installments : [],
             spacesList: Array.isArray(d.spaces_list) ? d.spaces_list : [],
@@ -1127,7 +1166,7 @@ export const contractRepository = {
         console.warn('Supabase contracts fetch failed, using local fallback:', e);
       }
     }
-    return getLocalData('contracts', contracts);
+    return this.getAllSync();
   },
   async update(id: string, input: any) {
     const { organizationId, email } = getSessionInfo();

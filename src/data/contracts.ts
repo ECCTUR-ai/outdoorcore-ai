@@ -22,7 +22,7 @@ export interface Contract {
   startDate: string;
   endDate: string;
   daysLeft: number;
-  status: 'Aktif' | 'İmza Bekleyen' | 'Yenileme Bekleyen' | 'Süresi Dolmuş' | 'Riskli';
+  status: 'Aktif' | 'İmza Bekleyen' | 'Yenileme Bekleyen' | 'Süresi Dolmuş' | 'Riskli' | 'active' | 'signed' | 'pending' | 'cancelled' | 'expired' | 'draft' | 'İptal' | string;
   progress: number;
   crmTier: 'VIP' | 'Gold' | 'Silver' | 'Standard';
   aiRiskScore: number;

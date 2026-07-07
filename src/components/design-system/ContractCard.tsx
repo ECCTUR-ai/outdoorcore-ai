@@ -24,15 +24,15 @@ export function ContractCard({ contract, isActive, onClick }: ContractCardProps)
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-xs flex items-center justify-center shrink-0">
-            {contract.logo}
+            {contract.logo || 'C'}
           </div>
           <div className="space-y-0.5">
-            <h4 className="text-[11px] font-black text-white uppercase leading-none truncate max-w-[120px]">{contract.clientName}</h4>
-            <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">{contract.contractNo}</span>
+            <h4 className="text-[11px] font-black text-white uppercase leading-none truncate max-w-[120px]">{contract.clientName || 'İsimsiz Müşteri'}</h4>
+            <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">{contract.contractNo || 'CON-XXX'}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <ContractStatusBadge status={contract.status} />
+          <ContractStatusBadge status={contract.status || 'draft'} />
           {contract.crmTier === 'VIP' && (
             <span className="text-[7.5px] bg-rose-500/10 text-rose-400 border border-rose-500/10 px-1 py-0.2 rounded font-black uppercase tracking-wider block mt-1">VIP</span>
           )}
@@ -43,16 +43,16 @@ export function ContractCard({ contract, isActive, onClick }: ContractCardProps)
       <div className="grid grid-cols-2 gap-3 mt-4 pt-3.5 border-t border-white/5 text-[10px]">
         <div className="space-y-0.5">
           <span className="text-slate-500 font-bold uppercase tracking-wider block">Sözleşme Tutarı</span>
-          <span className="text-white font-extrabold block">{contract.value}</span>
+          <span className="text-white font-extrabold block">{contract.value || '₺0'}</span>
         </div>
         <div className="space-y-0.5 text-right">
           <span className="text-slate-500 font-bold uppercase tracking-wider block">Kalan Süre</span>
-          <span className="text-slate-200 font-extrabold block">{contract.daysLeft} Gün</span>
+          <span className="text-slate-200 font-extrabold block">{contract.daysLeft || 0} Gün</span>
         </div>
         <div className="col-span-2 space-y-1.5 border-t border-white/3 pt-2 mt-1">
           <div className="flex justify-between items-center text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">
             <span>Sürec İlerlemesi</span>
-            <span>%{contract.progress}</span>
+            <span>%{contract.progress || 0}</span>
           </div>
           {/* Progress bar line representation */}
           <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -60,7 +60,7 @@ export function ContractCard({ contract, isActive, onClick }: ContractCardProps)
               className={`h-full rounded-full transition-all duration-300 ${
                 contract.status === 'Riskli' ? 'bg-rose-500' : 'bg-emerald-500'
               }`}
-              style={{ width: `${contract.progress}%` }}
+              style={{ width: `${contract.progress || 0}%` }}
             />
           </div>
         </div>
@@ -68,14 +68,14 @@ export function ContractCard({ contract, isActive, onClick }: ContractCardProps)
 
       {/* Footer Risk indicators */}
       <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/3 text-[9px] font-bold text-slate-500 select-none">
-        <span className="uppercase tracking-wider">Tarih: {contract.startDate} - {contract.endDate}</span>
+        <span className="uppercase tracking-wider">Tarih: {contract.startDate || '-'} - {contract.endDate || '-'}</span>
         <span className={`px-1.5 py-0.2 rounded border flex items-center gap-0.5 scale-[0.9] origin-right ${
-          contract.aiRiskScore >= 7 
-            ? 'bg-rose-500/10 text-rose-450 border-rose-500/10 font-black' 
-            : 'bg-emerald-500/10 text-emerald-450 border-emerald-500/10 font-black'
+          (contract.aiRiskScore || 0) >= 7 
+            ? 'bg-rose-500/10 text-rose-400 border-rose-500/10 font-black' 
+            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10 font-black'
         }`}>
           <Sparkles size={8} />
-          Risk: {contract.aiRiskScore}
+          Risk: {contract.aiRiskScore || 0}
         </span>
       </div>
     </div>

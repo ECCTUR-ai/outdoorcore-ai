@@ -149,7 +149,7 @@ export function Sozlesmeler() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Aktif Sözleşme"
-          value={loading ? '...' : String(contracts.filter(c => c.status === 'Aktif').length || 186)}
+          value={loading ? '...' : String(contracts.filter(c => c.status === 'active' || c.status === 'signed' || c.status === 'Aktif').length || 186)}
           percentage="%100"
           subtext="Yayında olanlar"
           icon={<FileSignature size={15} />}
@@ -166,7 +166,7 @@ export function Sozlesmeler() {
         />
         <DarkKpiCard
           title="Yenileme Bekleyen"
-          value={loading ? '...' : String(contracts.filter(c => c.status === 'Yenileme Bekleyen').length || 22)}
+          value={loading ? '...' : String(contracts.filter(c => c.status === 'Yenileme Bekleyen' || c.status === 'pending').length || 22)}
           percentage="+4 talep"
           subtext="Müzakere sürecinde"
           icon={<Layers size={15} />}
@@ -175,7 +175,7 @@ export function Sozlesmeler() {
         />
         <DarkKpiCard
           title="İmza Bekleyen"
-          value={loading ? '...' : String(contracts.filter(c => c.status === 'İmza Bekleyen').length || 8)}
+          value={loading ? '...' : String(contracts.filter(c => c.status === 'pending' || c.status === 'İmza Bekleyen').length || 8)}
           percentage="HUKUKTA"
           subtext="Hukuk departmanında"
           icon={<CheckCircle size={15} />}
@@ -241,6 +241,12 @@ export function Sozlesmeler() {
                   onClick={() => setSelectedContractId(ct.id)}
                 />
               ))}
+              {contracts.length === 0 && (
+                <div className="col-span-full py-12 text-center bg-white/3 border border-white/5 rounded-2xl select-none">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">Kayıtlı Sözleşme Bulunmuyor</span>
+                  <p className="text-[9px] text-slate-600 font-bold">Yeni bir teklif onaylandığında otomatik olarak sözleşme kaydı oluşacaktır.</p>
+                </div>
+              )}
             </div>
           </div>
 
