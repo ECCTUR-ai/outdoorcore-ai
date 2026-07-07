@@ -1247,6 +1247,30 @@ export const contractRepository = {
     contracts.push(newRecord);
     
     return newRecord;
+  },
+  async delete(id: string) {
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase
+          .from('contracts')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase contract delete failed:', e);
+      }
+    }
+
+    const local = getLocalData('contracts', contracts);
+    const filtered = local.filter((c: any) => c.id !== id);
+    setLocalData('contracts', filtered);
+
+    // Sync in-memory contracts
+    const inMemIdx = contracts.findIndex(c => c.id === id);
+    if (inMemIdx !== -1) {
+      contracts.splice(inMemIdx, 1);
+    }
+    return true;
   }
 };
 

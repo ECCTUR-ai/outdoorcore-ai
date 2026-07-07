@@ -1,33 +1,42 @@
 import React from 'react';
 import { Contract } from '@/data/contracts';
 import { ContractStatusBadge } from './ContractStatusBadge';
-import { Badge } from './Badge';
-import { Sparkles, Calendar, DollarSign, Clock } from 'lucide-react';
+import { Sparkles, Trash2 } from 'lucide-react';
 
 interface ContractCardProps {
   contract: Contract;
   isActive: boolean;
   onClick: () => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
 }
 
-export function ContractCard({ contract, isActive, onClick }: ContractCardProps) {
+export function ContractCard({ contract, isActive, onClick, onDelete }: ContractCardProps) {
   return (
     <div
       onClick={onClick}
-      className={`dark-glass-card border rounded-2xl p-4.5 cursor-pointer transition-all duration-200 select-none text-left flex flex-col justify-between ${
+      className={`dark-glass-card border rounded-2xl p-4.5 cursor-pointer transition-all duration-200 select-none text-left flex flex-col justify-between relative group ${
         isActive 
           ? 'border-blue-500/30 bg-[#22314a]/30 shadow-md shadow-blue-500/5' 
           : 'border-white/5 hover:border-white/10 hover:bg-[#22314a]/25'
       }`}
     >
+      {/* Absolute delete button visible on hover */}
+      <button
+        onClick={(e) => onDelete(contract.id, e)}
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg bg-rose-500/10 text-rose-455 border border-rose-500/20 hover:bg-rose-500 hover:text-white cursor-pointer z-10"
+        title="Sözleşmeyi Sil"
+      >
+        <Trash2 size={11} />
+      </button>
+
       {/* Header title metadata */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between mr-5">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black text-xs flex items-center justify-center shrink-0">
             {contract.logo || 'C'}
           </div>
           <div className="space-y-0.5">
-            <h4 className="text-[11px] font-black text-white uppercase leading-none truncate max-w-[120px]">{contract.clientName || 'İsimsiz Müşteri'}</h4>
+            <h4 className="text-[11px] font-black text-white uppercase leading-none truncate max-w-[100px]">{contract.clientName || 'İsimsiz Müşteri'}</h4>
             <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">{contract.contractNo || 'CON-XXX'}</span>
           </div>
         </div>
@@ -71,8 +80,8 @@ export function ContractCard({ contract, isActive, onClick }: ContractCardProps)
         <span className="uppercase tracking-wider">Tarih: {contract.startDate || '-'} - {contract.endDate || '-'}</span>
         <span className={`px-1.5 py-0.2 rounded border flex items-center gap-0.5 scale-[0.9] origin-right ${
           (contract.aiRiskScore || 0) >= 7 
-            ? 'bg-rose-500/10 text-rose-400 border-rose-500/10 font-black' 
-            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/10 font-black'
+            ? 'bg-rose-500/10 text-rose-450 border-rose-500/10 font-black' 
+            : 'bg-emerald-500/10 text-emerald-450 border-emerald-500/10 font-black'
         }`}>
           <Sparkles size={8} />
           Risk: {contract.aiRiskScore || 0}

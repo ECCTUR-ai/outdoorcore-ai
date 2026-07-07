@@ -17,7 +17,8 @@ import {
   CheckSquare,
   Clock,
   History,
-  FolderOpen
+  FolderOpen,
+  AlertTriangle
 } from 'lucide-react';
 import { EntityLink } from './EntityLink';
 import { FileUpload } from './FileUpload';
@@ -27,9 +28,10 @@ import { workflowEngine } from '@/automation/workflowEngine';
 
 interface ContractDetailPanelProps {
   contract: Contract;
+  onDelete?: (id: string) => void;
 }
 
-export function ContractDetailPanel({ contract: initialContract }: ContractDetailPanelProps) {
+export function ContractDetailPanel({ contract: initialContract, onDelete }: ContractDetailPanelProps) {
   const defaultContract: Contract = {
     id: initialContract?.id || '',
     contractNo: initialContract?.contractNo || '',
@@ -114,6 +116,17 @@ export function ContractDetailPanel({ contract: initialContract }: ContractDetai
           <span className="truncate">{contract.mediaAgency || 'Ajans Belirtilmedi'}</span>
         </div>
       </div>
+
+      {/* Warning banner for orphan contracts (missing proposal/reservation) */}
+      {(!contract.proposalId || !contract.reservationId || contract.proposalId === 'Bulunamadı' || contract.reservationId === 'Bulunamadı') && (
+        <div className="p-3.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-[10px] text-rose-400 font-bold flex items-start gap-2 select-none">
+          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+          <div>
+            <span className="block font-black uppercase text-rose-450 mb-0.5">BAĞLI KAYIT EKSİK (ORPHAN CONTRACT)</span>
+            Bu sözleşmeye ait teklif veya kesin rezervasyon kaydı bulunamadı. Silinmeli veya kontrol edilmeli.
+          </div>
+        </div>
+      )}
 
       {/* Embedded Subtabs Nav */}
       <div className="border-b border-white/5 flex gap-1 pb-px overflow-x-auto select-none no-scrollbar">
@@ -340,6 +353,9 @@ export function ContractDetailPanel({ contract: initialContract }: ContractDetai
         )}
         <Button variant="primary" size="sm" type="button" onClick={() => alert(`${contract.contractNo || 'CON'} düzenleme modalı açılacak.`)}>
           Sözleşmeyi Düzenle
+        </Button>
+        <Button variant="outline" size="sm" type="button" onClick={() => onDelete && onDelete(contract.id)} className="text-rose-455 hover:bg-rose-500 hover:text-white border-rose-500/20">
+          Sözleşmeyi Sil
         </Button>
         <Button variant="outline" size="sm" leftIcon={<FileText size={12} />} onClick={() => alert('PDF Sözleşme belgesi oluşturuluyor...')}>
           PDF Oluştur
