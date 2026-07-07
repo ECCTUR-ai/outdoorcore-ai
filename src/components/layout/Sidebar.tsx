@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { 
   Home,
@@ -18,16 +18,17 @@ import {
   Sparkles,
   ChevronLeft,
   ChevronRight,
-  Bell
+  Bell,
+  ChevronDown
 } from 'lucide-react';
 
 import { usePermission } from '@/permissions/permissionHooks';
 import { PermissionKey } from '@/permissions/accessControl';
 import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
-import { useState, useEffect } from 'react';
 
 export function Sidebar() {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [reklamExpanded, setReklamExpanded] = useState(true);
 
   useEffect(() => {
     const updateCount = () => {
@@ -39,6 +40,7 @@ export function Sidebar() {
       window.removeEventListener('notifications_updated', updateCount);
     };
   }, []);
+
   const { 
     currentRoute, 
     setCurrentRoute, 
@@ -48,30 +50,28 @@ export function Sidebar() {
     setMobileSidebarOpen
   } = useApp();
 
-  const menuItems: { key: string; label: string; icon: React.ReactNode; isMock?: boolean; route?: string; permission: PermissionKey }[] = [
-    { key: 'dashboard', label: 'Ana Sayfa', icon: <Home size={13} />, permission: 'dashboard.view' },
-    { key: 'executive-dashboard', label: 'CEO Dashboard', icon: <BarChart3 size={13} className="text-emerald-450" />, permission: 'executive.view' },
-    { key: 'ai-assistant', label: 'AI Copilot', icon: <Sparkles size={13} className="text-blue-400" />, permission: 'ai.use' },
-    { key: 'sales-wizard', label: 'Yeni Satış', icon: <Sparkles size={13} className="text-indigo-400 animate-pulse" />, permission: 'offers.view' },
-    { key: 'alan-haritasi', label: 'Harita (Terminal)', icon: <Map size={13} />, permission: 'spaces.view' },
-    { key: 'reklam-alanlari', label: 'Reklam Yönetimi', icon: <MapPin size={13} />, permission: 'spaces.view' },
-    { key: 'takvim', label: 'Takvim', icon: <Calendar size={13} />, permission: 'calendar.view' },
-    { key: 'sozlesmeler', label: 'Sözleşmeler', icon: <FileSignature size={13} />, permission: 'contracts.view' },
-    { key: 'firmalar-markalar', label: 'Firmalar & Markalar', icon: <Building2 size={13} />, permission: 'companies.view' },
+  const menuItems: { key: string; label: string; icon: React.ReactNode; route?: string; permission: PermissionKey; isSubItem?: boolean; parentKey?: string }[] = [
+    { key: 'dashboard', label: 'Genel Bakış', icon: <Home size={13} />, permission: 'dashboard.view' },
+    
+    // Reklam Alanları Parent
+    { key: 'reklam-alanlari-parent', label: 'Reklam Alanları', icon: <MapPin size={13} />, permission: 'spaces.view' },
+    { key: 'map-dashboard', label: 'Harita Görünümü', icon: <Map size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
+    { key: 'reklam-alanlari', label: 'Liste Görünümü', icon: <MapPin size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
+    { key: 'alan-yonetimi', label: 'Alan Yönetimi', icon: <Settings size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
+    
     { key: 'teklifler', label: 'Teklifler', icon: <FileText size={13} />, permission: 'offers.view' },
+    { key: 'sozlesmeler', label: 'Sözleşmeler', icon: <FileSignature size={13} />, permission: 'contracts.view' },
+    { key: 'rezervasyonlar', label: 'Rezervasyonlar', icon: <Calendar size={13} />, permission: 'calendar.view' },
     { key: 'kampanyalar', label: 'Kampanyalar', icon: <Megaphone size={13} />, permission: 'campaigns.view' },
+    { key: 'takvim', label: 'Planlama', icon: <Calendar size={13} />, permission: 'calendar.view' },
+    { key: 'finans', label: 'Finans & Tahsilat', icon: <Coins size={13} />, permission: 'finance.view' },
     { key: 'raporlar', label: 'Raporlar', icon: <BarChart3 size={13} />, permission: 'reports.view' },
-    { key: 'finans', label: 'Gelir & Faturalar', icon: <Coins size={13} />, permission: 'finance.view' },
-    { key: 'bildirimler', label: 'Bildirim & Görev', icon: <Bell size={13} />, permission: 'dashboard.view' },
-    { key: 'maintenance', label: 'Bakım & Arıza', icon: <Wrench size={13} />, permission: 'maintenance.close' },
-    { key: 'medya-kutuphanesi', label: 'Medya Kütüphanesi', icon: <Image size={13} />, permission: 'media.upload' },
-    { key: 'competitor-analysis', label: 'Rakip Analizi', icon: <Eye size={13} />, permission: 'dashboard.view' },
-    { key: 'system-roles', label: 'Sistem Rolleri', icon: <Settings size={13} className="text-amber-500" />, permission: 'roles.manage' }
+    { key: 'firmalar-markalar', label: 'Firmalar & Markalar', icon: <Building2 size={13} />, permission: 'companies.view' },
+    { key: 'ayarlar', label: 'Ayarlar', icon: <Settings size={13} />, permission: 'roles.manage' }
   ];
 
   // Dynamic filter based on user permissions
   const filteredMenuItems = menuItems.filter(item => {
-    // SuperAdmin bypass is built inside hook
     return usePermission(item.permission);
   });
 
@@ -121,19 +121,59 @@ export function Sidebar() {
           </div>
 
           {/* Navigation Menu */}
-          <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-0.5">
+          <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-0.5 no-scrollbar">
             {filteredMenuItems.map(item => {
-              const mappedRoute = item.isMock ? item.route : item.key;
-              const isActive = currentRoute === mappedRoute && (!item.isMock || (item.isMock && currentRoute === item.route));
+              // Hide sub-items if parent group is collapsed
+              if (item.isSubItem && item.parentKey === 'reklam-alanlari-parent' && !reklamExpanded && !sidebarCollapsed) {
+                return null;
+              }
+
+              // Hide sub-items entirely in collapsed sidebar view to prevent layout clutter
+              if (item.isSubItem && sidebarCollapsed && !mobileSidebarOpen) {
+                return null;
+              }
+
+              const mappedRoute = item.key;
+              const isActive = currentRoute === mappedRoute;
               
+              if (item.key === 'reklam-alanlari-parent') {
+                return (
+                  <div key={item.key} className="space-y-0.5">
+                    <button
+                      onClick={() => setReklamExpanded(!reklamExpanded)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none text-slate-400 hover:text-slate-200 hover:bg-white/5 font-semibold"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-slate-500">{item.icon}</span>
+                        {(!sidebarCollapsed || mobileSidebarOpen) && (
+                          <span className="text-[10px] uppercase tracking-wider">{item.label}</span>
+                        )}
+                      </div>
+                      {(!sidebarCollapsed || mobileSidebarOpen) && (
+                        <ChevronDown size={11} className={`text-slate-500 transition-transform ${reklamExpanded ? 'rotate-180' : ''}`} />
+                      )}
+                    </button>
+                  </div>
+                );
+              }
+
               return (
                 <button
                   key={item.key}
                   onClick={() => {
-                    setCurrentRoute(mappedRoute as any);
+                    // Redirect alias routes
+                    if (item.key === 'alan-yonetimi') {
+                      setCurrentRoute('reklam-alanlari' as any);
+                    } else if (item.key === 'rezervasyonlar') {
+                      setCurrentRoute('takvim' as any);
+                    } else {
+                      setCurrentRoute(mappedRoute as any);
+                    }
                     setMobileSidebarOpen(false);
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none border border-transparent ${
+                    item.isSubItem ? 'pl-8 text-[9px] py-1.5' : 'text-[10px]'
+                  } ${
                     isActive
                       ? 'bg-gradient-to-r from-blue-600 to-indigo-650 border-blue-550/20 text-white shadow-md shadow-blue-600/10 font-black'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-semibold'
@@ -162,7 +202,7 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* AI Assistant Promo Card */}
+        {/* AI Asistan promo card */}
         {(!sidebarCollapsed || mobileSidebarOpen) && (
           <button
             onClick={() => {

@@ -16,6 +16,8 @@ interface OfferModalProps {
   onClose: () => void;
   onSuccess: (offer: Offer) => void;
   offer?: Offer;
+  preselectedSpaceId?: string;
+  preselectedNetworkId?: string;
 }
 
 const STAGE_CONFIGS: Record<Offer['stage'], { label: string; bg: string; border: string; text: string }> = {
@@ -120,13 +122,14 @@ function CustomSelect({
   );
 }
 
-export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProps) {
+export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpaceId, preselectedNetworkId }: OfferModalProps) {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [spaces, setSpaces] = useState<AdvertisingSpace[]>([]);
+  const [selectedNetwork, setSelectedNetwork] = useState<string>('all');
 
   const {
     register,
@@ -224,6 +227,23 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
       }
     }
   }, [isOpen, offer, reset, spaces]);
+
+  // Load preselected network and space
+  useEffect(() => {
+    if (isOpen) {
+      if (preselectedNetworkId) {
+        setSelectedNetwork(preselectedNetworkId);
+      } else {
+        setSelectedNetwork('all');
+      }
+    }
+  }, [isOpen, preselectedNetworkId]);
+
+  useEffect(() => {
+    if (isOpen && preselectedSpaceId && spaces.length > 0) {
+      setValue('spaceIds', [preselectedSpaceId]);
+    }
+  }, [isOpen, preselectedSpaceId, spaces, setValue]);
 
   // Keyboard accessibility
   useEffect(() => {
@@ -534,9 +554,26 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
 
               {/* Grid 5: Advertising Space Cards */}
               <FormGroup className="pt-2">
-                <Label>Önerilen Reklam Alanları *</Label>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-3 max-h-[260px] overflow-y-auto pr-2 scrollbar-thin">
-                  {spaces.map(s => {
+                <div className="flex justify-between items-center mb-3">
+                  <Label>Önerilen Reklam Alanları *</Label>
+                  <div className="w-56 shrink-0 z-[105] relative">
+                    <CustomSelect
+                      label=""
+                      placeholder="Network Filtresi"
+                      value={selectedNetwork}
+                      onChange={(val) => setSelectedNetwork(val)}
+                      options={[
+                        { value: 'all', label: 'Tüm Networkler' },
+                        { value: 'outdoor-istanbul', label: 'Outdoor İstanbul Network' },
+                        { value: 'saw-airport', label: 'SAW Airport Network' },
+                        { value: 'outdoor-ankara', label: 'Outdoor Ankara Network' },
+                        { value: 'outdoor-turkiye', label: 'Outdoor Türkiye Geneli' }
+                      ]}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[260px] overflow-y-auto pr-2 scrollbar-thin">
+                  {spaces.filter(s => selectedNetwork === 'all' || s.networkId === selectedNetwork).map(s => {
                     const isSelected = selectedSpaceIds.includes(s.id);
                     const isPremium = s.visibility === 'Çok Yüksek';
                     return (
@@ -568,7 +605,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
                       </div>
                     );
                   })}
-                  {spaces.length === 0 && (
+                  {spaces.filter(s => selectedNetwork === 'all' || s.networkId === selectedNetwork).length === 0 && (
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block text-center py-4 col-span-3">
                       Yüklenebilir reklam alanı bulunamadı.
                     </span>

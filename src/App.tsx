@@ -28,6 +28,7 @@ function AccessDenied() {
 import { Dashboard } from '@/pages/Dashboard';
 import { ReklamAlanlari } from '@/pages/ReklamAlanlari';
 import { AlanHaritasi } from '@/pages/AlanHaritasi';
+import { MapDashboard } from '@/pages/MapDashboard';
 import { FirmalarMarkalar } from '@/pages/FirmalarMarkalar';
 import { Takvim } from '@/pages/Takvim';
 import { Kampanyalar } from '@/pages/Kampanyalar';
@@ -73,6 +74,8 @@ function AppContent() {
         return <ReklamAlanlari />;
       case 'alan-haritasi':
         return <AlanHaritasi />;
+      case 'map-dashboard':
+        return <MapDashboard />;
       case 'firmalar-markalar':
         return <FirmalarMarkalar />;
       case 'takvim':

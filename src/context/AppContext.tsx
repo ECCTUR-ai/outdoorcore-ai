@@ -4,6 +4,7 @@ type RouteType =
   | 'dashboard' 
   | 'reklam-alanlari' 
   | 'alan-haritasi' 
+  | 'map-dashboard'
   | 'firmalar-markalar' 
   | 'takvim' 
   | 'kampanyalar' 
