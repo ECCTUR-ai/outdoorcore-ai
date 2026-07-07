@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   MapPin, 
   CheckSquare, 
@@ -13,7 +13,10 @@ import {
   FileSpreadsheet,
   UploadCloud,
   FilePlus,
-  Bookmark
+  Bookmark,
+  Layers,
+  Clock,
+  CheckCheck
 } from 'lucide-react';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
@@ -33,457 +36,399 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
+import { 
+  offerRepository, 
+  reservationRepository, 
+  campaignRepository, 
+  financeRepository, 
+  spaceRepository 
+} from '@/repositories';
 
 export function Dashboard() {
   const [terminalSelector, setTerminalSelector] = useState('İç Hatlar - Giriş Kat');
 
-  // Donut 1 - Alan Durumu Dağılımı
+  // Dynamic States
+  const [offersCount, setOffersCount] = useState(0);
+  const [reservationsCount, setReservationsCount] = useState(0);
+  const [campaignsCount, setCampaignsCount] = useState(0);
+  const [pendingCollections, setPendingCollections] = useState(0);
+  const [occupancyRate, setOccupancyRate] = useState(0);
+  
+  const [spacesCount, setSpacesCount] = useState(0);
+  const [doluCount, setDoluCount] = useState(0);
+  const [bosCount, setBosCount] = useState(0);
+  const [teklifCount, setTeklifCount] = useState(0);
+  const [bakimCount, setBakimCount] = useState(0);
+  
+  const [recentCampaignsList, setRecentCampaignsList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const spaces = spaceRepository.getAllSync();
+    const offers = offerRepository.getAllSync();
+    const reservations = reservationRepository.getAllSync();
+    const campaigns = campaignRepository.getAllSync();
+    const finance = financeRepository.getFinanceDataSync();
+    
+    setSpacesCount(spaces.length);
+    const dolu = spaces.filter(s => s.status === 'dolu' || (s.status as string) === 'rezerve').length;
+    const bos = spaces.filter(s => s.status === 'bos').length;
+    const teklifStage = spaces.filter(s => s.status === 'teklif').length;
+    const bakim = spaces.filter(s => s.status === 'bakim').length;
+    
+    setDoluCount(dolu);
+    setBosCount(bos);
+    setTeklifCount(teklifStage);
+    setBakimCount(bakim);
+    
+    setOffersCount(offers.length);
+    
+    const activeRes = reservations.filter(r => r.status === 'Aktif' || (r.status as string) === 'Kesin Rezervasyon').length;
+    setReservationsCount(activeRes);
+    
+    const activeCamp = campaigns.filter(c => c.status === 'Aktif').length;
+    setCampaignsCount(activeCamp);
+    
+    // Calculate pending collections (balance of accounts)
+    let totalPending = 0;
+    if (finance && finance.accounts) {
+      finance.accounts.forEach((acc: any) => {
+        const val = parseFloat(acc.balance.replace(/[^\d]/g, '')) || 0;
+        totalPending += val;
+      });
+    }
+    setPendingCollections(totalPending);
+    
+    const rate = spaces.length > 0 ? (dolu / spaces.length) * 100 : 0;
+    setOccupancyRate(rate);
+
+    // Map active campaigns for table view
+    const mappedCampTable = campaigns.map(c => {
+      const relatedSpace = spaces.find(s => s.id === (c.spaceIds && c.spaceIds[0]));
+      return {
+        code: relatedSpace?.code || 'SPC-001',
+        name: relatedSpace?.name || 'Giriş LED Ekran',
+        brand: c.clientName,
+        startDate: c.startDate,
+        endDate: c.endDate,
+        status: c.status,
+        progress: c.status === 'Aktif' ? 100 : 0
+      };
+    });
+    setRecentCampaignsList(mappedCampTable);
+  }, []);
+
+  // Pie chart space status mappings
   const spaceStatusData = [
-    { name: 'Dolu', value: 92, color: '#10b981' },
-    { name: 'Boş', value: 34, color: '#f59e0b' },
-    { name: 'Teklif', value: 18, color: '#8b5cf6' },
-    { name: 'Bakımda', value: 6, color: '#ef4444' }
+    { name: 'Dolu', value: doluCount, color: '#10b981' },
+    { name: 'Boş', value: bosCount, color: '#f59e0b' },
+    { name: 'Teklif', value: teklifCount, color: '#8b5cf6' },
+    { name: 'Bakımda', value: bakimCount, color: '#ef4444' }
   ];
 
-  // Donut 2 - Gelir Dağılımı Alan Tipi
+  // Gelir Dağılımı Alan Tipi
   const spaceTypeRevenueData = [
-    { name: 'LED Ekran', value: 55, color: '#3b82f6' },
-    { name: 'Lightbox', value: 20, color: '#8b5cf6' },
-    { name: 'Dijital Panel', value: 15, color: '#f59e0b' },
-    { name: 'Baskı', value: 10, color: '#ef4444' }
+    { name: 'LED Ekran', value: doluCount > 0 ? 70 : 0, color: '#3b82f6' },
+    { name: 'Lightbox', value: doluCount > 0 ? 30 : 0, color: '#8b5cf6' }
   ];
 
-  // Line Chart - Aylık Gelir
-  const monthlyRevenueData = [
-    { name: 'Oca', gelir: 8.5 },
-    { name: 'Şub', gelir: 9.8 },
-    { name: 'Mar', gelir: 11.2 },
-    { name: 'Nis', gelir: 12.8 },
-    { name: 'May', gelir: 14.75 },
-    { name: 'Haz', gelir: 15.6 }
-  ];
-
-  // Marka Progress Bars
-  const topBrands = [
-    { name: 'Turkcell', value: 8, total: 10, color: 'bg-blue-500' },
-    { name: 'Samsung', value: 6, total: 10, color: 'bg-emerald-500' },
-    { name: 'THY', value: 5, total: 10, color: 'bg-purple-500' },
-    { name: 'LC Waikiki', value: 4, total: 10, color: 'bg-amber-500' },
-    { name: 'Mercedes-Benz', value: 4, total: 10, color: 'bg-rose-500' }
-  ];
-
-  // Teklif Pipeline steps
+  // Pipeline steps summary
+  const offersList = offerRepository.getAllSync();
   const pipelineSteps = [
-    { name: 'Lead', count: 25, budget: '₺2.45M' },
-    { name: 'Teklif', count: 18, budget: '₺1.87M' },
-    { name: 'Sunum', count: 12, budget: '₺1.25M' },
-    { name: 'Görüşme', count: 7, budget: '₺980K' },
-    { name: 'Sözleşme', count: 5, budget: '₺750K' }
-  ];
-
-  const recentContracts = [
-    { code: 'SG-021', name: 'Check-in Önü LED', brand: 'Samsung Electronics', daysLeft: 15, date: '21 May 2025', avatar: 'S' },
-    { code: 'SG-045', name: 'Duty Free Yanı LED', brand: 'Mercedes-Benz', daysLeft: 22, date: '28 May 2025', avatar: 'M' },
-    { code: 'SG-067', name: 'Pasaport Kontrolü Üstü', brand: 'LC Waikiki', daysLeft: 30, date: '05 Haz 2025', avatar: 'L' },
-    { code: 'SG-003', name: 'Giriş LED Ekran', brand: 'Turkcell', daysLeft: 35, date: '10 Haz 2025', avatar: 'T' }
+    { name: 'Hazırlandı', count: offersList.filter(o => o.stage === 'Teklif Hazırlandı').length, budget: `₺${(offersList.filter(o => o.stage === 'Teklif Hazırlandı').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
+    { name: 'Onaya Gönderildi', count: offersList.filter(o => o.stage === 'Onaya Gönderildi').length, budget: `₺${(offersList.filter(o => o.stage === 'Onaya Gönderildi').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
+    { name: 'Sözleşme Bekliyor', count: offersList.filter(o => o.stage === 'Sözleşme Bekliyor').length, budget: `₺${(offersList.filter(o => o.stage === 'Sözleşme Bekliyor').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` },
+    { name: 'Sözleşme İmzalandı', count: offersList.filter(o => o.stage === 'Sözleşme İmzalandı').length, budget: `₺${(offersList.filter(o => o.stage === 'Sözleşme İmzalandı').reduce((sum, o) => sum + o.valueNumeric, 0) / 1000000).toFixed(1)}M` }
   ];
 
   return (
-    <div className="space-y-6 select-none pb-12">
+    <div className="space-y-6 select-none pb-12 text-left">
       {/* 6 KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
-          title="Toplam Reklam Alanı"
-          value="150"
-          percentage="%100"
-          subtext="Tüm alanlar"
-          icon={<MapPin size={15} />}
+          title="Toplam Teklif"
+          value={String(offersCount)}
+          percentage="Canlı Veri"
+          subtext="Oluşturulan teklifler"
+          icon={<FileText size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
           glowColor="blue"
         />
         <DarkKpiCard
-          title="Dolu Alan"
-          value="92"
-          percentage="%61.3"
-          subtext="Aktif sözleşmeler"
-          icon={<CheckSquare size={15} />}
+          title="Aktif Rezervasyon"
+          value={String(reservationsCount)}
+          percentage="Kesinleşen"
+          subtext="Aktif rezervasyonlar"
+          icon={<Bookmark size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-400 border-emerald-500/10"
           glowColor="green"
         />
         <DarkKpiCard
-          title="Boş Alan"
-          value="34"
-          percentage="%22.7"
+          title="Aktif Kampanya"
+          value={String(campaignsCount)}
+          percentage="Yayında"
+          subtext="Yayındaki kampanyalar"
+          icon={<CheckCheck size={15} />}
+          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
+          glowColor="purple"
+        />
+        <DarkKpiCard
+          title="Tahsilat Bekleyen"
+          value={`₺ ${pendingCollections.toLocaleString('tr-TR')}`}
+          percentage="Finans"
+          subtext="Bekleyen ödemeler"
+          icon={<Coins size={15} />}
+          iconBgColor="bg-rose-500/10 text-rose-450 border-rose-500/10"
+          glowColor="red"
+        />
+        <DarkKpiCard
+          title="Doluluk Oranı"
+          value={`% ${occupancyRate.toFixed(1)}`}
+          percentage="Oran"
+          subtext="Dolu / Toplam alan"
+          icon={<TrendingUp size={15} />}
+          iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
+          glowColor="blue"
+        />
+        <DarkKpiCard
+          title="Boş Reklam Alanı"
+          value={String(bosCount)}
+          percentage="Müsait"
           subtext="Kiralanabilir alanlar"
           icon={<Circle size={15} />}
           iconBgColor="bg-amber-500/10 text-amber-400 border-amber-500/10"
           glowColor="yellow"
         />
-        <DarkKpiCard
-          title="Teklif Aşamasında"
-          value="18"
-          percentage="%12.0"
-          subtext="Görüşme aşamasındaki"
-          icon={<FileText size={15} />}
-          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
-          glowColor="purple"
-        />
-        <DarkKpiCard
-          title="Bakımda"
-          value="6"
-          percentage="%4.0"
-          subtext="Serviste olan alanlar"
-          icon={<Wrench size={15} />}
-          iconBgColor="bg-rose-500/10 text-rose-400 border-rose-500/10"
-          glowColor="red"
-        />
-        <DarkKpiCard
-          title="Doluluk Oranı"
-          value="%61.3"
-          percentage="%8.7 yükseliş"
-          subtext="Aylık trend"
-          icon={<TrendingUp size={15} />}
-          iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
-          glowColor="blue"
-          sparkline={true}
-        />
       </div>
 
-      {/* Main Grid: Map and Side lists */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sol Üst: Terminal Haritası */}
-        <DarkDashboardCard
-          title="Terminal Haritası"
-          description="Sabiha Gökçen Havalimanı reklam üniteleri yerleşim krokisi"
-          className="lg:col-span-8"
-          headerActions={
-            <div className="relative">
-              <select
-                value={terminalSelector}
-                onChange={(e) => setTerminalSelector(e.target.value)}
-                className="bg-white/5 border border-white/5 rounded-xl px-3.5 py-1.5 text-[9.5px] font-black text-slate-300 focus:outline-none uppercase tracking-wider cursor-pointer appearance-none pr-7"
-              >
-                <option value="İç Hatlar - Giriş Kat">İç Hatlar - Giriş Kat</option>
-                <option value="Dış Hatlar - Gidiş Lobi">Dış Hatlar - Gidiş Lobi</option>
-              </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[8px]">
-                ▼
-              </div>
+      {offersCount === 0 ? (
+        <div className="p-12 text-center rounded-[20px] bg-[#12192B] border border-white/5 space-y-6 max-w-2xl mx-auto mt-12 shadow-[0_20px_60px_rgba(0,0,0,.45)]">
+          <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto text-blue-400">
+            <Layers size={24} className="animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-black text-white uppercase tracking-widest leading-none">Henüz Veri Yok</h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Sistem sıfırlandı ve temiz test başlangıcına hazır.</p>
+          </div>
+          <div className="bg-[#0b0f19] p-4 rounded-xl border border-white/5 text-[9.5px] font-semibold text-slate-400 space-y-2.5 text-left">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+              <span>İlk teklifinizi oluşturun.</span>
             </div>
-          }
-        >
-          <div className="space-y-4 text-left">
-            <TerminalMapMock />
-            {/* Map Legend */}
-            <div className="flex flex-wrap items-center justify-start gap-4 pt-1.5">
-              {[
-                { label: 'Dolu', color: 'bg-emerald-500 glow-green' },
-                { label: 'Boş (Müsait)', color: 'bg-amber-500 glow-yellow' },
-                { label: 'Teklif Aşamasında', color: 'bg-purple-500 glow-purple' },
-                { label: 'Bakımda / Arıza', color: 'bg-rose-500 glow-red' },
-                { label: 'Yakında Boşalacak', color: 'bg-blue-500 glow-blue' }
-              ].map(leg => (
-                <div key={leg.label} className="flex items-center gap-2">
-                  <span className={`w-2.5 h-2.5 rounded-full border border-white/5 ${leg.color}`} />
-                  <span className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider">{leg.label}</span>
-                </div>
-              ))}
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <span>İlk rezervasyon sözleşme imzalandıktan sonra otomatik oluşacaktır.</span>
             </div>
           </div>
-        </DarkDashboardCard>
-
-        {/* Sağ Üst: Yakında Biten Sözleşmeler */}
-        <DarkDashboardCard
-          title="Yakında Biten Sözleşmeler"
-          description="Önümüzdeki 45 gün içinde kiralama süresi dolacak üniteler"
-          className="lg:col-span-4"
-        >
-          <div className="space-y-3.5 text-left">
-            {recentContracts.map(row => (
-              <div 
-                key={row.code} 
-                className="flex items-center justify-between p-3 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/5 duration-200"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center font-black text-xs shrink-0 shadow-sm">
-                    {row.avatar}
-                  </div>
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] font-black text-white uppercase">{row.code} | {row.name}</span>
-                    <p className="text-[9px] text-slate-450 font-bold uppercase">{row.brand}</p>
+        </div>
+      ) : (
+        <>
+          {/* Main Grid: Map and Side lists */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Sol Üst: Terminal Haritası */}
+            <DarkDashboardCard
+              title="Terminal Haritası"
+              description="Sabiha Gökçen Havalimanı reklam üniteleri yerleşim krokisi"
+              className="lg:col-span-8"
+              headerActions={
+                <div className="relative">
+                  <select
+                    value={terminalSelector}
+                    onChange={(e) => setTerminalSelector(e.target.value)}
+                    className="bg-white/5 border border-white/5 rounded-xl px-3.5 py-1.5 text-[9.5px] font-black text-slate-300 focus:outline-none uppercase tracking-wider cursor-pointer appearance-none pr-7"
+                  >
+                    <option value="İç Hatlar - Giriş Kat">İç Hatlar - Giriş Kat</option>
+                    <option value="Dış Hatlar - Gidiş Lobi">Dış Hatlar - Gidiş Lobi</option>
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[8px]">
+                    ▼
                   </div>
                 </div>
-                <div className="text-right space-y-0.5 shrink-0">
-                  <span className="text-[9.5px] font-black text-rose-450 uppercase block">{row.daysLeft} gün kaldı</span>
-                  <span className="text-[8px] text-slate-500 font-bold uppercase block">{row.date}</span>
+              }
+            >
+              <div className="space-y-4 text-left">
+                <TerminalMapMock />
+                {/* Map Legend */}
+                <div className="flex flex-wrap items-center justify-start gap-4 pt-1.5">
+                  {[
+                    { label: 'Dolu', color: 'bg-emerald-500 glow-green' },
+                    { label: 'Boş', color: 'bg-amber-500 glow-yellow' },
+                    { label: 'Teklif', color: 'bg-purple-500 glow-purple' },
+                    { label: 'Bakımda', color: 'bg-rose-500 glow-red' }
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${item.color}`} />
+                      <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{item.label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </DarkDashboardCard>
-      </div>
+            </DarkDashboardCard>
 
-      {/* Grid: Charts (Donuts & Monthly line charts) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
-        {/* Alan Durumu Dağılımı Donut */}
-        <DarkDashboardCard
-          title="Alan Durumu Dağılımı"
-          description="Reklam alanlarının kullanım payları"
-          className="md:col-span-1 lg:col-span-4"
-        >
-          <div className="flex items-center justify-between gap-2 h-44 text-left">
-            <div className="w-1/2 h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={spaceStatusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={68}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {spaceStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: '#0b0f19',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: '12px',
-                      color: '#ffffff',
-                      fontSize: '10px'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="w-1/2 space-y-2.5">
-              {spaceStatusData.map(item => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{item.name}</span>
-                  </div>
-                  <span className="text-xs font-black text-white">{item.value}</span>
+            {/* Sağ Üst: Alan Durumu Dağılımı */}
+            <DarkDashboardCard
+              title="Alan Durumu"
+              description="Envanter durum oranları"
+              className="lg:col-span-4"
+            >
+              <div className="flex items-center justify-between gap-2 h-44 text-left">
+                <div className="w-1/2 h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={spaceStatusData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={68}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {spaceStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{
+                          background: '#0b0f19',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          borderRadius: '12px',
+                          color: '#ffffff',
+                          fontSize: '10px'
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
-          </div>
-        </DarkDashboardCard>
-
-        {/* Aylık Gelir Line Chart */}
-        <DarkDashboardCard
-          title="Aylık Gelir"
-          description="Aylara göre toplam kiralama hacmi (₺ Milyon)"
-          className="md:col-span-1 lg:col-span-4"
-          headerActions={
-            <div className="text-right">
-              <span className="text-sm font-black text-emerald-450 leading-none block">₺14.75M</span>
-              <span className="text-[8px] text-slate-500 font-black uppercase tracking-wider block">Mayıs Geliri</span>
-            </div>
-          }
-        >
-          <div className="h-44">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyRevenueData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.03)" />
-                <XAxis dataKey="name" tickLine={false} axisLine={false} style={{ fontSize: '9px', fill: '#64748b' }} dy={6} />
-                <YAxis tickLine={false} axisLine={false} style={{ fontSize: '9px', fill: '#64748b' }} dx={-6} />
-                <Tooltip
-                  contentStyle={{
-                    background: '#0b0f19',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: '12px',
-                    color: '#ffffff',
-                    fontSize: '10px'
-                  }}
-                />
-                <Line type="monotone" dataKey="gelir" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </DarkDashboardCard>
-
-        {/* Gelir Dağılımı - Alan Tipi Donut */}
-        <DarkDashboardCard
-          title="Gelir Dağılımı"
-          description="Alan tiplerine göre yüzde dağılımları"
-          className="md:col-span-1 lg:col-span-4"
-        >
-          <div className="flex items-center justify-between gap-2 h-44 text-left">
-            <div className="w-1/2 h-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={spaceTypeRevenueData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={68}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {spaceTypeRevenueData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      background: '#0b0f19',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: '12px',
-                      color: '#ffffff',
-                      fontSize: '10px'
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="w-1/2 space-y-2.5">
-              {spaceTypeRevenueData.map(item => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{item.name}</span>
-                  </div>
-                  <span className="text-xs font-black text-white">%{item.value}</span>
+                <div className="w-1/2 space-y-2.5">
+                  {spaceStatusData.map(item => (
+                    <div key={item.name} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                        <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">{item.name}</span>
+                      </div>
+                      <span className="text-xs font-black text-white">{item.value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            </DarkDashboardCard>
           </div>
-        </DarkDashboardCard>
-      </div>
 
-      {/* Grid: Top Brands & Proposal Pipeline */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sol: En Çok Reklam Veren Markalar */}
-        <DarkDashboardCard
-          title="En Çok Reklam Veren Markalar"
-          description="Aktif kampanya sayısına göre ilk 5 marka"
-          className="lg:col-span-6"
-        >
-          <div className="space-y-4 text-left pt-2">
-            {topBrands.map(brand => (
-              <div key={brand.name} className="space-y-1.5">
-                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
-                  <span className="text-slate-350">{brand.name}</span>
-                  <span className="text-white">{brand.value} Alan</span>
-                </div>
-                {/* Progress bar container */}
-                <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+          {/* Grid: Proposal Pipeline */}
+          <div className="grid grid-cols-1 gap-6">
+            <DarkDashboardCard
+              title="Teklif Pipeline"
+              description="Satış süreçlerindeki potansiyel fırsatlar ve bütçeleri"
+              className="w-full"
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 text-center">
+                {pipelineSteps.map((step, idx) => (
                   <div 
-                    className={`h-full rounded-full transition-all duration-500 ${brand.color}`} 
-                    style={{ width: `${(brand.value / brand.total) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </DarkDashboardCard>
-
-        {/* Sağ: Teklif Pipeline */}
-        <DarkDashboardCard
-          title="Teklif Pipeline"
-          description="Satış süreçlerindeki potansiyel fırsatlar ve bütçeleri"
-          className="lg:col-span-6"
-        >
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3.5 pt-2 text-center">
-            {pipelineSteps.map((step, idx) => (
-              <div 
-                key={step.name} 
-                className="p-3.5 rounded-2xl bg-white/3 border border-white/5 flex flex-col justify-between h-36 hover:bg-white/5 duration-150"
-              >
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block leading-none">{step.name}</span>
-                <div className="space-y-1 my-auto">
-                  <span className="text-base font-black text-white block leading-none">{step.count}</span>
-                  <span className="text-[8px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded font-black uppercase tracking-wide inline-block">Fırsat</span>
-                </div>
-                <span className="text-[10px] font-black text-emerald-450 block leading-none">{step.budget}</span>
-              </div>
-            ))}
-          </div>
-        </DarkDashboardCard>
-      </div>
-
-      {/* Bottom Grid: Active campaigns and Quick actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Sol Alt: Son Aktif Kampanyalar */}
-        <DarkDashboardCard
-          title="Son Aktif Kampanyalar"
-          description="Terminal genelinde yayında olan reklam kampanyaları"
-          className="lg:col-span-8"
-        >
-          <div className="overflow-x-auto select-none no-scrollbar">
-            <Table headers={['Alan Kodu', 'Alan Adı', 'Marka / Reklamveren', 'Başlangıç', 'Bitiş', 'Durum', 'İlerleme']}>
-              <TableRow>
-                <TableCell className="font-extrabold text-slate-500">SG-001</TableCell>
-                <TableCell className="font-black text-white">Giriş LED Ekran</TableCell>
-                <TableCell className="font-semibold text-slate-300">Turkcell</TableCell>
-                <TableCell>01 May 2025</TableCell>
-                <TableCell>31 May 2025</TableCell>
-                <TableCell>
-                  <Badge variant="success">Aktif</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden shrink-0">
-                      <div className="h-full bg-emerald-500 rounded-full w-full" />
+                    key={step.name} 
+                    className="p-4 rounded-2xl bg-white/3 border border-white/5 flex flex-col justify-between h-36 hover:bg-white/5 duration-150 text-left"
+                  >
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block leading-none">{step.name}</span>
+                    <div className="space-y-1 my-auto">
+                      <span className="text-xl font-black text-white block leading-none">{step.count}</span>
+                      <span className="text-[8px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded font-black uppercase tracking-wide inline-block">Teklif</span>
                     </div>
-                    <span className="text-[9px] font-black text-white">%100</span>
+                    <span className="text-xs font-black text-emerald-450 block leading-none">{step.budget}</span>
                   </div>
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="font-extrabold text-slate-500">SG-021</TableCell>
-                <TableCell className="font-black text-white">Check-in Önü LED</TableCell>
-                <TableCell className="font-semibold text-slate-300">Samsung</TableCell>
-                <TableCell>01 Nis 2025</TableCell>
-                <TableCell>15 Haz 2025</TableCell>
-                <TableCell>
-                  <Badge variant="success">Aktif</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden shrink-0">
-                      <div className="h-full bg-emerald-500 rounded-full w-3/4" />
-                    </div>
-                    <span className="text-[9px] font-black text-white">%75</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            </Table>
+                ))}
+              </div>
+            </DarkDashboardCard>
           </div>
-        </DarkDashboardCard>
 
-        {/* Sağ Alt: Hızlı İşlemler */}
-        <DarkDashboardCard
-          title="Hızlı İşlemler"
-          description="Sık kullanılan operasyon butonları"
-          className="lg:col-span-4"
-        >
-          <div className="grid grid-cols-3 gap-3 pt-1">
-            {[
-              { label: 'Yeni Teklif', icon: <PlusSquare size={16} />, color: 'text-blue-400 bg-blue-500/10 border-blue-500/10 hover:bg-blue-500/15' },
-              { label: 'Alan Rezervasyon', icon: <Bookmark size={16} />, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/10 hover:bg-emerald-500/15' },
-              { label: 'Rapor Oluştur', icon: <FileSpreadsheet size={16} />, color: 'text-amber-400 bg-amber-500/10 border-amber-500/10 hover:bg-amber-500/15' },
-              { label: 'Medya Gönder', icon: <UploadCloud size={16} />, color: 'text-purple-400 bg-purple-500/10 border-purple-500/10 hover:bg-purple-500/15' },
-              { label: 'Sözleşme Ekle', icon: <FilePlus size={16} />, color: 'text-rose-400 bg-rose-500/10 border-rose-500/10 hover:bg-rose-500/15' }
-            ].map(action => (
-              <button
-                key={action.label}
-                onClick={() => alert(`${action.label} operasyon paneli açılacak mockup.`)}
-                className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-2.5 transition-all text-center select-none cursor-pointer h-24 duration-150 ${action.color}`}
-              >
-                <div className="shrink-0">{action.icon}</div>
-                <span className="text-[9.5px] font-black leading-tight uppercase tracking-wider">{action.label}</span>
-              </button>
-            ))}
+          {/* Bottom Grid: Active campaigns and Quick actions */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Sol Alt: Son Aktif Kampanyalar */}
+            <DarkDashboardCard
+              title="Son Aktif Kampanyalar"
+              description="Terminal genelinde yayında olan reklam kampanyaları"
+              className="lg:col-span-8"
+            >
+              {recentCampaignsList.length === 0 ? (
+                <div className="py-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                  Aktif kampanya bulunmamaktadır
+                </div>
+              ) : (
+                <div className="overflow-x-auto select-none no-scrollbar">
+                  <Table headers={['Alan Kodu', 'Alan Adı', 'Marka / Reklamveren', 'Başlangıç', 'Bitiş', 'Durum', 'İlerleme']}>
+                    {recentCampaignsList.map((row, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-extrabold text-slate-500">{row.code}</TableCell>
+                        <TableCell className="font-black text-white">{row.name}</TableCell>
+                        <TableCell className="font-semibold text-slate-300">{row.brand}</TableCell>
+                        <TableCell>{row.startDate}</TableCell>
+                        <TableCell>{row.endDate}</TableCell>
+                        <TableCell>
+                          <Badge variant="success">{row.status}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden shrink-0">
+                              <div className="h-full bg-emerald-500 rounded-full w-full" />
+                            </div>
+                            <span className="text-[9px] font-black text-white">%100</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </Table>
+                </div>
+              )}
+            </DarkDashboardCard>
+
+            {/* Sağ Alt: Hızlı İşlemler */}
+            <DarkDashboardCard
+              title="Hızlı İşlemler"
+              description="Sık kullanılan operasyon butonları"
+              className="lg:col-span-4"
+            >
+              <div className="grid grid-cols-3 gap-3 pt-1">
+                {[
+                  { label: 'Yeni Teklif', icon: <PlusSquare size={16} />, color: 'text-blue-400 bg-blue-500/10 border-blue-500/10 hover:bg-blue-500/15' },
+                  { label: 'Alan Rezervasyon', icon: <Bookmark size={16} />, color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/10 hover:bg-emerald-500/15' },
+                  { label: 'Rapor Oluştur', icon: <FileSpreadsheet size={16} />, color: 'text-amber-400 bg-amber-500/10 border-amber-500/10 hover:bg-amber-500/15' },
+                  { label: 'Medya Gönder', icon: <UploadCloud size={16} />, color: 'text-purple-400 bg-purple-500/10 border-purple-500/10 hover:bg-purple-500/15' },
+                  { label: 'Sözleşme Ekle', icon: <FilePlus size={16} />, color: 'text-rose-400 bg-rose-500/10 border-rose-500/10 hover:bg-rose-500/15' }
+                ].map(action => (
+                  <button
+                    key={action.label}
+                    onClick={() => alert(`${action.label} operasyon paneli açılacak mockup.`)}
+                    className={`p-3 rounded-2xl border flex flex-col items-center justify-center gap-2.5 transition-all text-center select-none cursor-pointer h-24 duration-150 ${action.color}`}
+                  >
+                    <div className="shrink-0">{action.icon}</div>
+                    <span className="text-[9.5px] font-black leading-tight uppercase tracking-wider">{action.label}</span>
+                  </button>
+                ))}
+              </div>
+            </DarkDashboardCard>
           </div>
-        </DarkDashboardCard>
-      </div>
+        </>
+      )}
     </div>
+  );
+}
+
+// Coins Icon fallback import inside local file
+function Coins({ size, className }: { size?: number; className?: string }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size || 24} 
+      height={size || 24} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <circle cx="8" cy="8" r="6"/>
+      <circle cx="18" cy="18" r="4"/>
+      <path d="M12 18a6 6 0 0 0-6-6"/>
+    </svg>
   );
 }

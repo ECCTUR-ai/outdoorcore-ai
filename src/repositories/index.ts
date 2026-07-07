@@ -14,6 +14,18 @@ import { competitorsList, competitorKpis } from '@/data/competitors';
 import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
 import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 
+if (typeof window !== 'undefined') {
+  const RESET_VERSION = 'v1_demo_reset_2026_07_07';
+  if (localStorage.getItem('outdoorcore_demo_version') !== RESET_VERSION) {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('outdoorcore_mock_') || key === 'finance_data') {
+        localStorage.removeItem(key);
+      }
+    });
+    localStorage.setItem('outdoorcore_demo_version', RESET_VERSION);
+  }
+}
+
 // ----------------------------------------------------
 // PERSISTENCE AND CONTEXT HELPERS FOR FALLBACK DEMO
 // ----------------------------------------------------
