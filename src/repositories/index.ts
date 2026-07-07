@@ -29,53 +29,123 @@ if (typeof window !== 'undefined') {
   }
 }
 
-// One-time run: Cancel associated reservations & campaigns of cancelled offers
+// One-time run: Cancel associated reservations & campaigns of cancelled offers + Supabase cleanup for Tatilbudur
 if (typeof window !== 'undefined') {
-  try {
-    const localOffersStr = localStorage.getItem('outdoorcore_mock_offers');
-    if (localOffersStr) {
-      const localOffers = JSON.parse(localOffersStr);
-      const cancelledOfferIds = new Set(
-        localOffers
-          .filter((o: any) => o.stage === 'İptal' || o.status === 'cancelled')
-          .map((o: any) => o.id)
-      );
-
-      // Clean up reservations
-      const localResStr = localStorage.getItem('outdoorcore_mock_reservations');
-      if (localResStr) {
-        let changed = false;
-        const localRes = JSON.parse(localResStr);
-        localRes.forEach((r: any) => {
-          if (r.offerId && cancelledOfferIds.has(r.offerId) && r.status !== 'İptal') {
-            r.status = 'İptal';
-            changed = true;
+  const runTatilbudurCleanup = async () => {
+    try {
+      // 1. Local storage cleanup
+      const localOffersStr = localStorage.getItem('outdoorcore_mock_offers');
+      if (localOffersStr) {
+        const localOffers = JSON.parse(localOffersStr);
+        
+        // Find Tatilbudur offer
+        const tatilbudurOffer = localOffers.find((o: any) => o.clientName && o.clientName.toLowerCase().includes('tatilbudur'));
+        if (tatilbudurOffer) {
+          if (tatilbudurOffer.stage !== 'İptal') {
+            tatilbudurOffer.stage = 'İptal';
+            localStorage.setItem('outdoorcore_mock_offers', JSON.stringify(localOffers));
           }
-        });
-        if (changed) {
-          localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(localRes));
+        }
+
+        const cancelledOfferIds = new Set(
+          localOffers
+            .filter((o: any) => o.stage === 'İptal' || o.status === 'cancelled')
+            .map((o: any) => o.id)
+        );
+
+        // Clean up reservations
+        const localResStr = localStorage.getItem('outdoorcore_mock_reservations');
+        if (localResStr) {
+          let changed = false;
+          const localRes = JSON.parse(localResStr);
+          localRes.forEach((r: any) => {
+            if (r.offerId && cancelledOfferIds.has(r.offerId) && r.status !== 'İptal') {
+              r.status = 'İptal';
+              changed = true;
+            }
+          });
+          if (changed) {
+            localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(localRes));
+          }
+        }
+
+        // Clean up campaigns
+        const localCamStr = localStorage.getItem('outdoorcore_mock_campaigns');
+        if (localCamStr) {
+          let changed = false;
+          const localCam = JSON.parse(localCamStr);
+          localCam.forEach((c: any) => {
+            if (c.offerId && cancelledOfferIds.has(c.offerId) && c.status !== 'İptal') {
+              c.status = 'İptal';
+              changed = true;
+            }
+          });
+          if (changed) {
+            localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify(localCam));
+          }
         }
       }
 
-      // Clean up campaigns
-      const localCamStr = localStorage.getItem('outdoorcore_mock_campaigns');
-      if (localCamStr) {
-        let changed = false;
-        const localCam = JSON.parse(localCamStr);
-        localCam.forEach((c: any) => {
-          if (c.offerId && cancelledOfferIds.has(c.offerId) && c.status !== 'İptal') {
-            c.status = 'İptal';
-            changed = true;
+      // 2. Supabase cleanup (if configured)
+      if (isSupabaseConfigured()) {
+        console.log("RUNNING SUPABASE CLEANUP FOR TATILBUDUR...");
+        const { data: dbOffers, error: offersErr } = await supabase
+          .from('offers')
+          .select('id, contract_id')
+          .ilike('client_name', '%tatilbudur%');
+        
+        if (offersErr) throw offersErr;
+        
+        if (dbOffers && dbOffers.length > 0) {
+          const tbOfferIds = dbOffers.map(o => o.id);
+          const tbContractIds = dbOffers.map(o => o.contract_id).filter(Boolean);
+          
+          // Update offers stage to 'İptal'
+          await supabase
+            .from('offers')
+            .update({ stage: 'İptal', updated_at: new Date().toISOString() })
+            .in('id', tbOfferIds);
+
+          // Update reservations to 'İptal'
+          await supabase
+            .from('reservations')
+            .update({ status: 'İptal', updated_at: new Date().toISOString() })
+            .in('offer_id', tbOfferIds);
+
+          if (tbContractIds.length > 0) {
+            await supabase
+              .from('reservations')
+              .update({ status: 'İptal', updated_at: new Date().toISOString() })
+              .in('contract_id', tbContractIds);
+              
+            // Update contracts to 'cancelled'
+            await supabase
+              .from('contracts')
+              .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+              .in('id', tbContractIds);
           }
-        });
-        if (changed) {
-          localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify(localCam));
+
+          // Update campaigns to 'İptal'
+          await supabase
+            .from('campaigns')
+            .update({ status: 'İptal', updated_at: new Date().toISOString() })
+            .in('proposal_id', tbOfferIds);
+
+          if (tbContractIds.length > 0) {
+            await supabase
+              .from('campaigns')
+              .update({ status: 'İptal', updated_at: new Date().toISOString() })
+              .in('contract_id', tbContractIds);
+          }
+          console.log("SUPABASE CLEANUP FOR TATILBUDUR SUCCESSFUL.");
         }
       }
+    } catch (err) {
+      console.error('One-time cancellation cleanup failed:', err);
     }
-  } catch (err) {
-    console.error('One-time cancellation cleanup failed:', err);
-  }
+  };
+
+  setTimeout(runTatilbudurCleanup, 1000);
 }
 
 // ----------------------------------------------------
@@ -1097,8 +1167,34 @@ export const contractRepository = {
   },
   async create(input: any) {
     const { organizationId, email } = getSessionInfo();
-    const local = getLocalData('contracts', contracts);
     const newId = input.id || 'CON-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const payload = {
+          id: newId,
+          organization_id: organizationId,
+          contract_no: input.contractNo,
+          client_name: input.clientName,
+          campaign_name: input.campaignName,
+          status: input.status,
+          start_date: input.startDate,
+          end_date: input.endDate,
+          value_numeric: input.valueNumeric,
+          spaces_list: input.spacesList,
+          created_by: email,
+          created_at: new Date().toISOString()
+        };
+        const { error } = await supabase
+          .from('contracts')
+          .insert([payload]);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase contract create failed:', e);
+      }
+    }
+
+    const local = getLocalData('contracts', contracts);
     const newRecord = {
       id: newId,
       ...input,
@@ -1190,6 +1286,42 @@ export const reservationRepository = {
     return true;
   },
   async update(id: string, input: any) {
+    const { organizationId, email } = getSessionInfo();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const payload: any = {};
+        if (input.spaceCode !== undefined) payload.space_code = input.spaceCode;
+        if (input.spaceName !== undefined) payload.space_name = input.spaceName;
+        if (input.location !== undefined) payload.location = input.location;
+        if (input.clientName !== undefined) payload.client_name = input.clientName;
+        if (input.agencyName !== undefined) payload.agency_name = input.agencyName;
+        if (input.startDate !== undefined) payload.start_date = input.startDate;
+        if (input.endDate !== undefined) payload.end_date = input.endDate;
+        if (input.durationDays !== undefined) payload.duration_days = input.durationDays;
+        if (input.status !== undefined) payload.status = input.status;
+        if (input.budget !== undefined) payload.budget = input.budget;
+        if (input.creativeFiles !== undefined) payload.creative_files = input.creativeFiles;
+        if (input.aiRecommendation !== undefined) payload.ai_recommendation = input.aiRecommendation;
+        if (input.companyId !== undefined) payload.company_id = input.companyId;
+        if (input.spaceId !== undefined) payload.space_id = input.spaceId;
+        if (input.offerId !== undefined) payload.offer_id = input.offerId;
+        if (input.contractId !== undefined) payload.contract_id = input.contractId;
+        if (input.campaignId !== undefined) payload.campaign_id = input.campaignId;
+        
+        payload.updated_at = new Date().toISOString();
+        payload.updated_by = email;
+
+        const { error } = await supabase
+          .from('reservations')
+          .update(payload)
+          .eq('id', id);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase reservation update failed:', e);
+      }
+    }
+
     const local = getLocalData('reservations', reservations);
     const idx = local.findIndex(r => r.id === id);
     if (idx !== -1) {
@@ -1206,8 +1338,45 @@ export const reservationRepository = {
     throw new Error('Reservation not found');
   },
   async create(input: any) {
-    const local = getLocalData('reservations', reservations);
+    const { organizationId, email } = getSessionInfo();
     const newId = input.id || 'RSV-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const payload: any = {
+          id: newId,
+          organization_id: organizationId,
+          created_by: email,
+          created_at: new Date().toISOString()
+        };
+        if (input.spaceCode !== undefined) payload.space_code = input.spaceCode;
+        if (input.spaceName !== undefined) payload.space_name = input.spaceName;
+        if (input.location !== undefined) payload.location = input.location;
+        if (input.clientName !== undefined) payload.client_name = input.clientName;
+        if (input.agencyName !== undefined) payload.agency_name = input.agencyName;
+        if (input.startDate !== undefined) payload.start_date = input.startDate;
+        if (input.endDate !== undefined) payload.end_date = input.endDate;
+        if (input.durationDays !== undefined) payload.duration_days = input.durationDays;
+        if (input.status !== undefined) payload.status = input.status;
+        if (input.budget !== undefined) payload.budget = input.budget;
+        if (input.creativeFiles !== undefined) payload.creative_files = input.creativeFiles;
+        if (input.aiRecommendation !== undefined) payload.ai_recommendation = input.aiRecommendation;
+        if (input.companyId !== undefined) payload.company_id = input.companyId;
+        if (input.spaceId !== undefined) payload.space_id = input.spaceId;
+        if (input.offerId !== undefined) payload.offer_id = input.offerId;
+        if (input.contractId !== undefined) payload.contract_id = input.contractId;
+        if (input.campaignId !== undefined) payload.campaign_id = input.campaignId;
+
+        const { error } = await supabase
+          .from('reservations')
+          .insert([payload]);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase reservation create failed:', e);
+      }
+    }
+
+    const local = getLocalData('reservations', reservations);
     const newRecord = {
       id: newId,
       ...input
@@ -1244,7 +1413,39 @@ export const campaignRepository = {
     }
     return getLocalData('campaigns', campaigns);
   },
+
   async update(id: string, input: any) {
+    const { organizationId, email } = getSessionInfo();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const payload: any = {};
+        if (input.clientName !== undefined) payload.client_name = input.clientName;
+        if (input.campaignName !== undefined) payload.campaign_name = input.campaignName;
+        if (input.status !== undefined) payload.status = input.status;
+        if (input.startDate !== undefined) payload.start_date = input.startDate;
+        if (input.endDate !== undefined) payload.end_date = input.endDate;
+        if (input.budget !== undefined) payload.budget = input.budget;
+        if (input.mediaAgency !== undefined) payload.media_agency = input.mediaAgency;
+        if (input.creativeAgency !== undefined) payload.creative_agency = input.creativeAgency;
+        if (input.companyId !== undefined) payload.company_id = input.companyId;
+        if (input.contractId !== undefined) payload.contract_id = input.contractId;
+        if (input.proposalId !== undefined) payload.proposal_id = input.proposalId;
+        if (input.reservationId !== undefined) payload.reservation_id = input.reservationId;
+        
+        payload.updated_at = new Date().toISOString();
+        payload.updated_by = email;
+
+        const { error } = await supabase
+          .from('campaigns')
+          .update(payload)
+          .eq('id', id);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase campaign update failed:', e);
+      }
+    }
+
     const local = getLocalData('campaigns', campaigns);
     const idx = local.findIndex(c => c.id === id);
     if (idx !== -1) {
@@ -1261,8 +1462,40 @@ export const campaignRepository = {
     throw new Error('Campaign not found');
   },
   async create(input: any) {
-    const local = getLocalData('campaigns', campaigns);
+    const { organizationId, email } = getSessionInfo();
     const newId = input.id || 'CAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const payload: any = {
+          id: newId,
+          organization_id: organizationId,
+          created_by: email,
+          created_at: new Date().toISOString()
+        };
+        if (input.clientName !== undefined) payload.client_name = input.clientName;
+        if (input.campaignName !== undefined) payload.campaign_name = input.campaignName;
+        if (input.status !== undefined) payload.status = input.status;
+        if (input.startDate !== undefined) payload.start_date = input.startDate;
+        if (input.endDate !== undefined) payload.end_date = input.endDate;
+        if (input.budget !== undefined) payload.budget = input.budget;
+        if (input.mediaAgency !== undefined) payload.media_agency = input.mediaAgency;
+        if (input.creativeAgency !== undefined) payload.creative_agency = input.creativeAgency;
+        if (input.companyId !== undefined) payload.company_id = input.companyId;
+        if (input.contractId !== undefined) payload.contract_id = input.contractId;
+        if (input.proposalId !== undefined) payload.proposal_id = input.proposalId;
+        if (input.reservationId !== undefined) payload.reservation_id = input.reservationId;
+
+        const { error } = await supabase
+          .from('campaigns')
+          .insert([payload]);
+        if (error) throw error;
+      } catch (e) {
+        console.warn('Supabase campaign create failed:', e);
+      }
+    }
+
+    const local = getLocalData('campaigns', campaigns);
     const newRecord = {
       id: newId,
       ...input
