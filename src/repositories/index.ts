@@ -591,16 +591,16 @@ export const spaceRepository = {
   },
   async update(id: string, input: any) {
     const { organizationId, email } = getSessionInfo();
+    const currentSpace = await this.getById(id);
     
-    // Duplicate check
-    if (input.code) {
+    // Duplicate check - only if code is modified and different
+    if (input.code && currentSpace.code.toLowerCase() !== input.code.toLowerCase()) {
       const allSpaces = await this.list();
       if (allSpaces.some(s => s.id !== id && s.code.toLowerCase() === input.code.toLowerCase())) {
         throw new Error('Bu alan kodu zaten kullanılmakta.');
       }
     }
 
-    const currentSpace = await this.getById(id);
     const statusChanged = input.status && currentSpace.status !== input.status;
 
     if (isSupabaseConfigured()) {
@@ -756,12 +756,10 @@ export const offerRepository = {
       input.clientName = company ? company.name : 'Bilinmeyen Firma';
     }
     if (input.spaceIds) {
-      const spaceListCodes: string[] = [];
-      for (const spaceId of input.spaceIds) {
-        const space = await spaceRepository.getById(spaceId);
-        if (space) spaceListCodes.push(space.code);
-      }
-      input.spacesList = spaceListCodes;
+      const resolvedSpaces = await Promise.all(
+        input.spaceIds.map((spaceId: string) => spaceRepository.getById(spaceId))
+      );
+      input.spacesList = resolvedSpaces.filter(Boolean).map((s: any) => s.code);
     }
 
     if (isSupabaseConfigured()) {
@@ -808,12 +806,10 @@ export const offerRepository = {
       input.clientName = company ? company.name : undefined;
     }
     if (input.spaceIds) {
-      const spaceListCodes: string[] = [];
-      for (const spaceId of input.spaceIds) {
-        const space = await spaceRepository.getById(spaceId);
-        if (space) spaceListCodes.push(space.code);
-      }
-      input.spacesList = spaceListCodes;
+      const resolvedSpaces = await Promise.all(
+        input.spaceIds.map((spaceId: string) => spaceRepository.getById(spaceId))
+      );
+      input.spacesList = resolvedSpaces.filter(Boolean).map((s: any) => s.code);
     }
 
     const currentOffer = await this.getById(id);

@@ -138,6 +138,7 @@ export function SalesWizard() {
   const [wizardError, setWizardError] = useState<string | null>(null);
   const [wizardSuccess, setWizardSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [slowSubmitMsg, setSlowSubmitMsg] = useState(false);
 
   useEffect(() => {
     if (wizardSuccess) {
@@ -292,8 +293,15 @@ export function SalesWizard() {
     setIsSubmitting(true);
     setWizardError(null);
     setWizardSuccess(null);
+    setSlowSubmitMsg(false);
+
+    const slowTimer = setTimeout(() => {
+      setSlowSubmitMsg(true);
+    }, 10000);
+
     try {
       const res = await workflowService.commitSalesWorkflow(state);
+      clearTimeout(slowTimer);
       if (res.success) {
         setWizardResult(res.data);
         setWizardSuccess('Satış süreci başarıyla tamamlandı! Tüm CRM, sözleşme, rezervasyon ve fatura kayıtları oluşturuldu.');
@@ -301,9 +309,11 @@ export function SalesWizard() {
         setWizardError(res.error || 'Satış süreci kaydedilemedi.');
       }
     } catch (err: any) {
-      setWizardError(err.message || 'Bir hata oluştu.');
+      clearTimeout(slowTimer);
+      setWizardError(err.message || 'Bir hata oluşti.');
     } finally {
       setIsSubmitting(false);
+      setSlowSubmitMsg(false);
     }
   };
 
@@ -2140,9 +2150,13 @@ export function SalesWizard() {
           <div className="space-y-4 text-center">
             <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mx-auto" />
             <div className="space-y-1">
-              <p className="text-xs font-black text-white uppercase tracking-widest">Satış tamamlanıyor...</p>
+              <p className="text-xs font-black text-white uppercase tracking-widest">
+                {slowSubmitMsg ? 'İşlem arka planda tamamlanıyor' : 'Satış tamamlanıyor...'}
+              </p>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                CRM, sözleşme, rezervasyon ve fatura kayıtları oluşturuluyor.
+                {slowSubmitMsg
+                  ? 'Bağlantı yoğunluğu nedeniyle işlem arka planda sürdürülüyor, lütfen bekleyin...'
+                  : 'CRM, sözleşme, rezervasyon ve fatura kayıtları oluşturuluyor.'}
               </p>
             </div>
           </div>
