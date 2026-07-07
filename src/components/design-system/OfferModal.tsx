@@ -285,9 +285,18 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
     setValue('spaceIds', current, { shouldValidate: true });
   };
 
+  const onInvalid = (errs: any) => {
+    console.error("OFFER VALIDATION ERRORS", errs);
+    setSubmitError("Teklif oluşturulamadı. Lütfen formdaki eksik ve hatalı alanları kontrol ediniz.");
+    setTimeout(() => {
+      const bodyEl = document.querySelector('.overflow-y-auto');
+      if (bodyEl) bodyEl.scrollTop = 0;
+    }, 50);
+  };
+
   const handleSaveDraft = () => {
     setValue('stage', 'Teklif Hazırlandı');
-    handleSubmit(onSubmit)();
+    handleSubmit(onSubmit, onInvalid)();
   };
 
   // Calculations for sticky summary card
@@ -319,9 +328,19 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
   const totalTraffic = selectedSpacesData.reduce((sum, s) => sum + (s.traffic || 0), 0);
 
   const onSubmit = async (data: OfferFormData) => {
+    console.log("OFFER SUBMIT START", data);
     setLoading(true);
     setSubmitError(null);
     try {
+      // Validate that all selected spaces belong to the same network
+      if (selectedSpacesData.length > 0) {
+        const firstNetwork = selectedSpacesData[0].networkId;
+        const allSame = selectedSpacesData.every(s => s.networkId === firstNetwork);
+        if (!allSame) {
+          throw new Error("Teklifte yalnızca tek network’e ait reklam alanları seçilebilir.");
+        }
+      }
+
       // Synchronize valueNumeric and value to netAmount before sending to repo
       const finalData = {
         ...data,
@@ -332,7 +351,8 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
         netAmount: netAmount,
         vatAmount: vatAmount,
         grandTotal: grandTotal,
-        customerBudget: customerBudget
+        customerBudget: customerBudget,
+        spacesList: selectedSpacesData.map(s => s.code)
       };
 
       let result;
@@ -341,12 +361,14 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
       } else {
         result = await offerRepository.create(finalData);
       }
+      console.log("OFFER SAVE SUCCESS", result);
       setSubmitSuccess(true);
       setTimeout(() => {
         onSuccess(result);
         onClose();
       }, 800);
     } catch (err: any) {
+      console.error("OFFER SAVE ERROR", err);
       setSubmitError(err.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
@@ -386,12 +408,14 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
           </button>
         </div>
 
-        {/* Scrollable Body (Grid) */}
-        <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-thin">
-          <form id="offer-form" onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Left Column - Inputs */}
-            <div className="lg:col-span-8 space-y-6">
+        {/* Form Wrap */}
+        <form id="offer-form" onSubmit={handleSubmit(onSubmit, onInvalid)} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Scrollable Body (Grid) */}
+          <div className="flex-1 overflow-y-auto px-8 py-6 scrollbar-thin">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              {/* Left Column - Inputs */}
+              <div className="lg:col-span-8 space-y-6">
               {submitSuccess && (
                 <Notification
                   title="Başarılı"
@@ -830,31 +854,30 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
                 </div>
               </div>
             </div>
-
-          </form>
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 z-50 flex items-center justify-between border-t border-white/5 px-8 pt-5 pb-7 shrink-0 bg-[#0b0f19] bg-opacity-95">
-          <Button variant="outline" size="sm" type="button" className="px-6 font-bold" onClick={onClose} disabled={loading}>
-            İptal
-          </Button>
+          <div className="sticky bottom-0 z-50 flex items-center justify-between border-t border-white/5 px-8 pt-5 pb-7 shrink-0 bg-[#0b0f19] bg-opacity-95">
+            <Button variant="outline" size="sm" type="button" className="px-6 font-bold" onClick={onClose} disabled={loading}>
+              İptal
+            </Button>
 
-          <Button variant="minimal" size="sm" type="button" className="px-6 font-bold border border-white/5" onClick={handleSaveDraft} disabled={loading}>
-            Taslak Kaydet
-          </Button>
+            <Button variant="minimal" size="sm" type="button" className="px-6 font-bold border border-white/5" onClick={handleSaveDraft} disabled={loading}>
+              Taslak Kaydet
+            </Button>
 
-          <Button
-            variant="primary"
-            size="sm"
-            type="submit"
-            form="offer-form"
-            className="px-8 font-black bg-gradient-to-r from-blue-650 to-indigo-650 hover:from-blue-600 hover:to-indigo-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-200"
-            loading={loading}
-          >
-            {loading ? 'Teklif Kaydediliyor...' : (offer ? 'Teklifi Güncelle' : 'Yeni Teklif Oluştur')}
-          </Button>
-        </div>
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
+              className="px-8 font-black bg-gradient-to-r from-blue-650 to-indigo-650 hover:from-blue-600 hover:to-indigo-600 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-200"
+              loading={loading}
+            >
+              {loading ? 'Teklif Kaydediliyor...' : (offer ? 'Teklifi Güncelle' : 'Yeni Teklif Oluştur')}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
