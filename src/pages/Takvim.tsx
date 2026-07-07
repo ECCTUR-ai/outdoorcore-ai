@@ -38,6 +38,7 @@ import { FormGroup, Label, Input, Select } from '@/components/design-system/Form
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { LedReservationForm } from '@/components/design-system/LedReservationForm';
+import { Notification } from '@/components/design-system/Notification';
 
 export function Takvim() {
   const { setCurrentRoute } = useApp();
@@ -77,6 +78,8 @@ export function Takvim() {
   });
 
   const [reservationType, setReservationType] = useState<'static' | 'led'>('static');
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Filter states
   const [filterType, setFilterType] = useState<string>('');
@@ -775,6 +778,24 @@ export function Takvim() {
         </div>
       </div>
 
+      {error && (
+        <Notification
+          title="Hata"
+          description={error}
+          type="alert"
+          onClose={() => setError(null)}
+        />
+      )}
+
+      {success && (
+        <Notification
+          title="Başarılı"
+          description={success}
+          type="success"
+          onClose={() => setSuccess(null)}
+        />
+      )}
+
       {/* Upper KPI grid panels */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
@@ -1241,7 +1262,23 @@ export function Takvim() {
       <Modal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title="Takvime Yeni Event Ekle"
+        title={eventInput.type === 'reservation' && reservationType === 'led' ? "LED Video Reklam Rezervasyonu Oluştur" : "Takvime Yeni Event Ekle"}
+        footerActions={
+          eventInput.type === 'reservation' && reservationType === 'led' ? (
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" type="button" onClick={() => setCreateModalOpen(false)}>İptal</Button>
+              <Button
+                type="submit"
+                form="led-reservation-form"
+                variant="primary"
+                size="sm"
+                className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
+              >
+                Rezervasyon Oluştur
+              </Button>
+            </div>
+          ) : undefined
+        }
       >
         <div className="space-y-4">
           <FormGroup>
@@ -1280,6 +1317,7 @@ export function Takvim() {
               onSuccess={() => {
                 setCreateModalOpen(false);
                 loadEvents();
+                setSuccess('LED Playlist Slotu başarıyla oluşturuldu, anlık Proof of Play logları ve workflowlar tetiklendi.');
               }}
               onCancel={() => setCreateModalOpen(false)}
             />

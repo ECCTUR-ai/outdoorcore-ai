@@ -45,6 +45,7 @@ export function ReklamAlanlari() {
   const [advertisingSpaces, setAdvertisingSpaces] = useState<AdvertisingSpace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [selectedCode, setSelectedCode] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [terminalFilter, setTerminalFilter] = useState('');
@@ -233,17 +234,26 @@ export function ReklamAlanlari() {
         ))}
       </div>
 
-      {activeTab === 'static' && (
-        <>
-
       {error && (
         <Notification
-          title="Sistem Hatası"
+          title="Hata"
           description={error}
           type="alert"
           onClose={() => setError(null)}
         />
       )}
+
+      {success && (
+        <Notification
+          title="Başarılı"
+          description={success}
+          type="success"
+          onClose={() => setSuccess(null)}
+        />
+      )}
+
+      {activeTab === 'static' && (
+        <>
 
       {/* 5 KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -616,12 +626,27 @@ export function ReklamAlanlari() {
         isOpen={ledModalOpen}
         onClose={() => setLedModalOpen(false)}
         title="LED Video Reklam Rezervasyonu Oluştur"
+        footerActions={
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" type="button" onClick={() => setLedModalOpen(false)}>İptal</Button>
+            <Button
+              type="submit"
+              form="led-reservation-form"
+              variant="primary"
+              size="sm"
+              className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
+            >
+              Rezervasyon Oluştur
+            </Button>
+          </div>
+        }
       >
         <LedReservationForm
           initialScreenId={selectedScreenId}
           onSuccess={() => {
             setLedModalOpen(false);
             fetchLedData();
+            setSuccess('LED Playlist Slotu başarıyla oluşturuldu, anlık Proof of Play logları ve workflowlar tetiklendi.');
           }}
           onCancel={() => setLedModalOpen(false)}
         />

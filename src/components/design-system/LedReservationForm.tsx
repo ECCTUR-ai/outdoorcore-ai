@@ -80,26 +80,37 @@ export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initi
       return;
     }
 
+    const avail = digitalScreenRepository.getAvailability(screenId, startDate, endDate);
+    if (durationSeconds > avail.availableSeconds) {
+      const msg = `Bu LED ekranda seçilen tarih aralığında sadece ${avail.availableSeconds} saniye boş slot var.`;
+      setErrorMsg(msg);
+      return;
+    }
+
+    const payload = {
+      screenId,
+      companyId,
+      companyName: companies.find(c => c.id === companyId)?.name || 'Seçilen Müşteri',
+      startDate,
+      endDate,
+      durationSeconds,
+      creativeFileUrl,
+      notes
+    };
+
+    console.log("LED reservation submit", payload);
+
     try {
-      const company = companies.find(c => c.id === companyId);
-      const created = await digitalScreenRepository.createPlaylistSlot({
-        screenId,
-        companyId,
-        companyName: company ? company.name : 'Seçilen Müşteri',
-        startDate,
-        endDate,
-        durationSeconds,
-        creativeFileUrl,
-        notes
-      });
+      const created = await digitalScreenRepository.createPlaylistSlot(payload);
       onSuccess(created);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Slot oluşturulurken bir hata oluşdu.');
+      console.error("LED reservation error", err);
+      setErrorMsg(err.message || 'Slot oluşturulurken bir hata oluştu.');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 text-left select-none text-xs">
+    <form id="led-reservation-form" onSubmit={handleSubmit} className="space-y-4 text-left select-none text-xs">
       
       {errorMsg && (
         <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-start gap-2 select-none">
@@ -195,20 +206,6 @@ export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initi
           onChange={e => setNotes(e.target.value)}
         />
       </FormGroup>
-
-      <div className="flex justify-end gap-2.5 pt-2">
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>İptal</Button>
-        <Button 
-          type="submit" 
-          variant="primary" 
-          size="sm" 
-          disabled={!!errorMsg}
-          className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
-        >
-          Rezervasyon Oluştur
-        </Button>
-      </div>
-
     </form>
   );
 }
