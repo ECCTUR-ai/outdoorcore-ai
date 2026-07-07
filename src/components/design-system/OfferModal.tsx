@@ -26,8 +26,11 @@ const STAGE_CONFIGS: Record<Offer['stage'], { label: string; bg: string; border:
   'Sunum Yapıldı': { label: 'Sunum Yapıldı', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-400' },
   'Pazarlık': { label: 'Pazarlık', bg: 'bg-purple-500/10', border: 'border-purple-500/20', text: 'text-purple-400' },
   'Onay Bekleniyor': { label: 'Onay Bekliyor', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400' },
+  'Onaylandı': { label: 'Onaylandı', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
   'Sözleşme': { label: 'Sözleşme', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
   'Rezervasyon': { label: 'Rezervasyon', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
+  'Revizyonda': { label: 'Revizyonda', bg: 'bg-amber-500/10', border: 'border-amber-500/20', text: 'text-amber-400' },
+  'İptal': { label: 'İptal', bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' },
   'Tamamlandı': { label: 'Kazanıldı', bg: 'bg-green-500/10', border: 'border-green-500/20', text: 'text-green-400' }
 };
 

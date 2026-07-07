@@ -28,9 +28,10 @@ interface OfferDetailPanelProps {
   onEdit: (offer: Offer) => void;
   onDelete: (id: string) => void;
   onStageChange: (id: string, newStage: Offer['stage'], approved?: boolean) => void;
+  actionLoading?: 'sendApproval' | 'approve' | 'revise' | 'cancel' | 'delete' | 'save' | null;
 }
 
-export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: OfferDetailPanelProps) {
+export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actionLoading = null }: OfferDetailPanelProps) {
   return (
     <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto">
       {/* Header Profile Title */}
@@ -40,7 +41,7 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: Off
             Teklif: #{offer.id}
           </span>
           <h4 className="text-sm font-black text-white leading-tight uppercase truncate max-w-[150px]" title={offer.clientName}>{offer.clientName}</h4>
-          <span className="text-[8.5px] text-slate-550 font-bold uppercase tracking-wider block truncate max-w-[150px]" title={offer.campaignName}>{offer.campaignName}</span>
+          <span className="text-[8.5px] text-slate-555 font-bold uppercase tracking-wider block truncate max-w-[150px]" title={offer.campaignName}>{offer.campaignName}</span>
         </div>
         <Badge variant={offer.priority === 'Yüksek' ? 'danger' : 'warning'}>
           {offer.priority} Öncelik
@@ -55,6 +56,7 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: Off
             size="sm" 
             leftIcon={<Edit3 size={11} />} 
             onClick={() => onEdit(offer)}
+            disabled={actionLoading !== null}
           >
             Düzenle
           </Button>
@@ -66,6 +68,8 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: Off
             size="sm" 
             leftIcon={<Trash2 size={11} />} 
             onClick={() => onDelete(offer.id)}
+            loading={actionLoading === 'delete'}
+            disabled={actionLoading !== null}
           >
             Sil
           </Button>
@@ -76,13 +80,15 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: Off
       <div className="space-y-2 pt-1 border-b border-white/5 pb-4">
         <Label>Teklif Durum Yönetimi</Label>
         <div className="flex flex-wrap gap-2">
-          {offer.stage !== 'Onay Bekleniyor' && offer.stage !== 'Tamamlandı' && offer.stage !== 'Sözleşme' && (
+          {offer.stage !== 'Onay Bekleniyor' && offer.stage !== 'Tamamlandı' && offer.stage !== 'İptal' && offer.stage !== 'Sözleşme' && offer.stage !== 'Onaylandı' && (
             <PermissionGate permission="offers.update">
               <Button 
                 variant="minimal" 
                 size="xs" 
                 leftIcon={<Send size={10} />}
                 onClick={() => onStageChange(offer.id, 'Onay Bekleniyor')}
+                loading={actionLoading === 'sendApproval'}
+                disabled={actionLoading !== null}
               >
                 Onaya Gönder
               </Button>
@@ -96,32 +102,38 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: Off
                 size="xs" 
                 leftIcon={<Check size={10} />}
                 onClick={() => onStageChange(offer.id, 'Sözleşme', true)}
+                loading={actionLoading === 'approve'}
+                disabled={actionLoading !== null}
               >
                 Onayla
               </Button>
             </PermissionGate>
           )}
 
-          {offer.stage !== 'Tamamlandı' && (
+          {offer.stage !== 'Tamamlandı' && offer.stage !== 'İptal' && (
             <PermissionGate permission="offers.update">
               <Button 
                 variant="danger" 
                 size="xs" 
                 leftIcon={<XSquare size={10} />}
-                onClick={() => onStageChange(offer.id, 'Tamamlandı')}
+                onClick={() => onStageChange(offer.id, 'İptal')}
+                loading={actionLoading === 'cancel'}
+                disabled={actionLoading !== null}
               >
                 İptal Et
               </Button>
             </PermissionGate>
           )}
 
-          {offer.stage === 'Onay Bekleniyor' && (
+          {(offer.stage === 'Onay Bekleniyor' || offer.stage === 'Sözleşme' || offer.stage === 'Onaylandı') && (
             <PermissionGate permission="offers.update">
               <Button 
                 variant="minimal" 
                 size="xs" 
                 leftIcon={<RotateCcw size={10} />}
-                onClick={() => onStageChange(offer.id, 'Teklif Hazırlandı')}
+                onClick={() => onStageChange(offer.id, 'Revizyonda')}
+                loading={actionLoading === 'revise'}
+                disabled={actionLoading !== null}
               >
                 Revize Et
               </Button>

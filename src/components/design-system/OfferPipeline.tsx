@@ -17,8 +17,11 @@ export function OfferPipeline({ offers, selectedId, onSelect }: OfferPipelinePro
     'Sunum Yapıldı',
     'Pazarlık',
     'Onay Bekleniyor',
+    'Onaylandı',
     'Sözleşme',
     'Rezervasyon',
+    'Revizyonda',
+    'İptal',
     'Tamamlandı'
   ];
 

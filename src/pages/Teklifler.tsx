@@ -27,6 +27,8 @@ import { PermissionGate } from '@/components/design-system/PermissionGate';
 import { OfferModal } from '@/components/design-system/OfferModal';
 import { TableSkeleton } from '@/components/design-system/Skeleton';
 import { Notification } from '@/components/design-system/Notification';
+import { ToastContainer, ToastItem } from '@/components/ui/Toast';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
 export function Teklifler() {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -49,6 +51,22 @@ export function Teklifler() {
       return () => clearTimeout(timer);
     }
   }, [error]);
+
+  const [actionLoading, setActionLoading] = useState<'sendApproval' | 'approve' | 'revise' | 'cancel' | 'delete' | 'save' | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [offerToDelete, setOfferToDelete] = useState<string | null>(null);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [offerToCancel, setOfferToCancel] = useState<string | null>(null);
+
+  const showToast = (title: string, description: string, type: ToastItem['type']) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, title, description, type }]);
+  };
+
+  const handleRemoveToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   // CRUD Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -100,57 +118,128 @@ export function Teklifler() {
     setModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Bu teklifi silmek istediğinize emin misiniz?')) {
-      const success = await offerRepository.softDelete(id);
+  const handleDelete = (id: string) => {
+    setOfferToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!offerToDelete) return;
+    setActionLoading('delete');
+    
+    // Save original in case of rollback
+    const originalOffers = [...offers];
+    setOffers(prev => prev.filter(o => o.id !== offerToDelete));
+    if (selectedOfferId === offerToDelete) {
+      setSelectedOfferId('');
+    }
+
+    try {
+      const success = await offerRepository.softDelete(offerToDelete);
       if (success) {
+        showToast("Teklif Silindi", "Teklif başarıyla silindi.", "success");
         fetchOffers(true);
+      } else {
+        throw new Error("Sistem teklifi silemedi.");
       }
+    } catch (e: any) {
+      // Rollback
+      setOffers(originalOffers);
+      showToast("Hata", e.message || "Teklif silinirken bir hata oluştu.", "error");
+    } finally {
+      setActionLoading(null);
+      setDeleteConfirmOpen(false);
+      setOfferToDelete(null);
     }
   };
 
   const handleStageChange = async (id: string, newStage: Offer['stage'], approved = false) => {
+    if (newStage === 'İptal' && !approved) {
+      setOfferToCancel(id);
+      setCancelConfirmOpen(true);
+      return;
+    }
+    await executeStageChange(id, newStage, approved);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!offerToCancel) return;
+    setCancelConfirmOpen(false);
+    await executeStageChange(offerToCancel, 'İptal', true);
+    setOfferToCancel(null);
+  };
+
+  const executeStageChange = async (id: string, newStage: Offer['stage'], approved = false) => {
+    const original = offers.find(o => o.id === id);
+    if (!original) return;
+
+    let loadingKey: typeof actionLoading = null;
+    if (newStage === 'Onay Bekleniyor') loadingKey = 'sendApproval';
+    else if (newStage === 'Sözleşme' || newStage === 'Onaylandı') loadingKey = 'approve';
+    else if (newStage === 'Teklif Hazırlandı' || newStage === 'Revizyonda') loadingKey = 'revise';
+    else if (newStage === 'İptal' || newStage === 'Tamamlandı') loadingKey = 'cancel';
+
+    setActionLoading(loadingKey);
+
+    const isOfferApprovedTransition = original.stage === 'Onay Bekleniyor' && (newStage === 'Sözleşme' || newStage === 'Onaylandı');
+
+    // Dynamic messages
+    let toastTitle = "Aşama Güncellendi";
+    let toastMsg = `Teklif aşaması başarıyla "${newStage}" olarak güncellendi.`;
+    let logMsg = `Teklif aşaması değişti: ${original.clientName} - ${newStage}`;
+
+    if (newStage === 'Onay Bekleniyor') {
+      toastTitle = "Onaya Gönderildi";
+      toastMsg = "Teklif onaya gönderildi.";
+      logMsg = `Teklif onaya gönderildi: ${original.clientName} - ${original.campaignName}`;
+    } else if (isOfferApprovedTransition || approved) {
+      toastTitle = "Teklif Onaylandı";
+      toastMsg = "Teklif onaylandı. Rezervasyon ve sözleşme süreci başlatıldı.";
+      logMsg = `Teklif onaylandı: ${original.clientName} - ${original.campaignName}`;
+    } else if (newStage === 'Revizyonda') {
+      toastTitle = "Revizyona Alındı";
+      toastMsg = "Teklif revizyon aşamasına alındı.";
+      logMsg = `Teklif revizyona çekildi: ${original.clientName} - ${original.campaignName}`;
+    } else if (newStage === 'İptal') {
+      toastTitle = "Teklif İptal Edildi";
+      toastMsg = "Teklif iptal edildi.";
+      logMsg = `Teklif iptal edildi: ${original.clientName} - ${original.campaignName}`;
+    }
+
+    // Optimistic UI state update
+    const previousOffers = [...offers];
+    setOffers(prev => prev.map(o => o.id === id ? { ...o, stage: newStage, approved: approved || isOfferApprovedTransition } : o));
+
     try {
-      const original = offers.find(o => o.id === id);
-      if (!original) return;
-
-      const isOfferApprovedTransition = original.stage === 'Onay Bekleniyor' && newStage === 'Sözleşme';
-      
-      // Dynamic messages
-      let toastMsg = `Teklif aşaması başarıyla "${newStage}" olarak güncellendi.`;
-      if (isOfferApprovedTransition || (original.stage === 'Onay Bekleniyor' && approved)) {
-        toastMsg = `Teklif başarıyla onaylandı ve Sözleşme aşamasına aktarıldı.`;
-        await activityLogRepository.log(`Teklif onaylandı: ${original.clientName} - ${original.campaignName}`, 'offers');
-      } else if (original.stage === 'Onay Bekleniyor' && newStage === 'Teklif Hazırlandı') {
-        toastMsg = `Teklif revizyona çekildi.`;
-        await activityLogRepository.log(`Teklif revizyona çekildi: ${original.clientName} - ${original.campaignName}`, 'offers');
-      } else if (newStage === 'Tamamlandı') {
-        toastMsg = `Teklif iptal edildi.`;
-        await activityLogRepository.log(`Teklif iptal edildi: ${original.clientName} - ${original.campaignName}`, 'offers');
-      } else {
-        await activityLogRepository.log(`Teklif aşaması güncellendi: ${original.clientName} - ${newStage}`, 'offers');
-      }
-
-      // Optimistic update of UI
-      setOffers(prev => prev.map(o => o.id === id ? { ...o, stage: newStage, approved: approved || isOfferApprovedTransition } : o));
-
-      // Database repository update
+      // Database update
       await offerRepository.update(id, { stage: newStage, approved: approved || isOfferApprovedTransition });
+      
+      // Activity Logging
+      await activityLogRepository.log(logMsg, 'offers');
 
       if (isOfferApprovedTransition) {
-        const event = createWorkflowEvent('offer.approved', 'offer', id, {
-          clientName: original.clientName,
-          campaignName: original.campaignName,
-          companyId: original.companyId
-        });
-        workflowEngine.dispatchWorkflowEvent(event);
+        // Dispatch workflow events
+        try {
+          const event = createWorkflowEvent('offer.approved', 'offer', id, {
+            clientName: original.clientName,
+            campaignName: original.campaignName,
+            companyId: original.companyId
+          });
+          workflowEngine.dispatchWorkflowEvent(event);
+        } catch (we) {
+          console.warn("Workflow engine dispatch failed: ", we);
+          showToast("Uyarı", "Teklif onaylandı ancak bağlı kayıtlar kontrol edilmeli.", "warning");
+        }
       }
 
-      setSuccess(toastMsg);
+      showToast(toastTitle, toastMsg, "success");
       fetchOffers(false);
     } catch (e: any) {
-      console.error(e);
-      setError(e.message || 'Aşama değiştirilirken hata oluştu.');
+      // Rollback on error
+      setOffers(previousOffers);
+      showToast("Hata", e.message || "Aşama güncellenirken hata oluştu.", "error");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -330,6 +419,7 @@ export function Teklifler() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onStageChange={handleStageChange}
+              actionLoading={actionLoading}
             />
           )}
         </div>
@@ -340,7 +430,14 @@ export function Teklifler() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         offer={editingOffer}
-        onSuccess={() => fetchOffers(false)}
+        onSuccess={(savedOffer) => {
+          fetchOffers(false);
+          if (editingOffer) {
+            showToast("Başarılı", "Teklif güncellendi.", "success");
+          } else {
+            showToast("Başarılı", savedOffer.stage === 'Lead' ? "Teklif taslak olarak kaydedildi." : "Yeni teklif oluşturuldu.", "success");
+          }
+        }}
       />
 
       {/* Slide-over AI CRM overlay */}
@@ -351,6 +448,32 @@ export function Teklifler() {
           selectedSpaceCode={selectedOffer.clientName}
         />
       )}
+
+      {/* Confirmation Dialogs */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Teklifi silmek istiyor musunuz?"
+        description="Bu teklif kalıcı olarak silinecek. Bağlı rezervasyon, sözleşme veya finans kayıtları varsa ayrıca kontrol edilmelidir."
+        confirmLabel="Kalıcı Olarak Sil"
+        cancelLabel="Vazgeç"
+        loading={actionLoading === 'delete'}
+      />
+
+      <ConfirmDialog
+        isOpen={cancelConfirmOpen}
+        onClose={() => setCancelConfirmOpen(false)}
+        onConfirm={handleCancelConfirm}
+        title="Teklifi iptal etmek istiyor musunuz?"
+        description="Bu işlem teklifin satış sürecinden çıkarılmasına neden olur. İşlemi geri almak için teklifi tekrar revizyona almanız gerekir."
+        confirmLabel="Teklifi İptal Et"
+        cancelLabel="Vazgeç"
+        loading={actionLoading === 'cancel'}
+      />
+
+      {/* Global Toast Notification Container */}
+      <ToastContainer toasts={toasts} onRemove={handleRemoveToast} />
     </div>
   );
 }

@@ -65,8 +65,11 @@ export const offerSchema = z.object({
     'Sunum Yapıldı',
     'Pazarlık',
     'Onay Bekleniyor',
+    'Onaylandı',
     'Sözleşme',
     'Rezervasyon',
+    'Revizyonda',
+    'İptal',
     'Tamamlandı'
   ]),
   closeProbability: z.coerce.number().min(0, 'İhtimal %0 ile %100 arasında olmalıdır').max(100, 'İhtimal %0 ile %100 arasında olmalıdır'),

@@ -8,7 +8,7 @@ export interface Offer {
   owner: string;
   lastActivity: string;
   closeProbability: number;
-  stage: 'Lead' | 'İlk Görüşme' | 'İhtiyaç Analizi' | 'Teklif Hazırlandı' | 'Sunum Yapıldı' | 'Pazarlık' | 'Onay Bekleniyor' | 'Sözleşme' | 'Rezervasyon' | 'Tamamlandı';
+  stage: 'Lead' | 'İlk Görüşme' | 'İhtiyaç Analizi' | 'Teklif Hazırlandı' | 'Sunum Yapıldı' | 'Pazarlık' | 'Onay Bekleniyor' | 'Onaylandı' | 'Sözleşme' | 'Rezervasyon' | 'Revizyonda' | 'İptal' | 'Tamamlandı';
   closingDate: string;
   details: string;
   priority: 'Yüksek' | 'Orta' | 'Düşük';
