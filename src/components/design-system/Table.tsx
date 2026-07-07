@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface TableProps extends React.TableHTMLAttributes<HTMLTableElement> {
-  headers: string[];
+  headers: (string | React.ReactNode)[];
 }
 
 export function Table({
