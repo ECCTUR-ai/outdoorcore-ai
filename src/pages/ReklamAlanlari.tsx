@@ -12,7 +12,10 @@ import {
   Wrench,
   ChevronLeft,
   ChevronRight,
-  Eye
+  Eye,
+  Layers,
+  Coins,
+  Clock
 } from 'lucide-react';
 import { AdvertisingSpace } from '@/data/advertisingSpaces';
 import { spaceRepository } from '@/repositories';
@@ -30,6 +33,14 @@ import { AdvertisingSpaceModal } from '@/components/design-system/AdvertisingSpa
 import { TableSkeleton } from '@/components/design-system/Skeleton';
 import { Notification } from '@/components/design-system/Notification';
 
+import { digitalScreenRepository } from '@/repositories/digitalScreenRepository';
+import { DigitalScreenCard } from '@/components/design-system/DigitalScreenCard';
+import { PlaylistTimeline } from '@/components/design-system/PlaylistTimeline';
+import { LedReservationForm } from '@/components/design-system/LedReservationForm';
+import { ProofOfPlayTable } from '@/components/design-system/ProofOfPlayTable';
+import { LedSlotSummary } from '@/components/design-system/LedSlotSummary';
+import { Modal } from '@/components/design-system/Modal';
+
 export function ReklamAlanlari() {
   const [advertisingSpaces, setAdvertisingSpaces] = useState<AdvertisingSpace[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +56,22 @@ export function ReklamAlanlari() {
   // CRUD Modals
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<AdvertisingSpace | undefined>(undefined);
+
+  // Digital Signage Tabs states
+  const [activeTab, setActiveTab] = useState<'static' | 'led' | 'playlist' | 'pop'>('static');
+  const [selectedScreenId, setSelectedScreenId] = useState<string>('LED-001');
+  const [ledModalOpen, setLedModalOpen] = useState(false);
+  
+  // LED list states
+  const [screensList, setScreensList] = useState<any[]>([]);
+  const [slotsList, setSlotsList] = useState<any[]>([]);
+
+  const fetchLedData = () => {
+    const screens = digitalScreenRepository.listScreens();
+    const slots = digitalScreenRepository.listPlaylistSlots();
+    setScreensList(screens);
+    setSlotsList(slots);
+  };
 
   const fetchSpaces = async (selectFirst = false) => {
     setLoading(true);
@@ -69,6 +96,7 @@ export function ReklamAlanlari() {
 
   useEffect(() => {
     fetchSpaces(true);
+    fetchLedData();
   }, []);
 
   useEffect(() => {
@@ -141,16 +169,27 @@ export function ReklamAlanlari() {
             OutdoorCore AI
           </Button>
 
-          <PermissionGate permission="spaces.create">
+          {activeTab === 'static' ? (
+            <PermissionGate permission="spaces.create">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                leftIcon={<Plus size={13} />}
+                onClick={handleCreate}
+              >
+                Alan Ekle
+              </Button>
+            </PermissionGate>
+          ) : (
             <Button 
               variant="outline" 
               size="sm" 
               leftIcon={<Plus size={13} />}
-              onClick={handleCreate}
+              onClick={() => setLedModalOpen(true)}
             >
-              Alan Ekle
+              LED Rezervasyon Ekle
             </Button>
-          </PermissionGate>
+          )}
 
           <Button 
             variant="minimal" 
@@ -171,6 +210,31 @@ export function ReklamAlanlari() {
           </Button>
         </div>
       </div>
+
+      {/* Dynamic Tab Switcher */}
+      <div className="flex bg-slate-100 dark:bg-white/2 p-1 rounded-2xl border border-slate-200 dark:border-white/5 select-none w-full sm:w-auto self-start justify-start flex-wrap gap-1">
+        {[
+          { id: 'static', label: 'Statik Alanlar' },
+          { id: 'led', label: 'Dijital LED Ekranlar' },
+          { id: 'playlist', label: 'Playlist Yönetimi' },
+          { id: 'pop', label: 'Proof of Play' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-3 py-1.5 text-[9.5px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer border ${
+              activeTab === tab.id
+                ? 'bg-white dark:bg-[#0b0f19] text-blue-500 dark:text-blue-450 shadow-sm border-slate-205 dark:border-white/5'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent border-transparent'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'static' && (
+        <>
 
       {error && (
         <Notification
@@ -413,6 +477,131 @@ export function ReklamAlanlari() {
           )}
         </div>
       </div>
+      </>
+      )}
+
+      {activeTab === 'led' && (
+        <div className="space-y-6">
+          {/* LED KPIs */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-left">
+            <DarkKpiCard
+              title="Toplam Ekran"
+              value={String(screensList.length)}
+              percentage="100%"
+              subtext="Dijital LED Envanteri"
+              icon={<Layers size={15} />}
+              iconBgColor="bg-blue-500/10 text-blue-400 border border-blue-500/10"
+            />
+            <DarkKpiCard
+              title="Toplam m²"
+              value={`${screensList.reduce((sum, s) => sum + s.totalM2, 0)} m²`}
+              percentage="LED ALANI"
+              subtext="Aktif ekran yüzeyleri"
+              icon={<MapPin size={15} />}
+              iconBgColor="bg-indigo-500/10 text-indigo-400 border border-indigo-500/10"
+            />
+            <DarkKpiCard
+              title="Kullanılan Saniye"
+              value={`${slotsList.filter(s => s.status === 'active').reduce((sum, s) => sum + s.durationSeconds, 0)} sn`}
+              percentage="TOPLAM"
+              subtext="Rezervasyonlu süreler"
+              icon={<Clock size={15} />}
+              iconBgColor="bg-emerald-500/10 text-emerald-400 border border-emerald-500/10"
+            />
+            <DarkKpiCard
+              title="Ortalama Doluluk"
+              value={`%${screensList.length > 0 ? Math.round(screensList.reduce((sum, s) => {
+                const active = slotsList.filter(sl => sl.screenId === s.screenId && sl.status === 'active');
+                const used = active.reduce((acc, sl) => acc + sl.durationSeconds, 0);
+                return sum + (used / s.loopDurationSeconds) * 100;
+              }, 0) / screensList.length) : 0}`}
+              percentage="DURUM"
+              subtext="Loop kapasite doluluğu"
+              icon={<Coins size={15} />}
+              iconBgColor="bg-teal-500/10 text-teal-400 border border-teal-500/10"
+            />
+          </div>
+
+          {/* Screens Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {screensList.map(screen => (
+              <DigitalScreenCard
+                key={screen.screenId}
+                screen={screen}
+                slots={slotsList}
+                onSelectScreen={(screenId) => {
+                  setSelectedScreenId(screenId);
+                  setActiveTab('playlist');
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'playlist' && (
+        <div className="space-y-6">
+          <DarkDashboardCard className="space-y-4 text-left">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest leading-none">Playlist Akış Detayı</h3>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-[10px] text-slate-400 font-bold uppercase shrink-0">Ekran Seç:</span>
+                <Select
+                  value={selectedScreenId}
+                  onChange={e => setSelectedScreenId(e.target.value)}
+                  className="max-w-[200px]"
+                >
+                  {screensList.map(s => (
+                    <option key={s.screenId} value={s.screenId}>{s.screenCode} - {s.name}</option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            {screensList.find(s => s.screenId === selectedScreenId) && (
+              <PlaylistTimeline
+                screen={screensList.find(s => s.screenId === selectedScreenId)!}
+                slots={slotsList}
+                onCreateSlotAtEmpty={() => setLedModalOpen(true)}
+              />
+            )}
+          </DarkDashboardCard>
+
+          {/* Slots Table */}
+          <DarkDashboardCard className="space-y-4 text-left">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Yayınlanan Playlist Slotları</span>
+            </div>
+
+            <Table headers={['Müşteri Firma', 'Başlangıç Tarihi', 'Bitiş Tarihi', 'Süre', 'Loop Oranı', 'Günlük Gösterim', 'Hesaplanan Fiyat']}>
+              {slotsList.filter(s => s.screenId === selectedScreenId && s.status === 'active').map(slot => (
+                <TableRow key={slot.slotId} className="border-b border-white/3 hover:bg-white/1">
+                  <TableCell className="font-extrabold text-white">{slot.companyName}</TableCell>
+                  <TableCell className="font-semibold text-slate-400">{slot.startDate}</TableCell>
+                  <TableCell className="font-semibold text-slate-400">{slot.endDate}</TableCell>
+                  <TableCell className="font-black text-white">{slot.durationSeconds} Saniye</TableCell>
+                  <TableCell className="font-black text-indigo-400">{slot.sharePercent}%</TableCell>
+                  <TableCell className="font-semibold text-slate-400">{slot.estimatedPlaysPerDay} Yayın / Gün</TableCell>
+                  <TableCell className="font-black text-emerald-450">₺{slot.price.toLocaleString('tr-TR')}</TableCell>
+                </TableRow>
+              ))}
+              {slotsList.filter(s => s.screenId === selectedScreenId && s.status === 'active').length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-slate-500 text-xs font-bold uppercase py-8">
+                    Bu LED Ekran İçin Rezervasyonlu Slot Bulunmuyor.
+                  </TableCell>
+                </TableRow>
+              )}
+            </Table>
+          </DarkDashboardCard>
+        </div>
+      )}
+
+      {activeTab === 'pop' && (
+        <DarkDashboardCard className="p-5 text-left">
+          <ProofOfPlayTable />
+        </DarkDashboardCard>
+      )}
 
       {/* CRUD Modal */}
       <AdvertisingSpaceModal
@@ -421,6 +610,22 @@ export function ReklamAlanlari() {
         space={editingSpace}
         onSuccess={() => fetchSpaces(false)}
       />
+
+      {/* LED Reservation Modal */}
+      <Modal
+        isOpen={ledModalOpen}
+        onClose={() => setLedModalOpen(false)}
+        title="LED Video Reklam Rezervasyonu Oluştur"
+      >
+        <LedReservationForm
+          initialScreenId={selectedScreenId}
+          onSuccess={() => {
+            setLedModalOpen(false);
+            fetchLedData();
+          }}
+          onCancel={() => setLedModalOpen(false)}
+        />
+      </Modal>
 
       {/* Slide-over AI Insight Drawer dialog */}
       {selectedSpace && (

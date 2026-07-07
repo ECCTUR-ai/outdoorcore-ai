@@ -1434,3 +1434,5 @@ export const settingRepository = {
     }
   }
 };
+
+export { digitalScreenRepository } from './digitalScreenRepository';

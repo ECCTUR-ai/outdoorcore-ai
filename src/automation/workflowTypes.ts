@@ -22,12 +22,13 @@ export type WorkflowEventType =
   | 'invoice.overdue'
   | 'payment.received'
   | 'maintenance.created'
-  | 'maintenance.completed';
+  | 'maintenance.completed'
+  | 'digital_slot.created';
 
 export interface WorkflowEvent {
   eventId: string;
   eventType: WorkflowEventType;
-  sourceEntityType: 'offer' | 'contract' | 'reservation' | 'campaign' | 'invoice' | 'payment' | 'maintenance' | 'system';
+  sourceEntityType: 'offer' | 'contract' | 'reservation' | 'campaign' | 'invoice' | 'payment' | 'maintenance' | 'system' | 'digital_slot';
   sourceEntityId: string;
   organizationId?: string;
   userId?: string;

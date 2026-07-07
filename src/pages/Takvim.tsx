@@ -37,6 +37,7 @@ import { Modal } from '@/components/design-system/Modal';
 import { FormGroup, Label, Input, Select } from '@/components/design-system/Form';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
+import { LedReservationForm } from '@/components/design-system/LedReservationForm';
 
 export function Takvim() {
   const { setCurrentRoute } = useApp();
@@ -74,6 +75,8 @@ export function Takvim() {
     spaceId: '',
     amount: ''
   });
+
+  const [reservationType, setReservationType] = useState<'static' | 'led'>('static');
 
   // Filter states
   const [filterType, setFilterType] = useState<string>('');
@@ -1240,146 +1243,172 @@ export function Takvim() {
         onClose={() => setCreateModalOpen(false)}
         title="Takvime Yeni Event Ekle"
       >
-        <form onSubmit={handleCreateEvent} className="space-y-4 text-left">
+        <div className="space-y-4">
           <FormGroup>
-            <Label htmlFor="ev-title">Event Başlığı *</Label>
-            <Input
-              id="ev-title"
-              required
-              placeholder="Firma veya kampanya ismi..."
-              value={eventInput.title}
-              onChange={e => setEventInput(prev => ({ ...prev, title: e.target.value }))}
-            />
-          </FormGroup>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormGroup>
-              <Label htmlFor="ev-type">Event Türü *</Label>
-              <Select
-                id="ev-type"
-                value={eventInput.type}
-                onChange={e => setEventInput(prev => ({ ...prev, type: e.target.value as any }))}
-              >
-                <option value="reservation">Rezervasyon</option>
-                <option value="campaign">Kampanya</option>
-                <option value="contract_expiry">Sözleşme Bitişi</option>
-                <option value="invoice_due">Fatura Vadesi</option>
-                <option value="maintenance">Teknik & Bakım</option>
-                <option value="task">Kullanıcı Görevi</option>
-                <option value="workflow">İş Akışı</option>
-              </Select>
-            </FormGroup>
-            
-            <FormGroup>
-              <Label htmlFor="ev-priority">Öncelik *</Label>
-              <Select
-                id="ev-priority"
-                value={eventInput.priority}
-                onChange={e => setEventInput(prev => ({ ...prev, priority: e.target.value as any }))}
-              >
-                <option value="low">Düşük</option>
-                <option value="medium">Orta</option>
-                <option value="high">Yüksek</option>
-                <option value="critical">Kritik</option>
-              </Select>
-            </FormGroup>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormGroup>
-              <Label htmlFor="ev-start">Başlangıç Tarihi *</Label>
-              <Input
-                id="ev-start"
-                type="date"
-                required
-                value={eventInput.start}
-                onChange={e => setEventInput(prev => ({ ...prev, start: e.target.value }))}
-              />
-            </FormGroup>
-            <FormGroup>
-              <Label htmlFor="ev-end">Bitiş Tarihi *</Label>
-              <Input
-                id="ev-end"
-                type="date"
-                required
-                value={eventInput.end}
-                onChange={e => setEventInput(prev => ({ ...prev, end: e.target.value }))}
-              />
-            </FormGroup>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormGroup>
-              <Label htmlFor="ev-company">Firma İlişkisi</Label>
-              <Select
-                id="ev-company"
-                value={eventInput.companyId}
-                onChange={e => setEventInput(prev => ({ ...prev, companyId: e.target.value }))}
-              >
-                <option value="">İlişkilendirme Yok</option>
-                {companiesList.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </Select>
-            </FormGroup>
-            
-            <FormGroup>
-              <Label htmlFor="ev-space">Reklam Ünitesi İlişkisi</Label>
-              <Select
-                id="ev-space"
-                value={eventInput.spaceId}
-                onChange={e => setEventInput(prev => ({ ...prev, spaceId: e.target.value }))}
-              >
-                <option value="">İlişkilendirme Yok</option>
-                {spacesList.map(s => (
-                  <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
-                ))}
-              </Select>
-            </FormGroup>
-          </div>
-
-          <FormGroup>
-            <Label htmlFor="ev-amount">Parasal Değer (₺ - Opsiyonel)</Label>
-            <Input
-              id="ev-amount"
-              type="number"
-              placeholder="Tutar girin..."
-              value={eventInput.amount}
-              onChange={e => setEventInput(prev => ({ ...prev, amount: e.target.value }))}
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label htmlFor="ev-desc">Plan Açıklaması</Label>
-            <textarea
-              id="ev-desc"
-              rows={3}
-              placeholder="Detaylı planlama notlarını ekleyin..."
-              className="w-full text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-white/3 border border-slate-250 dark:border-white/5 rounded-xl p-2.5 text-xs outline-none"
-              value={eventInput.description}
-              onChange={e => setEventInput(prev => ({ ...prev, description: e.target.value }))}
-            />
-          </FormGroup>
-
-          <div className="flex justify-end gap-2.5 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setCreateModalOpen(false)}
+            <Label htmlFor="ev-type">Event Türü *</Label>
+            <Select
+              id="ev-type"
+              value={eventInput.type}
+              onChange={e => setEventInput(prev => ({ ...prev, type: e.target.value as any }))}
             >
-              İptal
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              className="bg-blue-650 hover:bg-blue-600 text-white"
-            >
-              Kaydet
-            </Button>
-          </div>
-        </form>
+              <option value="reservation">Rezervasyon</option>
+              <option value="campaign">Kampanya</option>
+              <option value="contract_expiry">Sözleşme Bitişi</option>
+              <option value="invoice_due">Fatura Vadesi</option>
+              <option value="maintenance">Teknik & Bakım</option>
+              <option value="task">Kullanıcı Görevi</option>
+              <option value="workflow">İş Akışı</option>
+            </Select>
+          </FormGroup>
+
+          {eventInput.type === 'reservation' && (
+            <FormGroup>
+              <Label htmlFor="ev-res-type">Rezervasyon Tipi *</Label>
+              <Select
+                id="ev-res-type"
+                value={reservationType}
+                onChange={e => setReservationType(e.target.value as any)}
+              >
+                <option value="static">Statik Reklam Alanı</option>
+                <option value="led">LED Video Reklam</option>
+              </Select>
+            </FormGroup>
+          )}
+
+          {eventInput.type === 'reservation' && reservationType === 'led' ? (
+            <LedReservationForm
+              onSuccess={() => {
+                setCreateModalOpen(false);
+                loadEvents();
+              }}
+              onCancel={() => setCreateModalOpen(false)}
+            />
+          ) : (
+            <form onSubmit={handleCreateEvent} className="space-y-4 text-left">
+              <FormGroup>
+                <Label htmlFor="ev-title">Event Başlığı *</Label>
+                <Input
+                  id="ev-title"
+                  required
+                  placeholder="Firma veya kampanya ismi..."
+                  value={eventInput.title}
+                  onChange={e => setEventInput(prev => ({ ...prev, title: e.target.value }))}
+                />
+              </FormGroup>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormGroup>
+                  <Label htmlFor="ev-priority">Öncelik *</Label>
+                  <Select
+                    id="ev-priority"
+                    value={eventInput.priority}
+                    onChange={e => setEventInput(prev => ({ ...prev, priority: e.target.value as any }))}
+                  >
+                    <option value="low">Düşük</option>
+                    <option value="medium">Orta</option>
+                    <option value="high">Yüksek</option>
+                    <option value="critical">Kritik</option>
+                  </Select>
+                </FormGroup>
+                
+                <FormGroup>
+                  <Label htmlFor="ev-amount">Parasal Değer (₺ - Opsiyonel)</Label>
+                  <Input
+                    id="ev-amount"
+                    type="number"
+                    placeholder="Tutar girin..."
+                    value={eventInput.amount}
+                    onChange={e => setEventInput(prev => ({ ...prev, amount: e.target.value }))}
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormGroup>
+                  <Label htmlFor="ev-start">Başlangıç Tarihi *</Label>
+                  <Input
+                    id="ev-start"
+                    type="date"
+                    required
+                    value={eventInput.start}
+                    onChange={e => setEventInput(prev => ({ ...prev, start: e.target.value }))}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <Label htmlFor="ev-end">Bitiş Tarihi *</Label>
+                  <Input
+                    id="ev-end"
+                    type="date"
+                    required
+                    value={eventInput.end}
+                    onChange={e => setEventInput(prev => ({ ...prev, end: e.target.value }))}
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormGroup>
+                  <Label htmlFor="ev-company">Firma İlişkisi</Label>
+                  <Select
+                    id="ev-company"
+                    value={eventInput.companyId}
+                    onChange={e => setEventInput(prev => ({ ...prev, companyId: e.target.value }))}
+                  >
+                    <option value="">İlişkilendirme Yok</option>
+                    {companiesList.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </Select>
+                </FormGroup>
+                
+                <FormGroup>
+                  <Label htmlFor="ev-space">Reklam Ünitesi İlişkisi</Label>
+                  <Select
+                    id="ev-space"
+                    value={eventInput.spaceId}
+                    onChange={e => setEventInput(prev => ({ ...prev, spaceId: e.target.value }))}
+                  >
+                    <option value="">İlişkilendirme Yok</option>
+                    {spacesList.map(s => (
+                      <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
+                    ))}
+                  </Select>
+                </FormGroup>
+              </div>
+
+              <FormGroup>
+                <Label htmlFor="ev-desc">Plan Açıklaması</Label>
+                <textarea
+                  id="ev-desc"
+                  rows={3}
+                  placeholder="Detaylı planlama notlarını ekleyin..."
+                  className="w-full text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-white/3 border border-slate-250 dark:border-white/5 rounded-xl p-2.5 text-xs outline-none"
+                  value={eventInput.description}
+                  onChange={e => setEventInput(prev => ({ ...prev, description: e.target.value }))}
+                />
+              </FormGroup>
+
+              <div className="flex justify-end gap-2.5 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCreateModalOpen(false)}
+                >
+                  İptal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className="bg-blue-650 hover:bg-blue-600 text-white"
+                >
+                  Kaydet
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
       </Modal>
 
       {/* MOVE DATES SIMULATION MODAL */}

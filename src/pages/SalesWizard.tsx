@@ -33,7 +33,8 @@ import {
   companyRepository, 
   spaceRepository,
   reservationRepository,
-  activityLogRepository 
+  activityLogRepository,
+  digitalScreenRepository
 } from '@/repositories';
 import { Company } from '@/data/companies';
 import { AdvertisingSpace } from '@/data/advertisingSpaces';
@@ -109,6 +110,9 @@ export function SalesWizard() {
     minVisibility: 'all'
   });
 
+  const [selectedLedScreenId, setSelectedLedScreenId] = useState<string>('LED-001');
+  const [ledDurationSeconds, setLedDurationSeconds] = useState<number>(15);
+
   // Initial Workflow state
   const [state, setState] = useState<WorkflowState>({
     currentStep: 'dates',
@@ -124,7 +128,9 @@ export function SalesWizard() {
       contract: null,
       reservation: null,
       campaign: null,
-      finance: null
+      finance: null,
+      reklamTipi: 'statik',
+      ledSlots: []
     }
   });
 
@@ -202,9 +208,19 @@ export function SalesWizard() {
         }
       }));
     }
-    if (state.currentStep === 'spaces' && state.data.selectedSpaces.length === 0) {
-      setWizardError('Lütfen en az bir reklam alanı seçin.');
-      return;
+    if (state.currentStep === 'spaces') {
+      const isLed = state.data.reklamTipi === 'led';
+      if (isLed) {
+        if (!state.data.ledSlots || state.data.ledSlots.length === 0) {
+          setWizardError('Lütfen en az bir LED ekran slotu ekleyin.');
+          return;
+        }
+      } else {
+        if (state.data.selectedSpaces.length === 0) {
+          setWizardError('Lütfen en az bir reklam alanı seçin.');
+          return;
+        }
+      }
     }
     if (state.currentStep === 'company' && !state.data.company) {
       setWizardError('Lütfen bir firma seçin veya yeni bir kayıt oluşturun.');
@@ -272,6 +288,9 @@ export function SalesWizard() {
   };
 
   const calculateTotalSpacesPrice = (): number => {
+    if (state.data.reklamTipi === 'led') {
+      return (state.data.ledSlots || []).reduce((total, slot) => total + slot.price, 0);
+    }
     return state.data.selectedSpaces.reduce((total, space) => {
       const cleanNum = parseInt(space.price.replace(/[^0-9]/g, ''), 10) || 0;
       return total + cleanNum;
@@ -856,8 +875,233 @@ export function SalesWizard() {
       );
     }
 
+    const isLedMode = state.data.reklamTipi === 'led';
+
+    const renderLedSpaceSelection = () => {
+      const screens = digitalScreenRepository.listScreens();
+      const currentScreen = screens.find(s => s.screenId === selectedLedScreenId) || screens[0];
+      const availability = digitalScreenRepository.getAvailability(selectedLedScreenId, state.data.dates?.startDate || '06.07.2026', state.data.dates?.endDate || '06.08.2026');
+
+      const share = parseFloat(((ledDurationSeconds / currentScreen.loopDurationSeconds) * 100).toFixed(1));
+      const plays = digitalScreenRepository.calculateEstimatedPlays(selectedLedScreenId);
+      const playsTotal = plays * (state.data.dates ? Math.ceil(Math.abs(parseStringDate(state.data.dates.endDate)!.getTime() - parseStringDate(state.data.dates.startDate)!.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 30);
+      const calculatedPrice = digitalScreenRepository.calculateSlotPrice(selectedLedScreenId, ledDurationSeconds, state.data.dates?.startDate || '06.07.2026', state.data.dates?.endDate || '06.08.2026');
+
+      const handleAddLedSlot = () => {
+        if (ledDurationSeconds > availability.availableSeconds) {
+          alert(`Bu LED ekranda seçilen tarih aralığında sadece ${availability.availableSeconds} saniye boş slot var.`);
+          return;
+        }
+
+        const newSlot = {
+          screenId: currentScreen.screenId,
+          screenCode: currentScreen.screenCode,
+          screenName: currentScreen.name,
+          durationSeconds: ledDurationSeconds,
+          sharePercent: share,
+          estimatedPlaysPerDay: plays,
+          estimatedPlaysTotal: playsTotal,
+          price: calculatedPrice
+        };
+
+        const updatedSlots = [...(state.data.ledSlots || []), newSlot];
+        setState(prev => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            ledSlots: updatedSlots,
+            offer: prev.data.offer ? {
+              ...prev.data.offer,
+              valueNumeric: updatedSlots.reduce((sum, s) => sum + s.price, 0),
+              value: `₺` + updatedSlots.reduce((sum, s) => sum + s.price, 0).toLocaleString('tr-TR')
+            } : null
+          }
+        }));
+      };
+
+      const handleRemoveLedSlot = (index: number) => {
+        const updatedSlots = (state.data.ledSlots || []).filter((_, idx) => idx !== index);
+        setState(prev => ({
+          ...prev,
+          data: {
+            ...prev.data,
+            ledSlots: updatedSlots,
+            offer: prev.data.offer ? {
+              ...prev.data.offer,
+              valueNumeric: updatedSlots.reduce((sum, s) => sum + s.price, 0),
+              value: `₺` + updatedSlots.reduce((sum, s) => sum + s.price, 0).toLocaleString('tr-TR')
+            } : null
+          }
+        }));
+      };
+
+      return (
+        <div className="space-y-5 text-left text-xs">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
+            <div className="lg:col-span-2 space-y-4">
+              <span className="text-[10px] font-black text-white uppercase tracking-wider block">Dijital LED Ekranlar</span>
+              <div className="space-y-3">
+                {screens.map(s => {
+                  const screenAvail = digitalScreenRepository.getAvailability(s.screenId, state.data.dates?.startDate || '06.07.2026', state.data.dates?.endDate || '06.08.2026');
+                  const isSelected = selectedLedScreenId === s.screenId;
+                  return (
+                    <div
+                      key={s.screenId}
+                      onClick={() => setSelectedLedScreenId(s.screenId)}
+                      className={`p-4 rounded-2xl border transition-all cursor-pointer bg-white dark:bg-[#0b0f19]/30 text-left space-y-2 ${
+                        isSelected 
+                          ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-600/20' 
+                          : 'border-white/5 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <span className="text-[11px] font-black text-blue-450 uppercase">{s.screenCode}</span>
+                          <span className="text-[10.5px] font-black text-slate-800 dark:text-white block mt-0.5">{s.name}</span>
+                        </div>
+                        <span className="text-[10.5px] text-emerald-450 font-black">₺{s.monthlyBasePrice.toLocaleString('tr-TR')} / Ay</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 text-[8.5px] font-bold text-slate-500 uppercase">
+                        <div>M²: <span className="text-white font-extrabold">{s.totalM2} m²</span></div>
+                        <div>Çözünürlük: <span className="text-white font-extrabold">{s.resolution.split(' ')[0]}</span></div>
+                        <div>Loop: <span className="text-white font-extrabold">{s.loopDurationSeconds} sn</span></div>
+                        <div>Boş Saniye: <span className="text-emerald-455 font-extrabold">{screenAvail.availableSeconds} sn</span></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 space-y-4">
+              <div className="p-4 rounded-2xl bg-white/2 border border-white/5 space-y-4">
+                <span className="text-[10px] font-black text-white uppercase tracking-wider block">Slot Yapılandırma ({currentScreen.screenCode})</span>
+                
+                <FormGroup>
+                  <Label>Yayın Süresi (Saniye)</Label>
+                  <Input 
+                    type="number" 
+                    value={ledDurationSeconds} 
+                    min={1} 
+                    max={currentScreen.loopDurationSeconds} 
+                    onChange={e => setLedDurationSeconds(parseInt(e.target.value, 10) || 0)} 
+                  />
+                </FormGroup>
+
+                <div className="p-3.5 bg-slate-950/40 border border-white/5 rounded-xl space-y-2.5 text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                  <div className="flex justify-between">
+                    <span>Müşteri Payı (Share %):</span>
+                    <span className="text-white">{share}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Günlük Yayın Adedi:</span>
+                    <span className="text-white">{plays} kez / gün</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Toplam Tahmini Yayın:</span>
+                    <span className="text-white">{playsTotal} yayın</span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/5 pt-2">
+                    <span>Hesaplanan Fiyat:</span>
+                    <span className="text-emerald-450 font-extrabold text-[11px]">₺{calculatedPrice.toLocaleString('tr-TR')}</span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  className="w-full bg-blue-650 hover:bg-blue-600 text-white font-bold"
+                  onClick={handleAddLedSlot}
+                  disabled={ledDurationSeconds > availability.availableSeconds}
+                >
+                  LED Slotu Ekle
+                </Button>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/2 border border-white/5 space-y-2">
+                <span className="text-[9.5px] font-black text-slate-450 uppercase tracking-widest block">Eklenen LED Slotları ({(state.data.ledSlots || []).length})</span>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {(state.data.ledSlots || []).map((slot, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-2 rounded-xl bg-white/2 border border-white/5 text-[9.5px]">
+                      <div className="space-y-0.5">
+                        <span className="text-white font-black">{slot.screenCode} - {slot.durationSeconds} sn (%{slot.sharePercent})</span>
+                        <span className="text-emerald-455 font-bold block">₺{slot.price.toLocaleString('tr-TR')}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveLedSlot(idx)}
+                        className="p-1 hover:bg-rose-500/10 text-slate-500 hover:text-rose-500 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                  {(state.data.ledSlots || []).length === 0 && (
+                    <span className="text-[9.5px] text-slate-500 italic block py-2">Henüz LED slotu eklenmedi.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    if (isLedMode) {
+      return (
+        <div className="space-y-4">
+          <FormGroup>
+            <Label>Reklam Tipi *</Label>
+            <Select
+              value={state.data.reklamTipi || 'statik'}
+              onChange={e => {
+                const type = e.target.value as 'statik' | 'led';
+                setState(prev => ({
+                  ...prev,
+                  data: {
+                    ...prev.data,
+                    reklamTipi: type,
+                    selectedSpaces: type === 'led' ? [] : prev.data.selectedSpaces,
+                    ledSlots: type === 'statik' ? [] : prev.data.ledSlots
+                  }
+                }));
+              }}
+            >
+              <option value="statik">Statik Reklam Alanı (Billboard, Pano, Lightbox)</option>
+              <option value="led">Dijital LED Ekran (Playlist Slotu)</option>
+            </Select>
+          </FormGroup>
+          {renderLedSpaceSelection()}
+        </div>
+      );
+    }
+
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 text-left">
+      <div className="space-y-4">
+        <FormGroup>
+          <Label>Reklam Tipi *</Label>
+          <Select
+            value={state.data.reklamTipi || 'statik'}
+            onChange={e => {
+              const type = e.target.value as 'statik' | 'led';
+              setState(prev => ({
+                ...prev,
+                data: {
+                  ...prev.data,
+                  reklamTipi: type,
+                  selectedSpaces: type === 'led' ? [] : prev.data.selectedSpaces,
+                  ledSlots: type === 'statik' ? [] : prev.data.ledSlots
+                }
+              }));
+            }}
+          >
+            <option value="statik">Statik Reklam Alanı (Billboard, Pano, Lightbox)</option>
+            <option value="led">Dijital LED Ekran (Playlist Slotu)</option>
+          </Select>
+        </FormGroup>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 text-left">
         {/* Sol Kolon: Filtreler */}
         <div className="lg:col-span-1 space-y-4 bg-white/2 border border-white/5 p-4 rounded-2xl">
           <div className="flex justify-between items-center pb-2 border-b border-white/5">
@@ -1132,6 +1376,7 @@ export function SalesWizard() {
 
           <WorkflowAiPanel />
         </div>
+      </div>
       </div>
     );
   }
@@ -1680,10 +1925,9 @@ export function SalesWizard() {
     );
   }
 
-  // Step 9: Workflow summary step view
   function WorkflowSummaryStep() {
-    const { dates, company, selectedSpaces, offer, contract, reservation, campaign, finance } = state.data;
-    if (!dates || !company || selectedSpaces.length === 0 || !offer || !contract || !reservation || !campaign || !finance) {
+    const { dates, company, selectedSpaces, offer, contract, reservation, campaign, finance, reklamTipi, ledSlots } = state.data;
+    if (!dates || !company || (reklamTipi === 'led' ? (!ledSlots || ledSlots.length === 0) : selectedSpaces.length === 0) || !offer || !contract || !reservation || !campaign || !finance) {
       return (
         <div className="p-4 text-center text-rose-500 font-bold">
           Eksik adım bilgisi. Lütfen tüm adımları doldurun.
@@ -1717,14 +1961,30 @@ export function SalesWizard() {
           </div>
 
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl space-y-1">
-            <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">Kiralanacak Alanlar ({selectedSpaces.length})</span>
+            <span className="text-[9.5px] font-black text-indigo-400 uppercase tracking-wider block">
+              {reklamTipi === 'led' ? `Kiralanacak Dijital LED Slotları (${ledSlots?.length || 0})` : `Kiralanacak Alanlar (${selectedSpaces.length})`}
+            </span>
             <div className="space-y-1 text-[10px]">
-              {selectedSpaces.map(s => (
-                <div key={s.id} className="flex justify-between items-center text-slate-300 font-semibold border-b border-white/3 pb-1 last:border-0 last:pb-0">
-                  <span>#{s.code} - {s.name}</span>
-                  <span className="text-emerald-450 font-bold">{s.price}</span>
-                </div>
-              ))}
+              {reklamTipi === 'led' ? (
+                (ledSlots || []).map((slot, idx) => (
+                  <div key={idx} className="border-b border-white/3 pb-1.5 last:border-0 last:pb-0 space-y-1">
+                    <div className="flex justify-between items-center text-slate-300 font-semibold">
+                      <span>{slot.screenCode} - {slot.screenName}</span>
+                      <span className="text-emerald-450 font-bold">₺{slot.price.toLocaleString('tr-TR')}</span>
+                    </div>
+                    <div className="text-[8px] text-slate-550 font-black uppercase tracking-wider">
+                      {slot.durationSeconds} saniye yayın • Loop içinde %{slot.sharePercent} pay • Tahmini günlük {slot.estimatedPlaysPerDay} yayın
+                    </div>
+                  </div>
+                ))
+              ) : (
+                selectedSpaces.map(s => (
+                  <div key={s.id} className="flex justify-between items-center text-slate-300 font-semibold border-b border-white/3 pb-1 last:border-0 last:pb-0">
+                    <span>#{s.code} - {s.name}</span>
+                    <span className="text-emerald-450 font-bold">{s.price}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

@@ -55,5 +55,17 @@ export interface WorkflowState {
       taxNo: string;
       taxOffice: string;
     } | null;
+    reklamTipi?: 'statik' | 'led';
+    ledSlots?: Array<{
+      screenId: string;
+      screenCode: string;
+      screenName: string;
+      durationSeconds: number;
+      sharePercent: number;
+      estimatedPlaysPerDay: number;
+      estimatedPlaysTotal: number;
+      price: number;
+      creativeFileUrl?: string;
+    }>;
   };
 }
