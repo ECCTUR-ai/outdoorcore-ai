@@ -24,7 +24,9 @@ import {
   MapPin,
   CalendarDays,
   User,
-  ShieldAlert
+  ShieldAlert,
+  ChevronDown,
+  Building2
 } from 'lucide-react';
 import { CalendarEvent } from '@/types/calendar';
 import { calendarService } from '@/services/calendarService';
@@ -39,6 +41,432 @@ import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { LedReservationForm } from '@/components/design-system/LedReservationForm';
 import { Notification } from '@/components/design-system/Notification';
+
+// ----------------------------------------------------
+// REUSABLE PLANNING COMPONENTS
+// ----------------------------------------------------
+
+interface CustomSelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  options: CustomSelectOption[];
+  placeholder?: string;
+  leftIcon?: React.ReactNode;
+}
+
+export function CustomSelect({ value, onChange, options, placeholder = 'Seçiniz', leftIcon }: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  return (
+    <div className="relative w-full text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full h-[54px] px-4 rounded-[14px] bg-[#182238] border border-white/5 text-white flex items-center justify-between hover:border-blue-500/50 hover:shadow-[0_0_12px_rgba(59,130,246,0.15)] focus:outline-none focus:border-blue-500 focus:shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-all duration-200"
+      >
+        <div className="flex items-center gap-2.5 truncate">
+          {leftIcon && <div className="text-slate-450 shrink-0">{leftIcon}</div>}
+          <span className="text-[11px] font-bold tracking-wide">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <div className="text-slate-450 shrink-0">
+          <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 mt-2 z-50 rounded-2xl bg-[#12192B] border border-white/8 shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-h-60 overflow-y-auto scrollbar-thin py-1.5">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value);
+                setIsOpen(false);
+              }}
+              className={`w-full text-left px-4 py-2.5 text-[10.5px] font-bold tracking-wide transition-colors duration-150 ${
+                opt.value === value
+                  ? 'bg-blue-600/20 text-blue-400 border-l-2 border-blue-500'
+                  : 'text-slate-350 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PlanningFilterCardProps {
+  filterType: string;
+  setFilterType: (val: string) => void;
+  filterCompany: string;
+  setFilterCompany: (val: string) => void;
+  filterSpace: string;
+  setFilterSpace: (val: string) => void;
+  filterPriority: string;
+  setFilterPriority: (val: string) => void;
+  filterStatus: string;
+  setFilterStatus: (val: string) => void;
+  companiesList: any[];
+  spacesList: any[];
+  onReset: () => void;
+  filteredCount: number;
+}
+
+export function PlanningFilterCard({
+  filterType,
+  setFilterType,
+  filterCompany,
+  setFilterCompany,
+  filterSpace,
+  setFilterSpace,
+  filterPriority,
+  setFilterPriority,
+  filterStatus,
+  setFilterStatus,
+  companiesList,
+  spacesList,
+  onReset,
+  filteredCount
+}: PlanningFilterCardProps) {
+  const typeOptions = [
+    { value: '', label: 'Tümü' },
+    { value: 'reservation', label: 'Rezervasyon' },
+    { value: 'campaign', label: 'Kampanya' },
+    { value: 'contract_expiry', label: 'Sözleşme Bitişi' },
+    { value: 'invoice_due', label: 'Fatura Vadesi' },
+    { value: 'maintenance', label: 'Teknik & Bakım' },
+    { value: 'task', label: 'Kullanıcı Görevi' },
+    { value: 'workflow', label: 'İş Akışı' }
+  ];
+
+  const companyOptions = [
+    { value: '', label: 'Tümü' },
+    ...companiesList.map(c => ({ value: c.id, label: c.name }))
+  ];
+
+  const spaceOptions = [
+    { value: '', label: 'Tümü' },
+    ...spacesList.map(s => ({ value: s.id, label: `${s.code} - ${s.name}` }))
+  ];
+
+  const priorityOptions = [
+    { value: '', label: 'Tümü' },
+    { value: 'low', label: 'Düşük' },
+    { value: 'medium', label: 'Orta' },
+    { value: 'high', label: 'Yüksek' },
+    { value: 'critical', label: 'Kritik' }
+  ];
+
+  const statusOptions = [
+    { value: '', label: 'Tümü' },
+    { value: 'aktif', label: 'Aktif' },
+    { value: 'planlandı', label: 'Planlandı' },
+    { value: 'tamamlandı', label: 'Tamamlandı' },
+    { value: 'gecikti', label: 'Gecikti / Ödenmedi' },
+    { value: 'teklif', label: 'Teklif / Opsiyon' },
+    { value: 'çakışma', label: 'Çakışma / Riskli' }
+  ];
+
+  return (
+    <div className="p-5 rounded-[20px] bg-[#12192B] border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,.45)] text-left space-y-4 select-none">
+      <div className="flex justify-between items-center pb-3 border-b border-white/5">
+        <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+          <SlidersHorizontal size={13} className="text-blue-500" />
+          Filtreleme Seçenekleri
+        </h3>
+        <button 
+          onClick={onReset}
+          className="text-[9px] font-black text-blue-400 hover:text-blue-300 uppercase tracking-widest cursor-pointer transition-colors"
+        >
+          Sıfırla
+        </button>
+      </div>
+
+      <div className="space-y-3.5">
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Plan Türü</span>
+          <CustomSelect 
+            value={filterType} 
+            onChange={setFilterType} 
+            options={typeOptions} 
+            leftIcon={<Layers size={13} />}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Firma</span>
+          <CustomSelect 
+            value={filterCompany} 
+            onChange={setFilterCompany} 
+            options={companyOptions} 
+            leftIcon={<Building2 size={13} />}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Reklam Ünitesi</span>
+          <CustomSelect 
+            value={filterSpace} 
+            onChange={setFilterSpace} 
+            options={spaceOptions} 
+            leftIcon={<MapPin size={13} />}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Öncelik</span>
+          <CustomSelect 
+            value={filterPriority} 
+            onChange={setFilterPriority} 
+            options={priorityOptions} 
+            leftIcon={<AlertTriangle size={13} />}
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">Durum</span>
+          <CustomSelect 
+            value={filterStatus} 
+            onChange={setFilterStatus} 
+            options={statusOptions} 
+            leftIcon={<CheckCircle size={13} />}
+          />
+        </div>
+      </div>
+
+      {/* Alt Bilgi Kartı */}
+      <div className="pt-3 border-t border-white/5">
+        <div className="p-3.5 rounded-[14px] bg-emerald-500/5 border border-emerald-500/10 flex items-center gap-3.5 shadow-lg select-none">
+          <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+            <CheckCircle size={15} />
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider block">Sonuç Eşleşmesi</span>
+            <span className="text-[11px] font-black text-white leading-none">Toplam {filteredCount} plan bulundu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface PlanningToolbarProps {
+  currentMonth: number;
+  currentYear: number;
+  monthNames: string[];
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  activeView: 'day' | 'week' | 'month' | 'timeline' | 'resource';
+  setActiveView: (view: 'day' | 'week' | 'month' | 'timeline' | 'resource') => void;
+}
+
+export function PlanningToolbar({
+  currentMonth,
+  currentYear,
+  monthNames,
+  onPrevMonth,
+  onNextMonth,
+  activeView,
+  setActiveView
+}: PlanningToolbarProps) {
+  const views = [
+    { value: 'day', label: 'Günlük' },
+    { value: 'week', label: 'Haftalık' },
+    { value: 'month', label: 'Aylık' },
+    { value: 'timeline', label: 'Timeline' },
+    { value: 'resource', label: 'Kaynak' }
+  ] as const;
+
+  return (
+    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#12192B] p-4.5 rounded-[20px] border border-white/5 shadow-md select-none transition-all duration-200">
+      
+      {/* Month Navigation Control */}
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={onPrevMonth}
+          className="w-9 h-9 rounded-xl border border-white/8 flex items-center justify-center bg-white/2 hover:bg-white/5 hover:border-white/12 transition-all cursor-pointer text-slate-300 hover:text-white"
+        >
+          <ChevronLeft size={16} />
+        </button>
+        
+        <div className="flex items-center gap-2 px-3 min-w-40 justify-center">
+          <CalendarIcon size={14} className="text-blue-500" />
+          <h3 className="text-xs font-black text-white uppercase tracking-widest leading-none">
+            {monthNames[currentMonth]} {currentYear}
+          </h3>
+        </div>
+
+        <button 
+          onClick={onNextMonth}
+          className="w-9 h-9 rounded-xl border border-white/8 flex items-center justify-center bg-white/2 hover:bg-white/5 hover:border-white/12 transition-all cursor-pointer text-slate-300 hover:text-white"
+        >
+          <ChevronRight size={16} />
+        </button>
+      </div>
+
+      {/* Segmented control */}
+      <div className="flex bg-slate-900/60 p-1.5 rounded-2xl border border-white/5 select-none w-full sm:w-auto">
+        {views.map(v => (
+          <button
+            key={v.value}
+            onClick={() => setActiveView(v.value)}
+            className={`flex-1 sm:flex-initial px-4 py-1.5 text-[9.5px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+              activeView === v.value
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                : 'text-slate-400 hover:text-white bg-transparent'
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface PlanningReservationCardProps {
+  event: CalendarEvent;
+  isSelected: boolean;
+  onClick: () => void;
+  getEventBadgeClass: (type: CalendarEvent['type']) => string;
+  getEventTypeName: (type: CalendarEvent['type']) => string;
+  getEventIcon: (type: CalendarEvent['type']) => React.ReactNode;
+}
+
+export function PlanningReservationCard({
+  event,
+  isSelected,
+  onClick,
+  getEventBadgeClass,
+  getEventTypeName,
+  getEventIcon
+}: PlanningReservationCardProps) {
+  const isConflict = event.color === 'red';
+  
+  // Custom theme background gradients based on type
+  const typeGradients = {
+    reservation: 'from-[#065f46]/20 to-[#022c22]/30 border-emerald-500/20 text-emerald-400 hover:border-emerald-500/45',
+    campaign: 'from-[#3730a3]/20 to-[#1e1b4b]/30 border-indigo-500/20 text-indigo-400 hover:border-indigo-500/45',
+    contract_expiry: 'from-[#581c87]/20 to-[#3b0764]/30 border-purple-500/20 text-purple-400 hover:border-purple-500/45',
+    invoice_due: 'from-[#0f766e]/20 to-[#115e59]/30 border-teal-500/20 text-teal-400 hover:border-teal-500/45',
+    maintenance: 'from-[#9f1239]/20 to-[#4c0519]/30 border-rose-500/20 text-rose-455 hover:border-rose-500/45',
+    task: 'from-[#075985]/20 to-[#0c4a6e]/30 border-sky-500/20 text-sky-400 hover:border-sky-500/45',
+    workflow: 'from-[#854d0e]/20 to-[#422006]/30 border-amber-500/20 text-amber-400 hover:border-amber-500/45'
+  };
+
+  const activeGradient = isConflict 
+    ? 'from-[#9f1239]/30 to-[#4c0519]/40 border-rose-500 text-rose-400'
+    : isSelected
+      ? 'from-blue-600 to-indigo-600 border-blue-500 text-white shadow-xl scale-[1.01]'
+      : typeGradients[event.type] || 'from-slate-800 to-slate-900 border-slate-700 text-slate-350';
+
+  return (
+    <div
+      onClick={onClick}
+      className={`p-3 rounded-2xl bg-gradient-to-br border cursor-pointer select-none transition-all duration-200 text-left hover:scale-[1.01] hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)] flex flex-col justify-between space-y-1.5 ${activeGradient}`}
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="space-y-0.5">
+          <span className="text-[10px] font-black uppercase tracking-wider block truncate max-w-[150px]">
+            {event.title}
+          </span>
+          <span className="text-[8.5px] text-slate-400 font-bold block truncate max-w-[150px]">
+            Kampanya: {event.description || 'Not Girilmemiş'}
+          </span>
+        </div>
+        <span className={`text-[7.5px] px-1.5 py-0.5 rounded font-black shrink-0 uppercase ${
+          isSelected ? 'bg-white/20 text-white border border-white/20' : getEventBadgeClass(event.type)
+        }`}>
+          {getEventTypeName(event.type)}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[8.5px] font-bold text-slate-400">
+        <div className="flex items-center gap-1">
+          {getEventIcon(event.type)}
+          <span>{event.start} &rarr; {event.end}</span>
+        </div>
+        {isConflict && (
+          <span className="text-rose-500 flex items-center gap-0.5 font-black uppercase text-[7.5px] tracking-wider animate-pulse">
+            ⚠️ ÇAKIŞMA
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface PlanningCalendarGridProps {
+  activeView: 'day' | 'week' | 'month' | 'timeline' | 'resource';
+  loading: boolean;
+  children: React.ReactNode;
+}
+
+export function PlanningCalendarGrid({ activeView, loading, children }: PlanningCalendarGridProps) {
+  return (
+    <div className="p-4 rounded-[20px] bg-[#12192B] border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,.45)] transition-all duration-200 min-h-[400px] flex flex-col justify-between">
+      {loading ? (
+        <div className="flex-1 flex flex-col items-center justify-center py-24 gap-3 select-none">
+          <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+          <span className="font-black text-slate-500 uppercase tracking-widest text-[9.5px]">Planlama verileri yükleniyor...</span>
+        </div>
+      ) : (
+        <div className="flex-1 w-full overflow-hidden">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface PlanningEmptyStateProps {
+  onClearFilters: () => void;
+}
+
+export function PlanningEmptyState({ onClearFilters }: PlanningEmptyStateProps) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center py-16 px-4 space-y-4 text-center select-none animate-fade-in">
+      <div className="w-16 h-16 rounded-full bg-slate-900/60 border border-white/5 flex items-center justify-center text-slate-500">
+        <CalendarIcon size={32} />
+      </div>
+      <div className="space-y-1">
+        <h4 className="text-xs font-black text-white uppercase tracking-wider">Bu zaman aralığında plan bulunamadı.</h4>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Farklı filtre seçimleri deneyebilir veya filtreleri sıfırlayabilirsiniz.</p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onClearFilters}
+        className="text-[10px] font-black uppercase border-white/8 hover:bg-white/5"
+      >
+        Filtreleri Temizle
+      </Button>
+    </div>
+  );
+}
 
 export function Takvim() {
   const { setCurrentRoute } = useApp();
@@ -428,78 +856,98 @@ export function Takvim() {
       });
     }
 
-    return (
-      <div className="overflow-x-auto select-none">
-        <table className="w-full border-collapse border border-slate-200 dark:border-white/5 text-xs text-left min-w-[600px]">
-          <thead>
-            <tr className="bg-slate-100/50 dark:bg-white/2">
-              <th className="p-2 border border-slate-200 dark:border-white/5 w-16 text-center text-[10px] font-black uppercase text-slate-400 tracking-wider">Saat</th>
-              {daysToShow.map(day => (
-                <th 
-                  key={day.dateStr}
-                  className={`p-2 border border-slate-200 dark:border-white/5 text-center font-black tracking-wide text-[10.5px] ${
-                    day.dateStr === selectedDate ? 'text-blue-500 dark:text-blue-400 bg-blue-500/5' : 'text-slate-400'
-                  }`}
-                >
-                  {day.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {hours.map(hour => {
-              const hourStr = `${String(hour).padStart(2, '0')}:00`;
-              return (
-                <tr key={hour} className="hover:bg-slate-50/20 dark:hover:bg-white/1">
-                  <td className="p-2 border border-slate-200 dark:border-white/5 text-center font-bold text-slate-400 border-r-2 border-r-slate-300 dark:border-r-slate-800">{hourStr}</td>
-                  {daysToShow.map(day => {
-                    // Match events that are active during this day.
-                    // For scheduling, let's distribute hourly. Since our events are day-level in mock, 
-                    // we can render them in the 09:00 slot if they start on this day to populate the table nicely!
-                    const matchEvents = filteredEvents.filter(e => {
-                      const isSameDay = e.start === day.dateStr;
-                      if (!isSameDay) return false;
-                      // Distribute based on event ID hash or type to look like a realistic schedule calendar
-                      const hash = e.eventId.charCodeAt(e.eventId.length - 1) || 0;
-                      const mappedHour = 8 + (hash % 10); // distribute between 08:00 and 18:00
-                      return mappedHour === hour;
-                    });
+    // Current time indicator percentage calculation (08:00 to 22:00)
+    const getIndicatorTop = () => {
+      const now = new Date();
+      let hour = now.getHours();
+      let minutes = now.getMinutes();
+      
+      // For mock preview safety: if real time is outside 08:00-22:00, default to 14:30
+      if (hour < 8 || hour >= 22) {
+        hour = 14;
+        minutes = 30;
+      }
+      
+      const totalMinutes = (hour - 8) * 60 + minutes;
+      const totalSchedulingMinutes = 15 * 60; // 15 hours total
+      return (totalMinutes / totalSchedulingMinutes) * 100;
+    };
+    
+    const indicatorTop = getIndicatorTop();
 
-                    return (
-                      <td key={day.dateStr} className={`p-1 border border-slate-200 dark:border-white/5 align-top min-h-12 ${day.dateStr === selectedDate ? 'bg-blue-500/2 dark:bg-blue-500/1' : ''}`}>
-                        <div className="space-y-1">
-                          {matchEvents.map(e => {
-                            const isSelected = e.eventId === selectedEventId;
-                            const isConflict = e.color === 'red';
-                            return (
-                              <div
-                                key={e.eventId}
-                                onClick={() => setSelectedEventId(e.eventId)}
-                                className={`p-2 rounded-xl border cursor-pointer select-none text-[9px] font-bold text-left transition-all duration-150 relative ${
-                                  isConflict
-                                    ? 'bg-rose-500/15 border-rose-500/30 text-rose-500'
-                                    : isSelected
-                                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg'
-                                      : 'bg-white dark:bg-[#0b0f19]/40 border-slate-250 dark:border-white/5 text-slate-800 dark:text-slate-300 hover:border-slate-400 dark:hover:border-white/15'
-                                }`}
-                              >
-                                <div className="flex justify-between items-start gap-1">
-                                  <span className="font-extrabold truncate uppercase">{e.title}</span>
-                                  <span className={`text-[7.5px] px-1 rounded font-black ${
-                                    isSelected ? 'bg-white/20 text-white' : getEventBadgeClass(e.type)
-                                  }`}>
-                                    {getEventTypeName(e.type)}
-                                  </span>
-                                </div>
-                                <div className="mt-1 text-[8.5px] opacity-75 font-medium truncate">{e.description}</div>
-                                {isConflict && (
-                                  <div className="mt-1 text-[7.5px] font-black text-rose-500 flex items-center gap-0.5">
-                                    <AlertTriangle size={8} /> Çakışma Riski
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+    return (
+      <div className="overflow-x-auto select-none scrollbar-thin rounded-2xl border border-white/5 bg-[#12192B]">
+        <div className="relative">
+          {/* Current Time Indicator horizontal red line */}
+          <div 
+            style={{ top: `calc(38px + ${indicatorTop}% * 0.9)` }}
+            className="absolute left-[80px] right-0 h-[1.5px] bg-red-500/80 z-20 pointer-events-none"
+          >
+            <div className="absolute -left-1 -top-0.5 w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
+          </div>
+
+          <table className="w-full border-collapse text-xs text-left min-w-[600px]">
+            <thead>
+              <tr className="bg-[#1C2740]">
+                <th className="p-3 border border-white/5 w-20 text-center text-[10px] font-black uppercase text-slate-400 tracking-wider">Saat</th>
+                {daysToShow.map(day => (
+                  <th 
+                    key={day.dateStr}
+                    className={`p-3 border border-white/5 text-center font-black tracking-wide text-[10.5px] ${
+                      day.dateStr === '2025-06-15'
+                        ? 'text-blue-400 bg-blue-500/10 border-l border-r border-blue-500/30'
+                        : day.dateStr === selectedDate 
+                          ? 'text-blue-400 bg-blue-500/5' 
+                          : 'text-slate-400'
+                    }`}
+                  >
+                    {day.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {hours.map(hour => {
+                const hourStr = `${String(hour).padStart(2, '0')}:00`;
+                return (
+                  <tr key={hour} className="hover:bg-white/1 border-b border-white/5">
+                    <td className="p-3 border border-white/5 text-center font-bold text-white border-r border-r-white/5 w-20 text-[14px] bg-[#1C2740]/40">{hourStr}</td>
+                    {daysToShow.map(day => {
+                      // Match events that are active during this day.
+                      const matchEvents = filteredEvents.filter(e => {
+                        const isSameDay = e.start === day.dateStr;
+                        if (!isSameDay) return false;
+                        const hash = e.eventId.charCodeAt(e.eventId.length - 1) || 0;
+                        const mappedHour = 8 + (hash % 10);
+                        return mappedHour === hour;
+                      });
+
+                      return (
+                        <td 
+                          key={day.dateStr} 
+                          className={`p-2 border border-white/5 align-top min-h-14 ${
+                            day.dateStr === '2025-06-15'
+                              ? 'bg-blue-500/5 border-l border-r border-blue-500/15'
+                              : day.dateStr === selectedDate 
+                                ? 'bg-blue-500/2' 
+                                : ''
+                          }`}
+                        >
+                          <div className="space-y-1.5">
+                          {matchEvents.map(e => (
+                            <PlanningReservationCard
+                              key={e.eventId}
+                              event={e}
+                              isSelected={e.eventId === selectedEventId}
+                              onClick={() => {
+                                setSelectedEventId(e.eventId);
+                                setSelectedDate(day.dateStr);
+                              }}
+                              getEventBadgeClass={getEventBadgeClass}
+                              getEventTypeName={getEventTypeName}
+                              getEventIcon={getEventIcon}
+                            />
+                          ))}
                         </div>
                       </td>
                     );
@@ -509,6 +957,7 @@ export function Takvim() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     );
   };
@@ -723,7 +1172,7 @@ export function Takvim() {
   };
 
   return (
-    <div className="space-y-6 pb-12 select-none">
+    <div className="space-y-6 pb-12 select-none bg-[#0B1020] p-6 rounded-[20px] border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,.45)]">
       {/* Top Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm text-left">
         <div className="space-y-1">
@@ -858,146 +1307,53 @@ export function Takvim() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Side: Filter Options Panel */}
         <div className="order-2 lg:order-none lg:col-span-3">
-          <DarkDashboardCard className="space-y-4 text-left">
-            <div className="flex justify-between items-center pb-2.5 border-b border-slate-200 dark:border-white/5">
-              <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                <SlidersHorizontal size={12} />
-                Filtreleme Seçenekleri
-              </h3>
-              <button 
-                onClick={() => {
+          <PlanningFilterCard
+            filterType={filterType}
+            setFilterType={setFilterType}
+            filterCompany={filterCompany}
+            setFilterCompany={setFilterCompany}
+            filterSpace={filterSpace}
+            setFilterSpace={setFilterSpace}
+            filterPriority={filterPriority}
+            setFilterPriority={setFilterPriority}
+            filterStatus={filterStatus}
+            setFilterStatus={setFilterStatus}
+            companiesList={companiesList}
+            spacesList={spacesList}
+            onReset={() => {
+              setFilterType('');
+              setFilterCompany('');
+              setFilterSpace('');
+              setFilterPriority('');
+              setFilterStatus('');
+            }}
+            filteredCount={filteredEvents.length}
+          />
+        </div>
+
+        {/* Center: Interactive Main Calendar Component Workspace */}
+        <div className="order-1 lg:order-none lg:col-span-6 space-y-4">
+          <PlanningToolbar
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            monthNames={monthNames}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            activeView={activeView}
+            setActiveView={setActiveView}
+          />
+
+          <PlanningCalendarGrid activeView={activeView} loading={loading}>
+            {filteredEvents.length === 0 ? (
+              <PlanningEmptyState
+                onClearFilters={() => {
                   setFilterType('');
                   setFilterCompany('');
                   setFilterSpace('');
                   setFilterPriority('');
                   setFilterStatus('');
                 }}
-                className="text-[8.5px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-widest cursor-pointer hover:underline"
-              >
-                Sıfırla
-              </button>
-            </div>
-
-            <FormGroup>
-              <Label htmlFor="f-type">Plan Türü</Label>
-              <Select id="f-type" value={filterType} onChange={e => setFilterType(e.target.value)}>
-                <option value="">Tümü</option>
-                <option value="reservation">Rezervasyon</option>
-                <option value="campaign">Kampanya</option>
-                <option value="contract_expiry">Sözleşme Bitişi</option>
-                <option value="invoice_due">Fatura Vadesi</option>
-                <option value="maintenance">Teknik & Bakım</option>
-                <option value="task">Kullanıcı Görevi</option>
-                <option value="workflow">İş Akışı</option>
-              </Select>
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="f-company">Firma</Label>
-              <Select id="f-company" value={filterCompany} onChange={e => setFilterCompany(e.target.value)}>
-                <option value="">Tümü</option>
-                {companiesList.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </Select>
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="f-space">Reklam Ünitesi (Space)</Label>
-              <Select id="f-space" value={filterSpace} onChange={e => setFilterSpace(e.target.value)}>
-                <option value="">Tümü</option>
-                {spacesList.map(s => (
-                  <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
-                ))}
-              </Select>
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="f-priority">Öncelik</Label>
-              <Select id="f-priority" value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
-                <option value="">Tümü</option>
-                <option value="low">Düşük</option>
-                <option value="medium">Orta</option>
-                <option value="high">Yüksek</option>
-                <option value="critical">Kritik</option>
-              </Select>
-            </FormGroup>
-
-            <FormGroup>
-              <Label htmlFor="f-status">Durum</Label>
-              <Select id="f-status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                <option value="">Tümü</option>
-                <option value="aktif">Aktif</option>
-                <option value="planlandı">Planlandı</option>
-                <option value="tamamlandı">Tamamlandı</option>
-                <option value="gecikti">Gecikti / Ödenmedi</option>
-                <option value="teklif">Teklif / Opsiyon</option>
-                <option value="çakışma">Çakışma / Riskli</option>
-              </Select>
-            </FormGroup>
-
-            <div className="pt-2 text-[9px] text-slate-500 font-bold uppercase tracking-wider">
-              Toplam {filteredEvents.length} eşleşen plan listelendi.
-            </div>
-          </DarkDashboardCard>
-        </div>
-
-        {/* Center: Interactive Main Calendar Component Workspace */}
-        <div className="order-1 lg:order-none lg:col-span-6 space-y-4">
-          <DarkDashboardCard className="p-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3.5 mb-4 select-none">
-              
-              {/* Month Selector Title */}
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={handlePrevMonth}
-                  className="w-8 h-8 rounded-xl border border-slate-200 dark:border-white/5 flex items-center justify-center bg-slate-50 dark:bg-white/2 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer text-slate-500 dark:text-slate-300"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest min-w-36 text-center leading-none">
-                  {monthNames[currentMonth]} {currentYear}
-                </h3>
-                <button 
-                  onClick={handleNextMonth}
-                  className="w-8 h-8 rounded-xl border border-slate-200 dark:border-white/5 flex items-center justify-center bg-slate-50 dark:bg-white/2 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer text-slate-500 dark:text-slate-300"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-
-              {/* View Switcher Tabs */}
-              <div className="flex flex-wrap bg-slate-100 dark:bg-white/2 p-0.75 rounded-2xl border border-slate-200 dark:border-white/5 select-none w-full sm:w-auto">
-                {(['day', 'week', 'month', 'timeline', 'resource'] as const).map(view => {
-                  const viewLabels = {
-                    day: 'Günlük',
-                    week: 'Haftalık',
-                    month: 'Aylık',
-                    timeline: 'Timeline',
-                    resource: 'Kaynak'
-                  };
-                  return (
-                    <button
-                      key={view}
-                      onClick={() => setActiveView(view)}
-                      className={`flex-1 sm:flex-initial px-2.5 py-1 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                        activeView === view
-                          ? 'bg-white dark:bg-[#0b0f19] text-blue-500 dark:text-blue-400 shadow-sm'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white bg-transparent'
-                      }`}
-                    >
-                      {viewLabels[view]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Display loading state */}
-            {loading ? (
-              <div className="py-24 text-center font-bold text-slate-500 uppercase tracking-widest text-[10px] animate-pulse">
-                Planlama verileri yükleniyor...
-              </div>
+              />
             ) : (
               <>
                 {/* Monthly View Grid */}
@@ -1030,7 +1386,7 @@ export function Takvim() {
                 {activeView === 'resource' && renderResourceView()}
               </>
             )}
-          </DarkDashboardCard>
+          </PlanningCalendarGrid>
         </div>
 
         {/* Right Side: Detail Actions and AI Recommendations */}
