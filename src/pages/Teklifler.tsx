@@ -344,7 +344,44 @@ export function Teklifler() {
         showToast("Finans Planı", "Finans planı oluşturuldu.", "success");
       } else {
         // Standard Stage Change
-        await offerRepository.update(id, { stage: newStage, approved: approved });
+        if (newStage === 'İptal') {
+          // 1. Set the offer stage to 'İptal'
+          await offerRepository.update(id, { stage: 'İptal' });
+          
+          // 2. Set all reservations of this offer to status 'İptal'
+          const reservations = await reservationRepository.getAll();
+          const relatedReservations = reservations.filter((r: any) => r.offerId === id || r.contractId === original.contractId);
+          for (const res of relatedReservations) {
+            await reservationRepository.update(res.id, { status: 'İptal' });
+          }
+
+          // 3. Set related campaigns of this offer to status 'İptal'
+          const campaigns = await campaignRepository.getAll();
+          const relatedCampaigns = campaigns.filter((c: any) => c.offerId === id || c.contractId === original.contractId || c.id === original.campaignId);
+          for (const camp of relatedCampaigns) {
+            await campaignRepository.update(camp.id, { status: 'İptal' });
+          }
+
+          // 4. Set related contract to status 'cancelled'
+          if (original.contractId) {
+            await contractRepository.update(original.contractId, { status: 'cancelled' });
+          }
+
+          // 5. Release spaces (mark as 'bos')
+          if (original.spaceIds) {
+            for (const sId of original.spaceIds) {
+              await spaceRepository.update(sId, { status: 'bos' });
+            }
+          }
+
+          // 6. Broadcast sync events
+          window.dispatchEvent(new Event('offers_updated'));
+          window.dispatchEvent(new Event('reservations_updated'));
+          window.dispatchEvent(new Event('campaigns_updated'));
+          window.dispatchEvent(new Event('spaces_updated'));
+        } else {
+          await offerRepository.update(id, { stage: newStage, approved: approved });
+        }
         showToast(toastTitle, toastMsg, "success");
       }
 

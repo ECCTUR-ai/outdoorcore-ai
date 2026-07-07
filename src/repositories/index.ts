@@ -29,6 +29,55 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// One-time run: Cancel associated reservations & campaigns of cancelled offers
+if (typeof window !== 'undefined') {
+  try {
+    const localOffersStr = localStorage.getItem('outdoorcore_mock_offers');
+    if (localOffersStr) {
+      const localOffers = JSON.parse(localOffersStr);
+      const cancelledOfferIds = new Set(
+        localOffers
+          .filter((o: any) => o.stage === 'İptal' || o.status === 'cancelled')
+          .map((o: any) => o.id)
+      );
+
+      // Clean up reservations
+      const localResStr = localStorage.getItem('outdoorcore_mock_reservations');
+      if (localResStr) {
+        let changed = false;
+        const localRes = JSON.parse(localResStr);
+        localRes.forEach((r: any) => {
+          if (r.offerId && cancelledOfferIds.has(r.offerId) && r.status !== 'İptal') {
+            r.status = 'İptal';
+            changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(localRes));
+        }
+      }
+
+      // Clean up campaigns
+      const localCamStr = localStorage.getItem('outdoorcore_mock_campaigns');
+      if (localCamStr) {
+        let changed = false;
+        const localCam = JSON.parse(localCamStr);
+        localCam.forEach((c: any) => {
+          if (c.offerId && cancelledOfferIds.has(c.offerId) && c.status !== 'İptal') {
+            c.status = 'İptal';
+            changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify(localCam));
+        }
+      }
+    }
+  } catch (err) {
+    console.error('One-time cancellation cleanup failed:', err);
+  }
+}
+
 // ----------------------------------------------------
 // PERSISTENCE AND CONTEXT HELPERS FOR FALLBACK DEMO
 // ----------------------------------------------------

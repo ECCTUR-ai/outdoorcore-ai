@@ -5,7 +5,8 @@ import {
   contractRepository, 
   financeRepository, 
   maintenanceRepository, 
-  taskRepository 
+  taskRepository,
+  offerRepository
 } from '@/repositories';
 import { workflowAuditRepository } from '@/automation/workflowAudit';
 
@@ -91,6 +92,27 @@ export const calendarService = {
     // Conflict control for reservation type events
     this.flagConflicts(merged);
 
+    // Dynamic Debug Logging (requirement 10)
+    try {
+      const offers = await offerRepository.list();
+      const cancelledOfferIds = offers.filter((o: any) => o.stage === 'İptal' || o.status === 'cancelled').map((o: any) => o.id);
+      
+      const allResCount = (await reservationRepository.getAll()).length;
+      const allCampCount = (await campaignRepository.getAll()).length;
+      const allContractCount = (await contractRepository.getAll()).length;
+      const totalLoaded = allResCount + allCampCount + allContractCount;
+      const totalExcluded = totalLoaded - reposEvents.filter(e => e.type === 'reservation' || e.type === 'campaign' || e.type === 'contract_expiry').length;
+
+      console.log("DEBUG CALENDAR FILTERING:", {
+        loadedCalendarItems: totalLoaded,
+        excludedCancelledItems: totalExcluded,
+        visibleCalendarItems: merged.length,
+        cancelledOfferId: cancelledOfferIds
+      });
+    } catch (err) {
+      console.warn("Calendar logging failed:", err);
+    }
+
     return merged;
   },
 
@@ -175,6 +197,7 @@ export const calendarService = {
       // 1. Reservations
       const reservations = await reservationRepository.getAll();
       reservations.forEach((r: any) => {
+        if (r.status === 'İptal' || r.status === 'cancelled' || r.is_deleted || r.deleted_at) return;
         const startIso = parseTurkishDate(r.startDate);
         const endIso = parseTurkishDate(r.endDate);
         const eId = `rsv-${r.id}`;
@@ -201,6 +224,7 @@ export const calendarService = {
       // 2. Campaigns
       const campaigns = await campaignRepository.getAll();
       campaigns.forEach((c: any) => {
+        if (c.status === 'İptal' || c.status === 'cancelled' || c.is_deleted || c.deleted_at) return;
         const startIso = parseTurkishDate(c.startDate);
         const endIso = parseTurkishDate(c.endDate);
         const eId = `cam-${c.id}`;
@@ -226,6 +250,7 @@ export const calendarService = {
       // 3. Contracts
       const contracts = await contractRepository.getAll();
       contracts.forEach((con: any) => {
+        if (con.status === 'cancelled' || con.status === 'İptal' || con.is_deleted || con.deleted_at) return;
         const endIso = parseTurkishDate(con.endDate);
         const eId = `con-${con.id}`;
 
@@ -253,6 +278,7 @@ export const calendarService = {
         finance.accounts.forEach((acc: any) => {
           if (acc.invoices) {
             acc.invoices.forEach((inv: any) => {
+              if (inv.status === 'İptal' || inv.status === 'cancelled' || inv.is_deleted || inv.deleted_at) return;
               const startIso = parseTurkishDate(inv.date);
               const eId = `inv-${inv.id}`;
 
@@ -280,6 +306,7 @@ export const calendarService = {
       // 5. Maintenance
       const maintenance = await maintenanceRepository.getAll();
       maintenance.forEach((m: any) => {
+        if (m.status === 'İptal' || m.status === 'cancelled') return;
         const startIso = parseTurkishDate(m.scheduledDate);
         const eId = `maint-${m.id}`;
 
@@ -302,6 +329,7 @@ export const calendarService = {
       // 6. Tasks
       const tasks = await taskRepository.getAll();
       tasks.forEach((t: any) => {
+        if (t.status === 'İptal' || t.status === 'cancelled') return;
         const startIso = parseTurkishDate(t.dueDate);
         const eId = `task-${t.id}`;
 

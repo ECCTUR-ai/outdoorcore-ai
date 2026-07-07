@@ -579,6 +579,16 @@ export function Takvim() {
 
   useEffect(() => {
     loadEvents();
+    
+    window.addEventListener('offers_updated', loadEvents);
+    window.addEventListener('reservations_updated', loadEvents);
+    window.addEventListener('campaigns_updated', loadEvents);
+    
+    return () => {
+      window.removeEventListener('offers_updated', loadEvents);
+      window.removeEventListener('reservations_updated', loadEvents);
+      window.removeEventListener('campaigns_updated', loadEvents);
+    };
   }, []);
 
   // Filtered spaces list for occupancy matrix rows
