@@ -113,7 +113,7 @@ export function CopilotContextPanel({
             {[
               { label: 'Teklif Oluştur', route: 'teklifler' },
               { label: 'Görev Oluştur', route: 'bildirimler' },
-              { label: 'Rezervasyon Aç', route: 'rezervasyonlar' },
+              { label: 'Rezervasyon Aç', route: 'takvim' },
               { label: 'PDF Rapor Hazırla', route: 'raporlar' }
             ].map((act, idx) => (
               <button

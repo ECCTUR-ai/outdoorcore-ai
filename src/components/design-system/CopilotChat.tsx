@@ -52,7 +52,7 @@ Bu alanlar Samsung'un geçmiş kampanyalarıyla yüksek uyum gösteriyor.`,
         ],
         suggestedActions: [
           { label: 'Teklif Oluştur', actionType: 'offer', route: 'teklifler', searchParam: 'companyId=CMP-0001' },
-          { label: 'Rezervasyon Aç', actionType: 'reservation', route: 'rezervasyonlar', searchParam: 'companyId=CMP-0001' }
+          { label: 'Rezervasyon Aç', actionType: 'reservation', route: 'takvim', searchParam: 'companyId=CMP-0001' }
         ],
         confidenceScore: 96,
         sourceModules: ['Firma', 'Reklam Alanı']

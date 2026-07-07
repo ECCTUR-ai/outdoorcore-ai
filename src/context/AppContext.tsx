@@ -5,7 +5,7 @@ type RouteType =
   | 'reklam-alanlari' 
   | 'alan-haritasi' 
   | 'firmalar-markalar' 
-  | 'rezervasyonlar' 
+  | 'takvim' 
   | 'kampanyalar' 
   | 'teklifler' 
   | 'sozlesmeler' 

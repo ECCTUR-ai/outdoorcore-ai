@@ -55,7 +55,7 @@ export function Sidebar() {
     { key: 'sales-wizard', label: 'Yeni Satış', icon: <Sparkles size={13} className="text-indigo-400 animate-pulse" />, permission: 'offers.view' },
     { key: 'alan-haritasi', label: 'Harita (Terminal)', icon: <Map size={13} />, permission: 'spaces.view' },
     { key: 'reklam-alanlari', label: 'Reklam Yönetimi', icon: <MapPin size={13} />, permission: 'spaces.view' },
-    { key: 'rezervasyonlar', label: 'Takvim', icon: <Calendar size={13} />, permission: 'spaces.view' },
+    { key: 'takvim', label: 'Takvim', icon: <Calendar size={13} />, permission: 'calendar.view' },
     { key: 'sozlesmeler', label: 'Sözleşmeler', icon: <FileSignature size={13} />, permission: 'contracts.view' },
     { key: 'firmalar-markalar', label: 'Firmalar & Markalar', icon: <Building2 size={13} />, permission: 'companies.view' },
     { key: 'teklifler', label: 'Teklifler', icon: <FileText size={13} />, permission: 'offers.view' },

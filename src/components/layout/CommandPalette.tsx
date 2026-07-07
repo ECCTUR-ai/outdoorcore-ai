@@ -34,7 +34,7 @@ export function CommandPalette() {
     { category: 'Navigasyon', key: 'reklam-alanlari', label: 'Reklam Yönetimi', icon: <MapPin size={13} />, action: () => setCurrentRoute('reklam-alanlari') },
     { category: 'Navigasyon', key: 'alan-haritasi', label: 'Alan Haritası Görünümü', icon: <Map size={13} />, action: () => setCurrentRoute('alan-haritasi') },
     { category: 'Navigasyon', key: 'firmalar-markalar', label: 'Firmalar & Markalar Portalı', icon: <Building2 size={13} />, action: () => setCurrentRoute('firmalar-markalar') },
-    { category: 'Navigasyon', key: 'rezervasyonlar', label: 'Rezervasyon Takvimi', icon: <Calendar size={13} />, action: () => setCurrentRoute('rezervasyonlar') },
+    { category: 'Navigasyon', key: 'takvim', label: 'Takvim & Planlama Merkezi', icon: <Calendar size={13} />, action: () => setCurrentRoute('takvim') },
     { category: 'Navigasyon', key: 'teklifler', label: 'Teklif & Talep Listesi', icon: <FileText size={13} />, action: () => setCurrentRoute('teklifler') },
     { category: 'Hızlı Eylemler', key: 'theme-toggle', label: `Temayı Değiştir (${resolvedTheme === 'light' ? 'Koyu' : 'Açık'})`, icon: <Terminal size={13} />, action: () => toggleTheme() },
     { category: 'Hızlı Eylemler', key: 'settings', label: 'Sistem Ayarları Paneli', icon: <Settings size={13} />, action: () => setCurrentRoute('ayarlar') }

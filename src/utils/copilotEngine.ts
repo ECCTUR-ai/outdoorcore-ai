@@ -29,7 +29,7 @@ Bu alanlar, Samsung'un geçmiş reklam kampanyaları ve bütçe hacmiyle **%96**
       relatedEntities: getEntities(['CMP-0001', 'SPC-0001', 'SPC-0021', 'SPC-0045', 'CAM-0001']),
       suggestedActions: [
         { label: 'Teklif Oluştur', actionType: 'offer', route: 'teklifler', searchParam: 'companyId=CMP-0001' },
-        { label: 'Rezervasyon Aç', actionType: 'reservation', route: 'rezervasyonlar', searchParam: 'companyId=CMP-0001' },
+        { label: 'Rezervasyon Aç', actionType: 'reservation', route: 'takvim', searchParam: 'companyId=CMP-0001' },
         { label: 'Firma Kartına Git', actionType: 'company', route: 'firmalar-markalar', searchParam: 'companyId=CMP-0001' }
       ],
       confidenceScore: 96,
