@@ -1,0 +1,7 @@
+-- Migration: Add discount and budget calculation fields to offers table
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS discount_rate NUMERIC DEFAULT 0;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS discount_amount NUMERIC DEFAULT 0;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS net_amount NUMERIC DEFAULT 0;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS vat_amount NUMERIC DEFAULT 0;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS grand_total NUMERIC DEFAULT 0;
+ALTER TABLE offers ADD COLUMN IF NOT EXISTS customer_budget NUMERIC DEFAULT 0;

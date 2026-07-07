@@ -152,11 +152,15 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
       owner: 'Cemil Sezgin',
       spaceIds: [],
       details: '',
-      notes: ''
+      notes: '',
+      discountRate: 0,
+      customerBudget: 0
     }
   });
 
   const selectedSpaceIds = watch('spaceIds') || [];
+  const discountRate = watch('discountRate') || 0;
+  const customerBudget = watch('customerBudget') || 0;
 
   // Fetch Companies & Spaces
   useEffect(() => {
@@ -201,7 +205,9 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
           owner: offer.owner,
           spaceIds: resolvedSpaceIds,
           details: offer.details || '',
-          notes: offer.notes || ''
+          notes: offer.notes || '',
+          discountRate: offer.discount_rate || 0,
+          customerBudget: offer.customer_budget || 0
         });
       } else {
         reset({
@@ -215,7 +221,9 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
           owner: 'Cemil Sezgin',
           spaceIds: [],
           details: '',
-          notes: ''
+          notes: '',
+          discountRate: 0,
+          customerBudget: 0
         });
       }
     }
@@ -243,38 +251,9 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
     setValue('spaceIds', current, { shouldValidate: true });
   };
 
-  const handleNumericValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10) || 0;
-    setValue('valueNumeric', val, { shouldValidate: true });
-    const formatted = val > 0 ? `₺ ${val.toLocaleString('tr-TR')}` : '';
-    setValue('value', formatted, { shouldValidate: true });
-  };
-
   const handleSaveDraft = () => {
     setValue('stage', 'Lead');
     handleSubmit(onSubmit)();
-  };
-
-  const onSubmit = async (data: OfferFormData) => {
-    setLoading(true);
-    setSubmitError(null);
-    try {
-      let result;
-      if (offer) {
-        result = await offerRepository.update(offer.id, data);
-      } else {
-        result = await offerRepository.create(data);
-      }
-      setSubmitSuccess(true);
-      setTimeout(() => {
-        onSuccess(result);
-        onClose();
-      }, 800);
-    } catch (err: any) {
-      setSubmitError(err.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Calculations for sticky summary card
@@ -294,16 +273,51 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
     return sum;
   }, 0);
 
-  const catalogSum = selectedSpacesData.reduce((sum, s) => {
+  const listPriceTotal = selectedSpacesData.reduce((sum, s) => {
     const p = parseInt((s.price || '').replace(/[^0-9]/g, ''), 10) || 0;
     return sum + p;
   }, 0);
 
-  const proposalPrice = watch('valueNumeric') || 0;
-  const kdv = Math.round(proposalPrice * 0.20);
-  const discount = Math.max(0, catalogSum - proposalPrice);
-  const grandTotal = proposalPrice + kdv;
+  const discountAmount = Math.round(listPriceTotal * discountRate / 100);
+  const netAmount = listPriceTotal - discountAmount;
+  const vatAmount = Math.round(netAmount * 0.20);
+  const grandTotal = netAmount + vatAmount;
   const totalTraffic = selectedSpacesData.reduce((sum, s) => sum + (s.traffic || 0), 0);
+
+  const onSubmit = async (data: OfferFormData) => {
+    setLoading(true);
+    setSubmitError(null);
+    try {
+      // Synchronize valueNumeric and value to netAmount before sending to repo
+      const finalData = {
+        ...data,
+        valueNumeric: netAmount,
+        value: `₺ ${netAmount.toLocaleString('tr-TR')}`,
+        discountRate: discountRate,
+        discountAmount: discountAmount,
+        netAmount: netAmount,
+        vatAmount: vatAmount,
+        grandTotal: grandTotal,
+        customerBudget: customerBudget
+      };
+
+      let result;
+      if (offer) {
+        result = await offerRepository.update(offer.id, finalData);
+      } else {
+        result = await offerRepository.create(finalData);
+      }
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        onSuccess(result);
+        onClose();
+      }, 800);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -399,37 +413,67 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
                 />
               </div>
 
-              {/* Grid 2: Budget formatters & Date */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Grid 2: Discount & Customer Budget */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormGroup>
-                  <Label htmlFor="valueNumeric">Sayısal Bütçe Değeri *</Label>
-                  <input
-                    id="valueNumeric"
-                    type="text"
-                    placeholder="8500000"
-                    className={`h-[52px] w-full bg-[#151B2D] border ${errors.valueNumeric ? 'border-red-500/50' : 'border-white/8'} rounded-xl px-4 text-xs font-semibold text-white focus:outline-none focus:shadow-[0_0_12px_rgba(59,130,246,0.25)] focus:border-blue-500/50 transition-all duration-200 placeholder-white/35`}
-                    value={watch('valueNumeric') || ''}
-                    onChange={handleNumericValueChange}
-                  />
-                  {errors.valueNumeric?.message && (
-                    <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.valueNumeric.message}</span>
-                  )}
-                </FormGroup>
-
-                <FormGroup>
-                  <Label htmlFor="value">Bütçe (Görünen Formatta)</Label>
-                  <div className="relative">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="discountRate">İndirim Oranı (%)</Label>
+                    <span className="text-base font-black text-indigo-400">%{discountRate}</span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
                     <input
-                      id="value"
-                      type="text"
-                      readOnly
-                      placeholder="₺ 0"
-                      className="h-[52px] w-full bg-[#151B2D]/50 border border-white/5 rounded-xl px-4 text-xs font-bold text-slate-400 cursor-not-allowed outline-none select-none"
-                      value={watch('value') || ''}
+                      id="discountRate"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      className="flex-1 accent-indigo-500 h-1 bg-[#151B2D] rounded-lg appearance-none cursor-pointer"
+                      value={discountRate}
+                      onChange={(e) => setValue('discountRate', parseInt(e.target.value, 10), { shouldValidate: true })}
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="w-16 h-9 bg-[#151B2D] border border-white/8 rounded-lg px-2 text-center text-xs font-semibold text-white focus:outline-none focus:border-blue-500/50"
+                      value={discountRate}
+                      onChange={(e) => {
+                        let val = parseInt(e.target.value, 10) || 0;
+                        if (val < 0) val = 0;
+                        if (val > 100) val = 100;
+                        setValue('discountRate', val, { shouldValidate: true });
+                      }}
                     />
                   </div>
+                  {discountRate > 50 ? (
+                    <div className="mt-2.5 px-3 py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-[10px] font-bold text-red-400 flex items-center gap-1.5 uppercase tracking-wider">
+                      ⚠️ Kritik indirim: özel onay gerektirir.
+                    </div>
+                  ) : discountRate > 30 ? (
+                    <div className="mt-2.5 px-3 py-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-[10px] font-bold text-yellow-400 flex items-center gap-1.5 uppercase tracking-wider">
+                      ⚠️ Yüksek indirim oranı: yönetici onayı gerekebilir.
+                    </div>
+                  ) : null}
                 </FormGroup>
 
+                <FormGroup>
+                  <Label htmlFor="customerBudget">Müşteri Bütçesi (Sayısal Bilgi)</Label>
+                  <input
+                    id="customerBudget"
+                    type="text"
+                    placeholder="9000000"
+                    className="h-[52px] w-full bg-[#151B2D] border border-white/8 rounded-xl px-4 text-xs font-semibold text-white focus:outline-none focus:shadow-[0_0_12px_rgba(59,130,246,0.25)] focus:border-blue-500/50 transition-all duration-200 placeholder-white/35"
+                    value={customerBudget || ''}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10) || 0;
+                      setValue('customerBudget', val, { shouldValidate: true });
+                    }}
+                  />
+                </FormGroup>
+              </div>
+
+              {/* Grid 3: Date & Pipeline & Probability */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormGroup>
                   <Label htmlFor="closingDate">Beklenen Kapanış Tarihi *</Label>
                   <input
@@ -443,9 +487,31 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
                     <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.closingDate.message}</span>
                   )}
                 </FormGroup>
+
+                <FormGroup>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="closeProbability">Kapanış İhtimali *</Label>
+                    <span className="text-lg font-black text-blue-400">%{watch('closeProbability') || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-4 mt-2">
+                    <input
+                      id="closeProbability"
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      className="flex-1 accent-blue-500 h-1 bg-[#151B2D] rounded-lg appearance-none cursor-pointer border border-transparent"
+                      value={watch('closeProbability') || 0}
+                      onChange={(e) => setValue('closeProbability', parseInt(e.target.value, 10), { shouldValidate: true })}
+                    />
+                  </div>
+                  {errors.closeProbability?.message && (
+                    <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.closeProbability.message}</span>
+                  )}
+                </FormGroup>
               </div>
 
-              {/* Grid 3: Pipeline colored badge select */}
+              {/* Grid 4: Pipeline Badge Buttons */}
               <FormGroup>
                 <Label>Pipeline Aşaması *</Label>
                 <div className="flex flex-wrap gap-2.5 mt-2">
@@ -467,29 +533,6 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
                 </div>
                 {errors.stage?.message && (
                   <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.stage.message}</span>
-                )}
-              </FormGroup>
-
-              {/* Grid 4: Probability Slider */}
-              <FormGroup>
-                <div className="flex justify-between items-center">
-                  <Label htmlFor="closeProbability">Kapanış İhtimali *</Label>
-                  <span className="text-lg font-black text-blue-400">%{watch('closeProbability') || 0}</span>
-                </div>
-                <div className="flex items-center gap-4 mt-2">
-                  <input
-                    id="closeProbability"
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    className="flex-1 accent-blue-500 h-1 bg-[#151B2D] rounded-lg appearance-none cursor-pointer border border-transparent"
-                    value={watch('closeProbability') || 0}
-                    onChange={(e) => setValue('closeProbability', parseInt(e.target.value, 10), { shouldValidate: true })}
-                  />
-                </div>
-                {errors.closeProbability?.message && (
-                  <span className="text-[10px] text-red-500 font-bold mt-1 block">{errors.closeProbability.message}</span>
                 )}
               </FormGroup>
 
@@ -612,22 +655,29 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
 
                   <div className="flex justify-between items-center py-1.5 border-b border-white/3">
                     <span>Liste Fiyatı</span>
-                    <span className="text-white font-black">₺ {catalogSum.toLocaleString('tr-TR')}</span>
+                    <span className="text-white font-black">₺ {listPriceTotal.toLocaleString('tr-TR')}</span>
                   </div>
 
                   <div className="flex justify-between items-center py-1.5 border-b border-white/3">
-                    <span>İndirim</span>
-                    <span className="text-rose-455 font-black">- ₺ {discount.toLocaleString('tr-TR')}</span>
+                    <span>İndirim Oranı</span>
+                    <span className="text-indigo-400 font-black">%{discountRate}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center py-1.5 border-b border-white/3">
+                    <span>İndirim Tutarı</span>
+                    <span className="text-rose-455 font-black">
+                      {discountAmount > 0 ? `- ₺ ${discountAmount.toLocaleString('tr-TR')}` : '₺ 0'}
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center py-1.5 border-b border-white/3">
                     <span>Net Tutar</span>
-                    <span className="text-white font-black">₺ {proposalPrice.toLocaleString('tr-TR')}</span>
+                    <span className="text-white font-black">₺ {netAmount.toLocaleString('tr-TR')}</span>
                   </div>
 
                   <div className="flex justify-between items-center py-1.5 border-b border-white/3">
                     <span>KDV (%20)</span>
-                    <span className="text-white font-black">₺ {kdv.toLocaleString('tr-TR')}</span>
+                    <span className="text-white font-black">₺ {vatAmount.toLocaleString('tr-TR')}</span>
                   </div>
 
                   <div className="flex justify-between items-center py-2.5 border-b border-white/5">
@@ -636,20 +686,15 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer }: OfferModalProp
                   </div>
 
                   <div className="flex justify-between items-center py-1.5 border-b border-white/3">
-                    <span>Tahmini Erişim</span>
-                    <span className="text-blue-400 font-black">{totalTraffic.toLocaleString('tr-TR')} Kişi</span>
-                  </div>
-
-                  <div className="flex justify-between items-center py-1.5 border-b border-white/3">
-                    <span>Pipeline Aşaması</span>
-                    <span className="text-indigo-400 font-black uppercase">
-                      {STAGE_CONFIGS[watch('stage')]?.label || '-'}
+                    <span>Müşteri Bütçesi</span>
+                    <span className="text-white font-black">
+                      {customerBudget > 0 ? `₺ ${customerBudget.toLocaleString('tr-TR')}` : '-'}
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center py-1.5">
-                    <span>Kapanış İhtimali</span>
-                    <span className="text-white font-black">%{watch('closeProbability') || 0}</span>
+                    <span>Tahmini Erişim</span>
+                    <span className="text-blue-400 font-black">{totalTraffic.toLocaleString('tr-TR')} Kişi</span>
                   </div>
                 </div>
               </div>

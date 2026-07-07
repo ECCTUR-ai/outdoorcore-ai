@@ -44,6 +44,12 @@ export function OfferCard({ offer, isActive, onSelect }: OfferCardProps) {
           </span>
         ))}
       </div>
+      
+      {offer.discount_rate !== undefined && offer.discount_rate > 0 && (
+        <div className="mt-2 bg-indigo-500/10 border border-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider inline-block">
+          %{offer.discount_rate} İNDİRİM
+        </div>
+      )}
 
       <div className="flex justify-between items-center mt-4 pt-3.5 border-t border-white/5">
         <span className="text-xs font-black text-emerald-450 leading-none">{offer.value}</span>

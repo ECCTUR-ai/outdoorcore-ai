@@ -134,13 +134,19 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange }: Off
       <div className="grid grid-cols-2 gap-3.5 border-b border-white/5 pb-4 text-[10.5px] font-semibold text-slate-400">
         <div className="flex items-center gap-2">
           <Coins size={12} className="text-slate-500 shrink-0" />
-          <span className="text-emerald-450 font-bold">{offer.value}</span>
+          <span>Net Tutar: <span className="text-emerald-450 font-bold">₺ {(offer.net_amount || offer.valueNumeric).toLocaleString('tr-TR')}</span></span>
         </div>
         <div className="flex items-center gap-2">
           <Sparkles size={12} className="text-slate-500 shrink-0" />
           <span>İhtimal: <span className="text-blue-400 font-bold">%{offer.closeProbability}</span></span>
         </div>
         <div className="flex items-center gap-2">
+          <span>İndirim Oranı: <span className="text-indigo-400 font-bold">%{offer.discount_rate || 0}</span></span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span>Genel Toplam: <span className="text-white font-bold">₺ {(offer.grand_total || Math.round(offer.valueNumeric * 1.2)).toLocaleString('tr-TR')}</span></span>
+        </div>
+        <div className="flex items-center gap-2 col-span-2">
           <Calendar size={12} className="text-slate-500 shrink-0" />
           <span className="truncate">Kapanış: {offer.closingDate}</span>
         </div>

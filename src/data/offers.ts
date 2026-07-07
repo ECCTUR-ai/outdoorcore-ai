@@ -21,6 +21,12 @@ export interface Offer {
   notes?: string;
   deleted_at?: string;
   deleted_by?: string;
+  discount_rate?: number;
+  discount_amount?: number;
+  net_amount?: number;
+  vat_amount?: number;
+  grand_total?: number;
+  customer_budget?: number;
 }
 
 export const offers: Offer[] = [

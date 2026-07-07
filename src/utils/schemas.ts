@@ -74,7 +74,13 @@ export const offerSchema = z.object({
   owner: z.string().min(1, 'Sorumlu temsilci seçilmelidir'),
   spaceIds: z.array(z.string()).min(1, 'En az bir önerilen reklam alanı seçilmelidir'),
   details: z.string().or(z.string().length(0)),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  discountRate: z.coerce.number().optional(),
+  discountAmount: z.coerce.number().optional(),
+  netAmount: z.coerce.number().optional(),
+  vatAmount: z.coerce.number().optional(),
+  grandTotal: z.coerce.number().optional(),
+  customerBudget: z.coerce.number().optional()
 });
 
 export type OfferFormData = z.infer<typeof offerSchema>;

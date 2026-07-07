@@ -258,7 +258,13 @@ const mapDbOfferToUi = (db: any): any => {
     spaceIds: [],
     notes: db.notes || '',
     deleted_at: db.deleted_at,
-    deleted_by: db.deleted_by
+    deleted_by: db.deleted_by,
+    discountRate: db.discount_rate ? parseFloat(db.discount_rate) : 0,
+    discountAmount: db.discount_amount ? parseFloat(db.discount_amount) : 0,
+    netAmount: db.net_amount ? parseFloat(db.net_amount) : 0,
+    vatAmount: db.vat_amount ? parseFloat(db.vat_amount) : 0,
+    grandTotal: db.grand_total ? parseFloat(db.grand_total) : 0,
+    customerBudget: db.customer_budget ? parseFloat(db.customer_budget) : 0
   };
 };
 
@@ -279,7 +285,13 @@ const mapUiOfferToDb = (id: string, organizationId: string, email: string, ui: a
     spaces_list: ui.spacesList || [],
     details: ui.details || null,
     updated_at: new Date().toISOString(),
-    updated_by: email
+    updated_by: email,
+    discount_rate: ui.discountRate || 0,
+    discount_amount: ui.discountAmount || 0,
+    net_amount: ui.netAmount || 0,
+    vat_amount: ui.vatAmount || 0,
+    grand_total: ui.grandTotal || 0,
+    customer_budget: ui.customerBudget || 0
   };
 };
 
