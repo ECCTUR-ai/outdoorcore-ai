@@ -171,7 +171,7 @@ Girmek istediğiniz komutla tam bir veri eşleşmesi sağlayamadım. Lütfen sol
 *   "Bugün yapmam gereken işler"`,
     relatedEntities: getEntities(['CMP-0001', 'CMP-0003', 'SPC-0001']),
     suggestedActions: [
-      { label: 'Genel Bakışa Git', actionType: 'dashboard', route: 'dashboard' },
+      { label: 'Ana Sayfaya Git', actionType: 'dashboard', route: 'dashboard' },
       { label: 'AI Asistan Danışmanı', actionType: 'assistant', route: 'dashboard' }
     ],
     confidenceScore: 80,

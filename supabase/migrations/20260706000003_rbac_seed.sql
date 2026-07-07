@@ -1,6 +1,6 @@
 -- Seed default permission groups
 INSERT INTO permission_groups (id, name) VALUES
-  ('dashboard', 'Genel Bakış & Panel Yetkileri'),
+  ('dashboard', 'Ana Sayfa & Panel Yetkileri'),
   ('companies', 'Firma ve Marka Yönetimi'),
   ('spaces', 'Reklam Alanları & Harita'),
   ('offers', 'Teklif Süreçleri'),

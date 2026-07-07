@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Search, Sparkles, LayoutDashboard, MapPin, Map, Building2, Calendar, FileText, Settings, X, Terminal } from 'lucide-react';
+import { Search, Sparkles, Home, MapPin, Map, Building2, Calendar, FileText, Settings, X, Terminal } from 'lucide-react';
 import { Badge } from '../design-system/Badge';
 
 export function CommandPalette() {
@@ -28,7 +28,7 @@ export function CommandPalette() {
   if (!commandPaletteOpen) return null;
 
   const commands = [
-    { category: 'Navigasyon', key: 'dashboard', label: 'Dashboard Sayfasına Git', icon: <LayoutDashboard size={13} />, action: () => setCurrentRoute('dashboard') },
+    { category: 'Navigasyon', key: 'dashboard', label: 'Ana Sayfaya Git', icon: <Home size={13} />, action: () => setCurrentRoute('dashboard') },
     { category: 'Navigasyon', key: 'reklam-alanlari', label: 'Reklam Alanları Listesi', icon: <MapPin size={13} />, action: () => setCurrentRoute('reklam-alanlari') },
     { category: 'Navigasyon', key: 'alan-haritasi', label: 'Alan Haritası Görünümü', icon: <Map size={13} />, action: () => setCurrentRoute('alan-haritasi') },
     { category: 'Navigasyon', key: 'firmalar-markalar', label: 'Firmalar & Markalar Portalı', icon: <Building2 size={13} />, action: () => setCurrentRoute('firmalar-markalar') },
