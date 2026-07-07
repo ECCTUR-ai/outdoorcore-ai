@@ -111,7 +111,7 @@ Toplam **3 adet** kritik/yüksek öncelikli görev bulunmaktadır. Diğer listel
 Bu alanlar için portföyünüzdeki **Turkcell** ve **Samsung** markaları hedeflenerek çapraz satış teklifleri hazırlanabilir.`,
       relatedEntities: getEntities(['SPC-0001', 'SPC-0003', 'SPC-0017', 'CMP-0002', 'CMP-0001']),
       suggestedActions: [
-        { label: 'Envantere Git', actionType: 'space', route: 'reklam-alanlari', searchParam: 'spaceId=SPC-0001' },
+        { label: 'Reklam Yönetimine Git', actionType: 'space', route: 'reklam-alanlari', searchParam: 'spaceId=SPC-0001' },
         { label: 'Hızlı Teklif', actionType: 'offer', route: 'teklifler' }
       ],
       confidenceScore: 91,

@@ -2,7 +2,6 @@ import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { 
   Home,
-  Archive,
   MapPin, 
   Map, 
   Calendar, 
@@ -54,9 +53,8 @@ export function Sidebar() {
     { key: 'executive-dashboard', label: 'CEO Dashboard', icon: <BarChart3 size={13} className="text-emerald-450" />, permission: 'executive.view' },
     { key: 'ai-assistant', label: 'AI Copilot', icon: <Sparkles size={13} className="text-blue-400" />, permission: 'ai.use' },
     { key: 'sales-wizard', label: 'Yeni Satış', icon: <Sparkles size={13} className="text-indigo-400 animate-pulse" />, permission: 'offers.view' },
-    { key: 'reklam-alanlari-inv', label: 'Envanter', icon: <Archive size={13} />, isMock: true, route: 'reklam-alanlari', permission: 'spaces.view' },
     { key: 'alan-haritasi', label: 'Harita (Terminal)', icon: <Map size={13} />, permission: 'spaces.view' },
-    { key: 'reklam-alanlari', label: 'Reklam Alanları', icon: <MapPin size={13} />, permission: 'spaces.view' },
+    { key: 'reklam-alanlari', label: 'Reklam Yönetimi', icon: <MapPin size={13} />, permission: 'spaces.view' },
     { key: 'rezervasyonlar', label: 'Takvim', icon: <Calendar size={13} />, permission: 'spaces.view' },
     { key: 'sozlesmeler', label: 'Sözleşmeler', icon: <FileSignature size={13} />, permission: 'contracts.view' },
     { key: 'firmalar-markalar', label: 'Firmalar & Markalar', icon: <Building2 size={13} />, permission: 'companies.view' },

@@ -126,7 +126,7 @@ export function ReklamAlanlari() {
       {/* Top Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm text-left">
         <div className="space-y-1">
-          <h2 className="text-sm font-black text-white uppercase tracking-widest leading-none">Reklam Alanları Envanteri</h2>
+          <h2 className="text-sm font-black text-white uppercase tracking-widest leading-none">Reklam Yönetimi</h2>
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Tüm reklam envanterini, doluluk durumunu ve teknik bilgileri yönetin.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">

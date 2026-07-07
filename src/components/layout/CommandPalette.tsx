@@ -31,7 +31,7 @@ export function CommandPalette() {
 
   const commands = [
     { category: 'Navigasyon', key: 'dashboard', label: 'Ana Sayfaya Git', icon: <Home size={13} />, action: () => setCurrentRoute('dashboard') },
-    { category: 'Navigasyon', key: 'reklam-alanlari', label: 'Reklam Alanları Listesi', icon: <MapPin size={13} />, action: () => setCurrentRoute('reklam-alanlari') },
+    { category: 'Navigasyon', key: 'reklam-alanlari', label: 'Reklam Yönetimi', icon: <MapPin size={13} />, action: () => setCurrentRoute('reklam-alanlari') },
     { category: 'Navigasyon', key: 'alan-haritasi', label: 'Alan Haritası Görünümü', icon: <Map size={13} />, action: () => setCurrentRoute('alan-haritasi') },
     { category: 'Navigasyon', key: 'firmalar-markalar', label: 'Firmalar & Markalar Portalı', icon: <Building2 size={13} />, action: () => setCurrentRoute('firmalar-markalar') },
     { category: 'Navigasyon', key: 'rezervasyonlar', label: 'Rezervasyon Takvimi', icon: <Calendar size={13} />, action: () => setCurrentRoute('rezervasyonlar') },
