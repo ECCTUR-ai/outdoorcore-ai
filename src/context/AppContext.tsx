@@ -1,5 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+export type DateRangeType = 'today' | 'last-7-days' | 'last-15-days' | 'last-30-days' | 'all-time' | 'custom';
+
+export interface DateRangeState {
+  type: DateRangeType;
+  start: string; // YYYY-MM-DD
+  end: string;   // YYYY-MM-DD
+}
+
 type RouteType = 
   | 'dashboard' 
   | 'reklam-alanlari' 
@@ -36,6 +44,8 @@ interface AppContextProps {
   setCommandPaletteOpen: (val: boolean) => void;
   notifications: Array<{ id: string; title: string; desc: string; time: string; type: 'info' | 'alert' | 'success' }>;
   setNotifications: React.Dispatch<React.SetStateAction<Array<{ id: string; title: string; desc: string; time: string; type: 'info' | 'alert' | 'success' }>>>;
+  globalDateRange: DateRangeState;
+  setGlobalDateRange: (val: DateRangeState) => void;
 }
 
 const AppContext = createContext<AppContextProps | undefined>(undefined);
@@ -53,7 +63,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     { id: '3', title: 'Sözleşme Onayı Bekliyor', desc: 'Türk Hava Yolları havalimanı reklam sözleşmesi onay bekliyor.', time: '2 saat önce', type: 'alert' }
   ]);
 
-
+  const [globalDateRange, setGlobalDateRange] = useState<DateRangeState>({
+    type: 'custom',
+    start: '2025-05-01',
+    end: '2025-05-31'
+  });
 
   // Command palette keyboard shortcut listener
   useEffect(() => {
@@ -80,7 +94,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       commandPaletteOpen,
       setCommandPaletteOpen,
       notifications,
-      setNotifications
+      setNotifications,
+      globalDateRange,
+      setGlobalDateRange
     }}>
       {children}
     </AppContext.Provider>

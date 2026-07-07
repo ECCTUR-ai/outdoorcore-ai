@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
+import { useApp, DateRangeType, DateRangeState } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Bell, Mail, ChevronDown, Calendar, Search, Menu, Sun, Moon } from 'lucide-react';
 import { Avatar } from '../design-system/Avatar';
@@ -9,12 +9,68 @@ import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 import { useAuth } from '@/auth/useAuth';
 import { ProfileDrawer } from '../design-system/ProfileDrawer';
 
+const calculateDateRangeValues = (type: DateRangeType, customStart?: string, customEnd?: string): { start: string; end: string } => {
+  const mockToday = new Date('2025-06-15');
+  const formatDate = (d: Date) => d.toISOString().substring(0, 10);
+  
+  switch (type) {
+    case 'today':
+      return { start: formatDate(mockToday), end: formatDate(mockToday) };
+    case 'last-7-days': {
+      const start = new Date(mockToday);
+      start.setDate(mockToday.getDate() - 7);
+      return { start: formatDate(start), end: formatDate(mockToday) };
+    }
+    case 'last-15-days': {
+      const start = new Date(mockToday);
+      start.setDate(mockToday.getDate() - 15);
+      return { start: formatDate(start), end: formatDate(mockToday) };
+    }
+    case 'last-30-days': {
+      const start = new Date(mockToday);
+      start.setDate(mockToday.getDate() - 30);
+      return { start: formatDate(start), end: formatDate(mockToday) };
+    }
+    case 'all-time':
+      return { start: '1970-01-01', end: '2099-12-31' };
+    case 'custom':
+      return { start: customStart || '2025-05-01', end: customEnd || '2025-05-31' };
+    default:
+      return { start: '2025-05-01', end: '2025-05-31' };
+  }
+};
+
 export function Header() {
-  const { setCommandPaletteOpen, mobileSidebarOpen, setMobileSidebarOpen, setCurrentRoute } = useApp();
+  const { setCommandPaletteOpen, mobileSidebarOpen, setMobileSidebarOpen, setCurrentRoute, globalDateRange, setGlobalDateRange } = useApp();
   const [showNotifMenu, setShowNotifMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showDateDropdown, setShowDateDropdown] = useState(false);
   const { currentUser, logout, organization, permissions } = useAuth();
+
+  const getFormatLabel = (state: DateRangeState) => {
+    switch (state.type) {
+      case 'today': return 'Bugün';
+      case 'last-7-days': return 'Son 7 Gün';
+      case 'last-15-days': return 'Son 15 Gün';
+      case 'last-30-days': return 'Son 30 Gün';
+      case 'all-time': return 'Tüm Zamanlar';
+      case 'custom': {
+        const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        const formatSingle = (dateStr: string) => {
+          if (!dateStr) return '';
+          const parts = dateStr.split('-');
+          if (parts.length !== 3) return dateStr;
+          const day = parseInt(parts[2], 10);
+          const monthIdx = parseInt(parts[1], 10) - 1;
+          const year = parts[0];
+          return `${day} ${months[monthIdx]} ${year}`;
+        };
+        return `${formatSingle(state.start)} - ${formatSingle(state.end)}`;
+      }
+      default: return 'Tarih Aralığı';
+    }
+  };
 
   const [notificationsList, setNotificationsList] = useState<any[]>([]);
   const [tasksList, setTasksList] = useState<any[]>([]);
@@ -82,9 +138,107 @@ export function Header() {
         </button>
 
         {/* Date Selector range */}
-        <div className="hidden md:flex items-center gap-2 px-3 h-9 bg-white/5 border border-white/5 rounded-xl text-slate-300 font-bold text-[9.5px] uppercase tracking-wider">
-          <Calendar size={11} className="text-slate-400 shrink-0" />
-          <span>01 Mayıs 2025 - 31 Mayıs 2025</span>
+        <div className="relative hidden md:block">
+          <button
+            onClick={() => setShowDateDropdown(!showDateDropdown)}
+            className="flex items-center gap-2 px-3 h-9 bg-white/5 border border-white/5 hover:border-white/10 rounded-xl text-slate-300 hover:text-white font-black text-[9.5px] uppercase tracking-wider cursor-pointer transition-all animate-fade-in"
+          >
+            <Calendar size={11} className="text-slate-400 shrink-0" />
+            <span>{getFormatLabel(globalDateRange)}</span>
+            <ChevronDown size={10} className="text-slate-500 shrink-0 animate-pulse" />
+          </button>
+
+          {showDateDropdown && (
+            <>
+              <div 
+                className="fixed inset-0 z-40" 
+                onClick={() => setShowDateDropdown(false)} 
+              />
+              <div className="absolute right-0 mt-2 w-64 dark-glass-card border border-white/10 rounded-2xl shadow-2xl p-3.5 z-50 animate-scale-in space-y-2.5">
+                <span className="text-[8.5px] font-black text-slate-400 uppercase tracking-widest block border-b border-white/5 pb-1.5 mb-1.5">
+                  Tarih Filtresi Seçin
+                </span>
+                <div className="space-y-1">
+                  {[
+                    { key: 'today', label: 'Bugün' },
+                    { key: 'last-7-days', label: 'Son 7 Gün' },
+                    { key: 'last-15-days', label: 'Son 15 Gün' },
+                    { key: 'last-30-days', label: 'Son 30 Gün' },
+                    { key: 'all-time', label: 'Tüm Zamanlar' },
+                    { key: 'custom', label: 'Özel Tarih Aralığı' }
+                  ].map(option => (
+                    <button
+                      key={option.key}
+                      onClick={() => {
+                        if (option.key !== 'custom') {
+                          const range = calculateDateRangeValues(option.key as DateRangeType);
+                          setGlobalDateRange({
+                            type: option.key as DateRangeType,
+                            start: range.start,
+                            end: range.end
+                          });
+                          setShowDateDropdown(false);
+                        } else {
+                          setGlobalDateRange({
+                            ...globalDateRange,
+                            type: 'custom'
+                          });
+                        }
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all cursor-pointer flex items-center justify-between ${
+                        globalDateRange.type === option.key 
+                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/10' 
+                          : 'text-slate-400 hover:text-white hover:bg-white/3 border border-transparent'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      {globalDateRange.type === option.key && <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />}
+                    </button>
+                  ))}
+                </div>
+
+                {globalDateRange.type === 'custom' && (
+                  <div className="bg-[#0b0f19] p-3 rounded-xl border border-white/5 space-y-2 text-left mt-2 animate-fade-in">
+                    <span className="text-[7.5px] font-black text-slate-500 uppercase tracking-wider block">
+                      Özel Tarih Seçimi
+                    </span>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">Başlangıç:</span>
+                        <input
+                          type="date"
+                          value={globalDateRange.start}
+                          onChange={(e) => setGlobalDateRange({
+                            ...globalDateRange,
+                            start: e.target.value
+                          })}
+                          className="bg-white/5 border border-white/5 rounded px-1.5 py-0.5 text-[9px] font-bold text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">Bitiş:</span>
+                        <input
+                          type="date"
+                          value={globalDateRange.end}
+                          onChange={(e) => setGlobalDateRange({
+                            ...globalDateRange,
+                            end: e.target.value
+                          })}
+                          className="bg-white/5 border border-white/5 rounded px-1.5 py-0.5 text-[9px] font-bold text-white focus:outline-none focus:border-blue-500 cursor-pointer"
+                        />
+                      </div>
+                      <button
+                        onClick={() => setShowDateDropdown(false)}
+                        className="w-full mt-1.5 bg-blue-500 hover:bg-blue-600 text-white font-black text-[8px] uppercase tracking-wider py-1 rounded-lg transition-all cursor-pointer text-center"
+                      >
+                        Uygula
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Message Icon */}

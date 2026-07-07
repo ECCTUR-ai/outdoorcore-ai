@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useApp } from '@/context/AppContext';
 import { 
   MapPin, 
   CheckSquare, 
@@ -48,6 +49,7 @@ import {
 
 export function Dashboard() {
   const [terminalSelector, setTerminalSelector] = useState('İç Hatlar - Giriş Kat');
+  const { globalDateRange } = useApp();
 
   // Dynamic States
   const [offersCount, setOffersCount] = useState(0);
@@ -66,12 +68,6 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [hasNoGlobalData, setHasNoGlobalData] = useState(false);
   const [pipelineSteps, setPipelineSteps] = useState<any[]>([]);
-
-  // Default Date range: 01 Mayıs 2025 - 31 Mayıs 2025
-  const [dateRange, setDateRange] = useState({
-    start: '2025-05-01',
-    end: '2025-05-31'
-  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,22 +88,33 @@ export function Dashboard() {
           return startA <= endB && endA >= startB;
         };
 
+        const isAllTime = globalDateRange.type === 'all-time';
+
         const filteredOffers = offers.filter((o: any) => {
+          if (isAllTime) return true;
           const date = o.campaignStartDate || o.closingDate || o.created_at || '';
           const dateStr = date.substring(0, 10);
-          return dateStr >= dateRange.start && dateStr <= dateRange.end;
+          return dateStr >= globalDateRange.start && dateStr <= globalDateRange.end;
         });
 
         const filteredReservations = reservations.filter((r: any) => {
+          const isActive = r.status !== 'İptal';
+          if (!isActive) return false;
+
+          if (isAllTime) return true;
           const rStart = r.startDate || r.start_date || '';
           const rEnd = r.endDate || r.end_date || '';
-          return datesOverlap(rStart.substring(0, 10), rEnd.substring(0, 10), dateRange.start, dateRange.end);
+          return datesOverlap(rStart.substring(0, 10), rEnd.substring(0, 10), globalDateRange.start, globalDateRange.end);
         });
 
         const filteredCampaigns = campaigns.filter((c: any) => {
+          const isActive = c.status !== 'İptal';
+          if (!isActive) return false;
+
+          if (isAllTime) return true;
           const cStart = c.startDate || c.start_date || '';
           const cEnd = c.endDate || c.end_date || '';
-          return datesOverlap(cStart.substring(0, 10), cEnd.substring(0, 10), dateRange.start, dateRange.end);
+          return datesOverlap(cStart.substring(0, 10), cEnd.substring(0, 10), globalDateRange.start, globalDateRange.end);
         });
 
         let totalPending = 0;
@@ -115,13 +122,14 @@ export function Dashboard() {
         if (finance && finance.accounts) {
           finance.accounts.forEach((acc: any) => {
             const inRangeInvoices = (acc.invoices || []).filter((inv: any) => {
+              if (isAllTime) return true;
               const invDate = inv.date || '';
               let dateStr = invDate;
               if (invDate.includes('.')) {
                 const parts = invDate.split('.');
                 dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
               }
-              return dateStr >= dateRange.start && dateStr <= dateRange.end;
+              return dateStr >= globalDateRange.start && dateStr <= globalDateRange.end;
             });
             
             inRangeInvoices.forEach((inv: any) => {
@@ -181,7 +189,7 @@ export function Dashboard() {
         setPipelineSteps(steps);
 
         console.log("DEBUG DASHBOARD METRICS:", {
-          dateRange,
+          dateRange: globalDateRange,
           loadedOffersCount: offers.length,
           loadedReservationsCount: reservations.length,
           loadedCampaignsCount: campaigns.length,
@@ -204,7 +212,7 @@ export function Dashboard() {
     };
 
     fetchData();
-  }, [dateRange]);
+  }, [globalDateRange]);
 
   const spaceStatusData = [
     { name: 'Dolu', value: doluCount, color: '#10b981' },
@@ -230,27 +238,7 @@ export function Dashboard() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm text-left">
         <div className="space-y-1">
           <h2 className="text-sm font-black text-white uppercase tracking-widest leading-none">PERFORMANS DASHBOARD</h2>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Seçili tarih aralığına göre teklifler, rezervasyonlar, kampanyalar ve doluluk oranları analitiği.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto bg-[#12192B]/80 p-2.5 rounded-2xl border border-white/5 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Başlangıç:</span>
-            <input 
-              type="date" 
-              value={dateRange.start}
-              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-              className="bg-white/5 border border-white/5 rounded-xl px-2.5 py-1 text-[10px] font-bold text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Bitiş:</span>
-            <input 
-              type="date" 
-              value={dateRange.end}
-              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-              className="bg-white/5 border border-white/5 rounded-xl px-2.5 py-1 text-[10px] font-bold text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Header’daki merkezi tarih filtresine göre teklifler, rezervasyonlar, kampanyalar ve doluluk oranları analitiği.</p>
         </div>
       </div>
 
