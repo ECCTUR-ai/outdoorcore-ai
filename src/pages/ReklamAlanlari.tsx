@@ -111,6 +111,21 @@ export function ReklamAlanlari() {
     }
   }, [advertisingSpaces]);
 
+  // Auto-clear success/error notifications after 4 seconds
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+
   // Selected space model lookup
   const selectedSpace = advertisingSpaces.find(s => s.code === selectedCode) || advertisingSpaces[0];
 
@@ -618,9 +633,22 @@ export function ReklamAlanlari() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         space={editingSpace}
-        onSuccess={() => {
+        onSuccess={(updatedSpace) => {
+          setAdvertisingSpaces(prev => {
+            const exists = prev.some(s => s.id === updatedSpace.id);
+            if (exists) {
+              return prev.map(s => s.id === updatedSpace.id ? updatedSpace : s);
+            } else {
+              return [updatedSpace, ...prev];
+            }
+          });
           fetchSpaces(false);
           fetchLedData();
+          if (updatedSpace.type === 'LED') {
+            setSuccess('Reklam alanı başarıyla kaydedildi. LED ekran playlist envanterine eklendi.');
+          } else {
+            setSuccess('Reklam alanı başarıyla kaydedildi.');
+          }
         }}
       />
 

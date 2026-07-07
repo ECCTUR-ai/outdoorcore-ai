@@ -122,49 +122,51 @@ export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: Adv
       }
 
       if (data.type === 'LED') {
-        const monthlyBasePrice = parseInt(data.price.replace(/[^0-9]/g, ''), 10) || 0;
-        
-        let totalM2 = 0;
-        const sizeStr = data.size || '';
-        const numbers = sizeStr.replace(/,/g, '.').match(/\d+(\.\d+)?/g);
-        if (numbers && numbers.length >= 2) {
-          const w = parseFloat(numbers[0]);
-          const h = parseFloat(numbers[1]);
-          if (!isNaN(w) && !isNaN(h)) {
-            totalM2 = parseFloat((w * h).toFixed(1));
+        try {
+          const monthlyBasePrice = parseInt(data.price.replace(/[^0-9]/g, ''), 10) || 0;
+          
+          let totalM2 = 0;
+          const sizeStr = data.size || '';
+          const numbers = sizeStr.replace(/,/g, '.').match(/\d+(\.\d+)?/g);
+          if (numbers && numbers.length >= 2) {
+            const w = parseFloat(numbers[0]);
+            const h = parseFloat(numbers[1]);
+            if (!isNaN(w) && !isNaN(h)) {
+              totalM2 = parseFloat((w * h).toFixed(1));
+            }
           }
+
+          const screenVisibility = (data.visibility === 'Çok Yüksek' || data.visibility === 'Yüksek' || data.visibility === 'Orta')
+            ? data.visibility
+            : 'Yüksek';
+
+          const screenStatus = data.status === 'bakim' ? 'maintenance' : 'active';
+
+          digitalScreenRepository.createScreen({
+            screenCode: data.code,
+            name: data.name,
+            location: data.location,
+            terminal: data.terminal || '',
+            floor: data.floor || '',
+            totalM2: totalM2,
+            resolution: data.resolution || '3840x2160 (4K UHD)',
+            loopDurationSeconds: 120,
+            monthlyBasePrice: monthlyBasePrice,
+            dailyTraffic: data.traffic || 0,
+            visibility: screenVisibility,
+            status: screenStatus,
+            notes: data.notes || ''
+          });
+        } catch (syncErr: any) {
+          console.error("LED screen sync error", syncErr);
         }
-
-        const screenVisibility = (data.visibility === 'Çok Yüksek' || data.visibility === 'Yüksek' || data.visibility === 'Orta')
-          ? data.visibility
-          : 'Yüksek';
-
-        const screenStatus = data.status === 'bakim' ? 'maintenance' : 'active';
-
-        digitalScreenRepository.createScreen({
-          screenCode: data.code,
-          name: data.name,
-          location: data.location,
-          terminal: data.terminal || '',
-          floor: data.floor || '',
-          totalM2: totalM2,
-          resolution: data.resolution || '3840x2160 (4K UHD)',
-          loopDurationSeconds: 120,
-          monthlyBasePrice: monthlyBasePrice,
-          dailyTraffic: data.traffic || 0,
-          visibility: screenVisibility,
-          status: screenStatus,
-          notes: data.notes || ''
-        });
       }
 
-      setSubmitSuccess(true);
-      setTimeout(() => {
-        onSuccess(result);
-        onClose();
-      }, 1200);
+      onSuccess(result);
+      onClose();
     } catch (err: any) {
-      setSubmitError(err.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
+      console.error("Space save error", err);
+      setSubmitError('Kayıt sırasında hata oluştu.');
     } finally {
       setLoading(false);
     }
@@ -176,7 +178,7 @@ export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: Adv
         İptal
       </Button>
       <Button variant="primary" size="sm" type="submit" form="space-form" className="w-full sm:w-auto" loading={loading}>
-        Kaydet
+        {loading ? 'Kaydediliyor...' : 'Kaydet'}
       </Button>
     </div>
   );
