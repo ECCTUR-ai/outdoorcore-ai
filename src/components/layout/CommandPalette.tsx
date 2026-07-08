@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
-import { Search, Sparkles, Home, MapPin, Map, Building2, Calendar, FileText, Settings, X, Terminal } from 'lucide-react';
+import { Search, Sparkles, Home, MapPin, Map, Building2, Calendar, FileText, Settings, X, Terminal, Tv } from 'lucide-react';
 import { Badge } from '../design-system/Badge';
 
 export function CommandPalette() {
@@ -35,6 +35,7 @@ export function CommandPalette() {
     { category: 'Navigasyon', key: 'alan-haritasi', label: 'Alan Haritası Görünümü', icon: <Map size={13} />, action: () => setCurrentRoute('alan-haritasi') },
     { category: 'Navigasyon', key: 'firmalar-markalar', label: 'Firmalar & Markalar Portalı', icon: <Building2 size={13} />, action: () => setCurrentRoute('firmalar-markalar') },
     { category: 'Navigasyon', key: 'takvim', label: 'Takvim & Planlama Merkezi', icon: <Calendar size={13} />, action: () => setCurrentRoute('takvim') },
+    { category: 'Navigasyon', key: 'digital-signage', label: 'Dijital Yayın Yönetimi', icon: <Tv size={13} />, action: () => setCurrentRoute('digital-signage') },
     { category: 'Navigasyon', key: 'teklifler', label: 'Teklif & Talep Listesi', icon: <FileText size={13} />, action: () => setCurrentRoute('teklifler') },
     { category: 'Hızlı Eylemler', key: 'theme-toggle', label: `Temayı Değiştir (${resolvedTheme === 'light' ? 'Koyu' : 'Açık'})`, icon: <Terminal size={13} />, action: () => toggleTheme() },
     { category: 'Hızlı Eylemler', key: 'settings', label: 'Sistem Ayarları Paneli', icon: <Settings size={13} />, action: () => setCurrentRoute('ayarlar') }

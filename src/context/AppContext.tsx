@@ -29,7 +29,8 @@ type RouteType =
   | 'competitor-analysis'
   | 'executive-dashboard'
   | 'system-roles'
-  | 'sales-wizard';
+  | 'sales-wizard'
+  | 'digital-signage';
 
 interface AppContextProps {
   currentRoute: RouteType;

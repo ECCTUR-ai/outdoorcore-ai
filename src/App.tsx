@@ -49,6 +49,7 @@ import { CompetitorAnalysis } from '@/pages/CompetitorAnalysis';
 import { ExecutiveDashboard } from '@/pages/ExecutiveDashboard';
 import { SystemRoles } from '@/pages/SystemRoles';
 import { SalesWizard } from '@/pages/SalesWizard';
+import { DigitalSignage } from '@/pages/DigitalSignage';
 
 function AppContent() {
   const { currentRoute } = useApp();
@@ -129,6 +130,12 @@ function AppContent() {
         );
       case 'sales-wizard':
         return <SalesWizard />;
+      case 'digital-signage':
+        return (
+          <PermissionGate permission="spaces.view" fallback={<AccessDenied />}>
+            <DigitalSignage />
+          </PermissionGate>
+        );
       case 'design-system':
         return <DesignSystemDemo />;
       default:

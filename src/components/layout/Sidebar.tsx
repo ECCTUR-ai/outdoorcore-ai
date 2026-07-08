@@ -19,7 +19,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Bell,
-  ChevronDown
+  ChevronDown,
+  Tv
 } from 'lucide-react';
 
 import { usePermission } from '@/permissions/permissionHooks';
@@ -57,6 +58,7 @@ export function Sidebar() {
     { key: 'reklam-alanlari-parent', label: 'Reklam Alanları', icon: <MapPin size={13} />, permission: 'spaces.view' },
     { key: 'map-dashboard', label: 'Harita Görünümü', icon: <Map size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
     { key: 'reklam-alanlari', label: 'Liste Görünümü', icon: <MapPin size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
+    { key: 'digital-signage', label: 'Dijital Yayın', icon: <Tv size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
     { key: 'alan-yonetimi', label: 'Alan Yönetimi', icon: <Settings size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
     
     { key: 'teklifler', label: 'Teklifler', icon: <FileText size={13} />, permission: 'offers.view' },
