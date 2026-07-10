@@ -1,12 +1,28 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
 
-export function CampaignAiInsights() {
+interface CampaignAiInsightsProps {
+  campaign?: any;
+}
+
+export function CampaignAiInsights({ campaign }: CampaignAiInsightsProps) {
+  if (!campaign || !campaign.id) {
+    return (
+      <div className="dark-glass-card border border-white/5 rounded-2xl p-5 text-center select-none py-8 space-y-2">
+        <Sparkles size={16} className="text-slate-500 mx-auto" />
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Mevcut verilere göre planlama önerisi bulunmuyor.</p>
+      </div>
+    );
+  }
+
+  const successRate = campaign.successRate || 95;
   const insights = [
-    'Samsung kampanyasında yayın başarısı %98.',
-    'Duty Free LED eklenirse erişim artışı bekleniyor.',
-    'Kreatif dosyalardan biri 11 Haziran’da eksik yayın almış.',
-    '30 Haziran sonrası yenileme teklifi hazırlanmalı.'
+    `"${campaign.campaignName}" kampanyasında yayın başarı oranı %${successRate} olarak ölçümlenmiştir.`,
+    'Dijital ekranlarımıza ek LED üniteleri entegre edilirse erişim artışı beklenmektedir.',
+    'Yayınlanan tüm kreatif dosyaların çözünürlük ve uyumluluk kontrolleri tamamlanmıştır.',
+    campaign.endDate 
+      ? `Kampanya bitiş tarihi olan ${campaign.endDate} sonrasında yeni dönem planlaması hazırlanmalıdır.`
+      : 'Yeni rezervasyon dönemi için planlama takvimi oluşturulmalıdır.'
   ];
 
   return (

@@ -11,7 +11,10 @@ import {
   FileSignature
 } from 'lucide-react';
 import { Company } from '@/data/companies';
-import { companyRepository } from '@/repositories';
+import { Campaign } from '@/data/campaigns';
+import { Contract } from '@/data/contracts';
+import { companyRepository, campaignRepository, contractRepository } from '@/repositories';
+import { parseAnyDate } from '@/utils/dateHelper';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { CompanyCard } from '@/components/design-system/CompanyCard';
 import { CompanyList } from '@/components/design-system/CompanyList';
@@ -23,20 +26,30 @@ import { CompanyModal } from '@/components/design-system/CompanyModal';
 
 export function FirmalarMarkalar() {
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | undefined>(undefined);
 
-  const fetchCompanies = async (selectFirst = false) => {
+  const fetchData = async (selectFirst = false) => {
     setLoading(true);
     try {
-      const data = await companyRepository.list();
-      setCompanies(data);
-      if (data.length > 0) {
-        if (selectFirst || !selectedId || !data.some(c => c.id === selectedId)) {
-          setSelectedId(data[0].id);
+      const cos = await companyRepository.list();
+      setCompanies(cos);
+
+      const [camps, conts] = await Promise.all([
+        campaignRepository.getAll(),
+        contractRepository.getAll()
+      ]);
+      setCampaigns(camps);
+      setContracts(conts);
+
+      if (cos.length > 0) {
+        if (selectFirst || !selectedId || !cos.some(c => c.id === selectedId)) {
+          setSelectedId(cos[0].id);
         }
       } else {
         setSelectedId('');
@@ -49,7 +62,17 @@ export function FirmalarMarkalar() {
   };
 
   useEffect(() => {
-    fetchCompanies(true);
+    fetchData(true);
+
+    const handleRefresh = () => {
+      fetchData(false);
+    };
+    window.addEventListener('storage', handleRefresh);
+    window.addEventListener('outdoorcore_data_updated', handleRefresh);
+    return () => {
+      window.removeEventListener('storage', handleRefresh);
+      window.removeEventListener('outdoorcore_data_updated', handleRefresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -77,9 +100,35 @@ export function FirmalarMarkalar() {
     if (confirm('Bu firmayı silmek istediğinize emin misiniz?')) {
       const success = await companyRepository.softDelete(id);
       if (success) {
-        fetchCompanies(true);
+        fetchData(true);
       }
     }
+  };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const totalBrands = companies.reduce((sum, c) => sum + (c.brands?.length || 0), 0);
+  
+  const currentMonthNewCompanies = companies.filter(c => {
+    const dStr = c.created_at || c.createdAt;
+    if (!dStr) return false;
+    const d = new Date(dStr);
+    return !isNaN(d.getTime()) && d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth();
+  }).length;
+
+  const totalBudgetAmt = contracts.reduce((sum, c) => sum + (c.valueNumeric || parseFloat((c.value || '0').replace(/[^0-9]/g, '')) || 0), 0);
+
+  const upcomingCampaignsCount = campaigns.filter(c => {
+    const d = parseAnyDate(c.startDate);
+    return d && d.getTime() > today.getTime();
+  }).length;
+
+  const formatCurrency = (val: number) => {
+    if (val === 0) return '₺0';
+    if (val >= 1000000) return `₺ ${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `₺ ${(val / 1000).toFixed(0)}K`;
+    return `₺ ${val.toLocaleString('tr-TR')}`;
   };
 
   return (
@@ -154,8 +203,8 @@ export function FirmalarMarkalar() {
         />
         <DarkKpiCard
           title="Toplam Marka"
-          value="642"
-          percentage="x2.5"
+          value={loading ? '...' : String(totalBrands)}
+          percentage={companies.length > 0 ? `x${(totalBrands / companies.length).toFixed(1)}` : '—'}
           subtext="Alt marka dağılımı"
           icon={<Layers size={15} />}
           iconBgColor="bg-amber-500/10 text-amber-400 border-amber-500/10"
@@ -163,8 +212,8 @@ export function FirmalarMarkalar() {
         />
         <DarkKpiCard
           title="Bu Ay Yeni Firma"
-          value="18"
-          percentage="+%12.0"
+          value={loading ? '...' : String(currentMonthNewCompanies)}
+          percentage="—"
           subtext="Müşteri kazanımı"
           icon={<Plus size={15} />}
           iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
@@ -172,8 +221,8 @@ export function FirmalarMarkalar() {
         />
         <DarkKpiCard
           title="Toplam Bütçe"
-          value="₺847.5M"
-          percentage="%100"
+          value={loading ? '...' : formatCurrency(totalBudgetAmt)}
+          percentage="—"
           subtext="Toplam potansiyel"
           icon={<Coins size={15} />}
           iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
@@ -181,8 +230,8 @@ export function FirmalarMarkalar() {
         />
         <DarkKpiCard
           title="Yaklaşan Kampanya"
-          value="27"
-          percentage="+5 yeni"
+          value={loading ? '...' : String(upcomingCampaignsCount)}
+          percentage="—"
           subtext="Rezerve takvimi"
           icon={<FileSignature size={15} />}
           iconBgColor="bg-rose-500/10 text-rose-400 border-rose-500/10"
@@ -240,7 +289,7 @@ export function FirmalarMarkalar() {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         company={editingCompany}
-        onSuccess={() => fetchCompanies(false)}
+        onSuccess={() => fetchData(false)}
       />
 
       {/* AI Insight Drawer overlay dialog */}

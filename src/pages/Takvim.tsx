@@ -32,7 +32,8 @@ import {
 } from 'lucide-react';
 import { CalendarEvent } from '@/types/calendar';
 import { calendarService } from '@/services/calendarService';
-import { companyRepository, spaceRepository, taskRepository, notificationRepository, reservationRepository } from '@/repositories';
+import { parseAnyDate } from '@/utils/dateHelper';
+import { companyRepository, spaceRepository, taskRepository, notificationRepository, reservationRepository, contractRepository, maintenanceRepository, financeRepository, campaignRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { EntityLink } from '@/components/design-system/EntityLink';
@@ -599,6 +600,11 @@ export function Takvim() {
   const [error, setError] = useState<string | null>(null);
   const [submittingLed, setSubmittingLed] = useState(false);
 
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [maintenanceList, setMaintenanceList] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [financeData, setFinanceData] = useState<any>(null);
+
   // Filter states
   const [filterType, setFilterType] = useState<string>('');
   const [filterCompany, setFilterCompany] = useState<string>('');
@@ -616,11 +622,22 @@ export function Takvim() {
   const loadEvents = async () => {
     setLoading(true);
     try {
-      const data = await calendarService.getCalendarEvents();
-      setEvents(data);
-      if (data.length > 0 && !selectedEventId) {
+      const [evs, conts, maints, tsks, fin] = await Promise.all([
+        calendarService.getCalendarEvents(),
+        contractRepository.getAll(),
+        maintenanceRepository.getAll(),
+        taskRepository.getAll(),
+        financeRepository.getFinanceData()
+      ]);
+      setEvents(evs);
+      setContracts(conts);
+      setMaintenanceList(maints);
+      setTasks(tsks);
+      setFinanceData(fin);
+
+      if (evs.length > 0 && !selectedEventId) {
         // Default select first reservation
-        const defaultEv = data.find(e => e.type === 'reservation') || data[0];
+        const defaultEv = evs.find(e => e.type === 'reservation') || evs[0];
         setSelectedEventId(defaultEv.eventId);
       }
     } catch (e) {
@@ -636,11 +653,15 @@ export function Takvim() {
     window.addEventListener('offers_updated', loadEvents);
     window.addEventListener('reservations_updated', loadEvents);
     window.addEventListener('campaigns_updated', loadEvents);
+    window.addEventListener('outdoorcore_data_updated', loadEvents);
+    window.addEventListener('storage', loadEvents);
     
     return () => {
       window.removeEventListener('offers_updated', loadEvents);
       window.removeEventListener('reservations_updated', loadEvents);
       window.removeEventListener('campaigns_updated', loadEvents);
+      window.removeEventListener('outdoorcore_data_updated', loadEvents);
+      window.removeEventListener('storage', loadEvents);
     };
   }, []);
 
@@ -1384,7 +1405,7 @@ export function Takvim() {
             size="sm" 
             leftIcon={<Sparkles size={13} />}
             className="bg-gradient-to-r from-blue-650 to-indigo-650 hover:from-blue-600 hover:to-indigo-600 text-white font-black"
-            onClick={() => alert('Planlama motoru analizi başlatıldı: Mercedes bakım işinin Samsung kampanyası ile çakışması engellendi.')}
+            onClick={() => alert('Planlama motoru analizi başlatıldı: Çakışan bakım işleri ve reklam kampanyaları kontrol edilerek optimize ediliyor.')}
           >
             OutdoorCore AI
           </Button>
@@ -1770,60 +1791,95 @@ export function Takvim() {
           )}
 
           {/* AI recommendations card */}
-          <DarkDashboardCard className="relative overflow-hidden text-left bg-gradient-to-br from-[#09101b] to-[#0f172a] dark:from-[#0a111e] dark:to-[#080d1a] border border-blue-500/20 shadow-md">
-            {/* Sparkles background glow */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          {(() => {
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0);
 
-            <div className="space-y-3 relative z-10 select-none">
-              <div className="flex items-center gap-1.5">
-                <Sparkles size={13} className="text-blue-400 animate-pulse" />
-                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Planlama Önerileri</h4>
-              </div>
+            const expiringContracts = contracts.filter(c => {
+              const d = parseAnyDate(c.endDate);
+              if (!d) return false;
+              const diff = Math.ceil((d.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+              return diff >= 0 && diff <= 30;
+            });
 
-              <div className="space-y-2.5 text-[9.5px] font-bold leading-normal text-slate-300">
-                <div className="p-2 rounded-xl bg-white/2 dark:bg-white/1 border border-white/5">
-                  • <span className="text-white">SG-021</span> için 12-18 Ağustos arası yoğunluk yüksek.
-                </div>
-                <div className="p-2 rounded-xl bg-white/2 dark:bg-white/1 border border-white/5">
-                  • <span className="text-amber-400">3 sözleşme</span> 30 gün içinde bitiyor.
-                </div>
-                <div className="p-2 rounded-xl bg-white/2 dark:bg-white/1 border border-white/5">
-                  • <span className="text-amber-400">5 fatura</span> bu hafta vade.
-                </div>
-                <div className="p-2 rounded-xl bg-white/2 dark:bg-white/1 border border-white/5">
-                  • <span className="text-rose-450">Mercedes bakım işi</span> kampanya başlangıcından önce tamamlanmalı.
-                </div>
-                <div className="p-2 rounded-xl bg-white/2 dark:bg-white/1 border border-white/5">
-                  • Samsung için alternatif tarih önerisi: <span className="text-blue-400">20 Ağu - 20 Eyl</span>.
-                </div>
-              </div>
-            </div>
-          </DarkDashboardCard>
+            const upcomingInvoices = (financeData?.accounts || []).reduce((accList: any[], acc: any) => {
+              const invs = (acc.invoices || []).filter((inv: any) => {
+                const d = parseAnyDate(inv.date || inv.dueDate);
+                if (!d) return false;
+                const diff = Math.ceil((d.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24));
+                return diff >= 0 && diff <= 7 && inv.status !== 'Ödendi';
+              });
+              return [...accList, ...invs.map((i: any) => ({ ...i, clientName: acc.name }))];
+            }, []);
 
-          {/* Critical tasks checklist widget */}
-          <DarkDashboardCard className="space-y-3.5 text-left">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-              <CheckSquare size={11} /> Yaklaşan Kritik İşler
-            </h4>
-            <div className="space-y-2 select-none text-[9.5px] font-bold text-slate-300">
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
-                <span className="truncate">Samsung görsel revizyonu onayla</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
-                <span className="truncate">Turkcell vadesi geçmiş tahsilat ihtarı</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-                <span className="truncate">THY sözleşme yenileme teklif onayı</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-slate-500 rounded-full"></span>
-                <span className="truncate">SG-045 LED ekran modül değişimi testi</span>
-              </div>
-            </div>
-          </DarkDashboardCard>
+            const activeMaint = maintenanceList.filter(m => m.status !== 'Tamamlandı' && m.status !== 'İptal');
+
+            const suggestionsList: string[] = [];
+            if (expiringContracts.length > 0) {
+              suggestionsList.push(`${expiringContracts.length} sözleşme 30 gün içinde bitiyor.`);
+            }
+            if (upcomingInvoices.length > 0) {
+              suggestionsList.push(`${upcomingInvoices.length} fatura bu hafta vade doluyor.`);
+            }
+            activeMaint.slice(0, 2).forEach(m => {
+              suggestionsList.push(`${m.spaceCode} için "${m.issue}" bakımı kampanya başlangıcından önce tamamlanmalı.`);
+            });
+
+            const activeTasks = tasks.filter(t => t.status !== 'Tamamlandı' && t.status !== 'İptal');
+
+            return (
+              <>
+                <DarkDashboardCard className="relative overflow-hidden text-left bg-gradient-to-br from-[#09101b] to-[#0f172a] dark:from-[#0a111e] dark:to-[#080d1a] border border-blue-500/20 shadow-md">
+                  {/* Sparkles background glow */}
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+                  <div className="space-y-3 relative z-10 select-none">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-blue-400 animate-pulse" />
+                      <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Planlama Önerileri</h4>
+                    </div>
+
+                    {suggestionsList.length > 0 ? (
+                      <div className="space-y-2.5 text-[9.5px] font-bold leading-normal text-slate-300">
+                        {suggestionsList.map((sug, idx) => (
+                          <div key={idx} className="p-2 rounded-xl bg-white/2 dark:bg-white/1 border border-white/5">
+                            • {sug}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[9.5px] text-slate-500 font-bold uppercase tracking-wider block pt-2">
+                        Mevcut verilere göre planlama önerisi bulunmuyor.
+                      </span>
+                    )}
+                  </div>
+                </DarkDashboardCard>
+
+                {/* Critical tasks checklist widget */}
+                <DarkDashboardCard className="space-y-3.5 text-left">
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                    <CheckSquare size={11} /> Yaklaşan Kritik İşler
+                  </h4>
+                  {activeTasks.length > 0 ? (
+                    <div className="space-y-2 select-none text-[9.5px] font-bold text-slate-300">
+                      {activeTasks.slice(0, 5).map((t, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            t.priority === 'Kritik' || t.priority === 'Yüksek' ? 'bg-rose-500' : 'bg-amber-500'
+                          }`}></span>
+                          <span className="truncate">{t.taskTitle}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-[9.5px] text-slate-500 font-bold uppercase tracking-wider block py-1">
+                      Yaklaşan kritik iş bulunmuyor.
+                    </span>
+                  )}
+                </DarkDashboardCard>
+              </>
+            );
+          })()}
         </div>
       </div>
 

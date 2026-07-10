@@ -11,6 +11,8 @@ export interface Company {
   status: 'Aktif' | 'Potansiyel' | 'Pasif';
   deleted_at?: string;
   deleted_by?: string;
+  created_at?: string;
+  createdAt?: string;
   campaignsCount: number;
   totalSpend: string;
   activeSpacesCount: number;

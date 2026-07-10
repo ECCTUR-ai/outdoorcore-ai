@@ -59,6 +59,16 @@ export function Kampanyalar() {
 
   useEffect(() => {
     fetchCampaigns();
+    
+    const handleRefresh = () => {
+      fetchCampaigns();
+    };
+    window.addEventListener('storage', handleRefresh);
+    window.addEventListener('outdoorcore_data_updated', handleRefresh);
+    return () => {
+      window.removeEventListener('storage', handleRefresh);
+      window.removeEventListener('outdoorcore_data_updated', handleRefresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -87,6 +97,15 @@ export function Kampanyalar() {
     airtimeHours: 0,
     bestSpace: '',
     riskySpace: ''
+  };
+
+  const totalCampaignBudget = campaigns.reduce((sum, c) => sum + (parseFloat((c.budget || '0').replace(/[^0-9]/g, '')) || 0), 0);
+
+  const formatCurrency = (val: number) => {
+    if (val === 0) return '₺0';
+    if (val >= 1000000) return `₺ ${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `₺ ${(val / 1000).toFixed(0)}K`;
+    return `₺ ${val.toLocaleString('tr-TR')}`;
   };
 
   return (
@@ -164,7 +183,7 @@ export function Kampanyalar() {
         <DarkKpiCard
           title="Aktif Yayınlar"
           value={loading ? '...' : String(campaigns.filter(c => c.status === 'Aktif').length)}
-          percentage="CANLI"
+          percentage="—"
           subtext="Yayında olanlar"
           icon={<Tv size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-500/10"
@@ -173,7 +192,7 @@ export function Kampanyalar() {
         <DarkKpiCard
           title="Planlanan"
           value={loading ? '...' : String(campaigns.filter(c => c.status === 'Planlandı').length)}
-          percentage="+2 yeni"
+          percentage="—"
           subtext="Gelecek yayınlar"
           icon={<Calendar size={15} />}
           iconBgColor="bg-amber-500/10 text-amber-400 border-amber-500/10"
@@ -182,7 +201,7 @@ export function Kampanyalar() {
         <DarkKpiCard
           title="Tamamlanan"
           value={loading ? '...' : String(campaigns.filter(c => c.status === 'Tamamlandı').length)}
-          percentage="%100"
+          percentage="—"
           subtext="Geçmiş arşiv"
           icon={<CheckCircle size={15} />}
           iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
@@ -190,8 +209,8 @@ export function Kampanyalar() {
         />
         <DarkKpiCard
           title="Bütçe Hacmi"
-          value={loading ? '...' : '₺412.8M'}
-          percentage="+%8.2"
+          value={loading ? '...' : formatCurrency(totalCampaignBudget)}
+          percentage="—"
           subtext="Yıllık yatırım"
           icon={<Coins size={15} />}
           iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
@@ -199,8 +218,8 @@ export function Kampanyalar() {
         />
         <DarkKpiCard
           title="Ort. CTR"
-          value={loading ? '...' : '2.4%'}
-          percentage="YÜKSEK"
+          value="Veri yok"
+          percentage="—"
           subtext="Geri dönüş oranı"
           icon={<TrendingUp size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"
@@ -276,7 +295,7 @@ export function Kampanyalar() {
               <CreativeFilesGrid files={selectedCampaign.creativeFiles || []} />
             </div>
             <div className="lg:col-span-4">
-              <CampaignAiInsights />
+              <CampaignAiInsights campaign={selectedCampaign} />
             </div>
           </div>
 

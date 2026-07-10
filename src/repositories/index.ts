@@ -17,60 +17,105 @@ import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 import resetTimeConfig from '@/data/resetTime.json';
 
 if (typeof window !== 'undefined') {
-  // Safe migration: Clean up known demo records from localStorage
-  const demoNamesToClean = [
-    'Samsung', 'Mercedes', 'Mercedes-Benz', 'Turkish Airlines', 'THY', 
-    'Pegasus', 'Turkcell', 'Volvo Cars', 'Xiaomi Türkiye', 'Global Air', 
-    'Aura Jet', 'Net İletişim'
-  ].map(n => n.toLowerCase());
-
-  // 1. Clean up from companies
-  const storedCompaniesStr = localStorage.getItem('outdoorcore_mock_companies');
-  if (storedCompaniesStr) {
+  const migrationKey = 'outdoorcore_migration_remove_demo_v3';
+  if (!localStorage.getItem(migrationKey)) {
     try {
-      const storedCompanies = JSON.parse(storedCompaniesStr);
-      if (Array.isArray(storedCompanies)) {
-        const filteredCompanies = storedCompanies.filter((c: any) => 
-          c.name && !demoNamesToClean.some(demo => c.name.toLowerCase().includes(demo))
-        );
-        if (filteredCompanies.length !== storedCompanies.length) {
-          localStorage.setItem('outdoorcore_mock_companies', JSON.stringify(filteredCompanies));
+      // 1. Clean companies list
+      const storedCos = localStorage.getItem('outdoorcore_mock_companies');
+      if (storedCos) {
+        const parsed = JSON.parse(storedCos);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((c: any) => {
+            if (!c || !c.name) return false;
+            const nameLower = c.name.toLowerCase();
+            const hasDemoWord = nameLower.includes('demo') || nameLower.includes('mock') || nameLower.includes('seed');
+            const hasBlockedBrand = [
+              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
+              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
+              'aura jet', 'net iletişim'
+            ].some(brand => nameLower.includes(brand));
+            const hasBlockedId = c.id && (c.id.startsWith('demo-') || c.id.startsWith('mock-') || c.id.startsWith('seed-'));
+            return !hasDemoWord && !hasBlockedBrand && !hasBlockedId;
+          });
+          localStorage.setItem('outdoorcore_mock_companies', JSON.stringify(cleaned));
         }
       }
-    } catch (e) {}
-  }
 
-  // 2. Clean up from finance_data accounts
-  const storedFinanceStr = localStorage.getItem('outdoorcore_mock_finance_data');
-  if (storedFinanceStr) {
-    try {
-      const storedFinance = JSON.parse(storedFinanceStr);
-      if (storedFinance && Array.isArray(storedFinance.accounts)) {
-        const initialLen = storedFinance.accounts.length;
-        storedFinance.accounts = storedFinance.accounts.filter((acc: any) => 
-          acc.name && !demoNamesToClean.some(demo => acc.name.toLowerCase().includes(demo))
-        );
-        if (storedFinance.accounts.length !== initialLen) {
-          localStorage.setItem('outdoorcore_mock_finance_data', JSON.stringify(storedFinance));
+      // 2. Clean finance accounts
+      const storedFinance = localStorage.getItem('outdoorcore_mock_finance_data');
+      if (storedFinance) {
+        const parsed = JSON.parse(storedFinance);
+        if (parsed && Array.isArray(parsed.accounts)) {
+          parsed.accounts = parsed.accounts.filter((acc: any) => {
+            if (!acc || !acc.name) return false;
+            const nameLower = acc.name.toLowerCase();
+            const hasDemoWord = nameLower.includes('demo') || nameLower.includes('mock') || nameLower.includes('seed');
+            const hasBlockedBrand = [
+              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
+              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
+              'aura jet', 'net iletişim'
+            ].some(brand => nameLower.includes(brand));
+            const hasBlockedId = acc.id && (acc.id.startsWith('demo-') || acc.id.startsWith('mock-') || acc.id.startsWith('seed-'));
+            return !hasDemoWord && !hasBlockedBrand && !hasBlockedId;
+          });
+          localStorage.setItem('outdoorcore_mock_finance_data', JSON.stringify(parsed));
         }
       }
-    } catch (e) {}
-  }
 
-  // 3. Clean up from reservations
-  const storedReservationsStr = localStorage.getItem('outdoorcore_mock_reservations');
-  if (storedReservationsStr) {
-    try {
-      const storedReservations = JSON.parse(storedReservationsStr);
-      if (Array.isArray(storedReservations)) {
-        const filteredReservations = storedReservations.filter((r: any) => 
-          r.clientName && !demoNamesToClean.some(demo => r.clientName.toLowerCase().includes(demo))
-        );
-        if (filteredReservations.length !== storedReservations.length) {
-          localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(filteredReservations));
+      // 3. Clean calendar events
+      const storedEvents = localStorage.getItem('outdoorcore_calendar_events_custom');
+      if (storedEvents) {
+        const parsed = JSON.parse(storedEvents);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((e: any) => {
+            if (!e || !e.title) return false;
+            const titleLower = e.title.toLowerCase();
+            const hasDemoWord = titleLower.includes('demo') || titleLower.includes('mock') || titleLower.includes('seed');
+            const hasBlockedBrand = [
+              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
+              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
+              'aura jet', 'net iletişim'
+            ].some(brand => titleLower.includes(brand));
+            return !hasDemoWord && !hasBlockedBrand;
+          });
+          localStorage.setItem('outdoorcore_calendar_events_custom', JSON.stringify(cleaned));
         }
       }
-    } catch (e) {}
+
+      // 4. Clean reservations
+      const storedReservationsStr = localStorage.getItem('outdoorcore_mock_reservations');
+      if (storedReservationsStr) {
+        const parsed = JSON.parse(storedReservationsStr);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter((r: any) => {
+            if (!r || !r.clientName) return false;
+            const nameLower = r.clientName.toLowerCase();
+            const hasDemoWord = nameLower.includes('demo') || nameLower.includes('mock') || nameLower.includes('seed');
+            const hasBlockedBrand = [
+              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
+              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
+              'aura jet', 'net iletişim'
+            ].some(brand => nameLower.includes(brand));
+            return !hasDemoWord && !hasBlockedBrand;
+          });
+          localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(cleaned));
+        }
+      }
+
+      // 5. Clear other demo lists and cache values
+      const keysToClear = [
+        'outdoorcore_planning_suggestions_cache',
+        'outdoorcore_critical_jobs_cache',
+        'outdoorcore_dashboard_cache',
+        'outdoorcore_kpi_cache'
+      ];
+      keysToClear.forEach(k => localStorage.removeItem(k));
+
+      // Mark migration as successful
+      localStorage.setItem(migrationKey, 'true');
+    } catch (e) {
+      console.error('Migration failed:', e);
+    }
   }
 
   // Idempotent Production Reset: Clear only mock keys once
