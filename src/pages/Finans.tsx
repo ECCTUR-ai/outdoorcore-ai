@@ -39,6 +39,8 @@ import { Button } from '@/components/design-system/Button';
 import { TableSkeleton, CardSkeleton } from '@/components/design-system/Skeleton';
 import { Notification } from '@/components/design-system/Notification';
 
+import { parseAnyDate } from '@/utils/dateHelper';
+
 export function Finans() {
   const [financeData, setFinanceData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +72,11 @@ export function Finans() {
       fetchFinanceData();
     };
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('outdoorcore_finance_data_updated', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('outdoorcore_finance_data_updated', handleStorageChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -122,6 +128,35 @@ export function Finans() {
   }, 0);
   
   const totalInvoicesCount = accounts.reduce((sum: number, acc: any) => sum + (acc.invoices?.length || 0), 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let paidVadesiGelmis = 0;
+  let totalVadesiGelmis = 0;
+
+  accounts.forEach((acc: any) => {
+    const plans = acc.paymentPlan || [];
+    plans.forEach((plan: any) => {
+      const planAmt = parseFloat((plan.amount || '').replace(/[^0-9]/g, '')) || 0;
+      const planDate = parseAnyDate(plan.dueDate);
+      if (!planDate) return;
+
+      const isDueOrPast = planDate.getTime() <= today.getTime();
+      if (isDueOrPast) {
+        if (plan.status === 'Ödendi') {
+          paidVadesiGelmis += planAmt;
+          totalVadesiGelmis += planAmt;
+        } else {
+          totalVadesiGelmis += planAmt;
+        }
+      }
+    });
+  });
+
+  const successRateText = totalVadesiGelmis > 0
+    ? `%${((paidVadesiGelmis / totalVadesiGelmis) * 100).toFixed(1)}`
+    : 'Veri yok';
 
   const formatCurrency = (val: number) => {
     if (val === 0) return '₺0';
@@ -201,7 +236,7 @@ export function Finans() {
         <DarkKpiCard
           title="Tahsil Edilen"
           value={loading ? '...' : formatCurrency(totalCollected)}
-          percentage={totalCiro > 0 ? `%${((totalCollected / totalCiro) * 100).toFixed(1)}` : '%0'}
+          percentage={successRateText}
           subtext="Banka hesaplarına geçen"
           icon={<CheckCircle size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"

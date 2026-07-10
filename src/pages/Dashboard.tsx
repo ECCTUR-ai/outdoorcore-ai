@@ -97,9 +97,12 @@ export function Dashboard() {
 
   useEffect(() => {
     loadAllData();
-    // Re-fetch automatically on storage changes for instantaneous sync
     window.addEventListener('storage', loadAllData);
-    return () => window.removeEventListener('storage', loadAllData);
+    window.addEventListener('outdoorcore_finance_data_updated', loadAllData);
+    return () => {
+      window.removeEventListener('storage', loadAllData);
+      window.removeEventListener('outdoorcore_finance_data_updated', loadAllData);
+    };
   }, []);
 
   // 1. ÜST KPI Calculations from real state

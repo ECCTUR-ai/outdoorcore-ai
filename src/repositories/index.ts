@@ -17,6 +17,62 @@ import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 import resetTimeConfig from '@/data/resetTime.json';
 
 if (typeof window !== 'undefined') {
+  // Safe migration: Clean up known demo records from localStorage
+  const demoNamesToClean = [
+    'Samsung', 'Mercedes', 'Mercedes-Benz', 'Turkish Airlines', 'THY', 
+    'Pegasus', 'Turkcell', 'Volvo Cars', 'Xiaomi Türkiye', 'Global Air', 
+    'Aura Jet', 'Net İletişim'
+  ].map(n => n.toLowerCase());
+
+  // 1. Clean up from companies
+  const storedCompaniesStr = localStorage.getItem('outdoorcore_mock_companies');
+  if (storedCompaniesStr) {
+    try {
+      const storedCompanies = JSON.parse(storedCompaniesStr);
+      if (Array.isArray(storedCompanies)) {
+        const filteredCompanies = storedCompanies.filter((c: any) => 
+          c.name && !demoNamesToClean.some(demo => c.name.toLowerCase().includes(demo))
+        );
+        if (filteredCompanies.length !== storedCompanies.length) {
+          localStorage.setItem('outdoorcore_mock_companies', JSON.stringify(filteredCompanies));
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 2. Clean up from finance_data accounts
+  const storedFinanceStr = localStorage.getItem('outdoorcore_mock_finance_data');
+  if (storedFinanceStr) {
+    try {
+      const storedFinance = JSON.parse(storedFinanceStr);
+      if (storedFinance && Array.isArray(storedFinance.accounts)) {
+        const initialLen = storedFinance.accounts.length;
+        storedFinance.accounts = storedFinance.accounts.filter((acc: any) => 
+          acc.name && !demoNamesToClean.some(demo => acc.name.toLowerCase().includes(demo))
+        );
+        if (storedFinance.accounts.length !== initialLen) {
+          localStorage.setItem('outdoorcore_mock_finance_data', JSON.stringify(storedFinance));
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 3. Clean up from reservations
+  const storedReservationsStr = localStorage.getItem('outdoorcore_mock_reservations');
+  if (storedReservationsStr) {
+    try {
+      const storedReservations = JSON.parse(storedReservationsStr);
+      if (Array.isArray(storedReservations)) {
+        const filteredReservations = storedReservations.filter((r: any) => 
+          r.clientName && !demoNamesToClean.some(demo => r.clientName.toLowerCase().includes(demo))
+        );
+        if (filteredReservations.length !== storedReservations.length) {
+          localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(filteredReservations));
+        }
+      }
+    } catch (e) {}
+  }
+
   // Idempotent Production Reset: Clear only mock keys once
   const resetDone = localStorage.getItem('outdoorcore_production_reset_done_v1');
   if (!resetDone) {
@@ -233,6 +289,9 @@ const getLocalData = <T>(key: string, initialData: T[]): T[] => {
 const setLocalData = <T>(key: string, data: T[]): void => {
   try {
     localStorage.setItem(`outdoorcore_mock_${key}`, JSON.stringify(data));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('outdoorcore_finance_data_updated'));
+    }
   } catch (e) {
     console.error(`Error writing mock data for ${key}:`, e);
   }
@@ -254,6 +313,9 @@ const getLocalDataObject = <T>(key: string, initialData: T): T => {
 const setLocalDataObject = <T>(key: string, data: T): void => {
   try {
     localStorage.setItem(`outdoorcore_mock_${key}`, JSON.stringify(data));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('outdoorcore_finance_data_updated'));
+    }
   } catch (e) {
     console.error(`Error writing mock data for ${key}:`, e);
   }

@@ -8,20 +8,20 @@ import { DigitalScreen, PlaylistSlot } from '@/types/digitalSignage';
 import { FinancialAccount } from '@/data/finance';
 
 const COMPANY_NAMES = [
-  'Global Air', 'Aura Jet', 'AJet', 'Tatilbudur', 'ETS Tur', 
-  'Jolly', 'Setur', 'Net İletişim', 'Vodafone', 'Türk Telekom', 
-  'Garanti BBVA', 'Akbank', 'İş Bankası', 'QNB', 'Volvo Cars', 
-  'BMW', 'Audi', 'Toyota', 'Xiaomi Türkiye', 'Apple', 
+  'AJet', 'Tatilbudur', 'ETS Tur', 
+  'Jolly', 'Setur', 'Vodafone', 'Türk Telekom', 
+  'Garanti BBVA', 'Akbank', 'İş Bankası', 'QNB', 
+  'BMW', 'Audi', 'Toyota', 'Apple', 
   'LC Waikiki', 'Migros', 'CarrefourSA', 'Hepsiburada', 'Amazon Türkiye', 
   'Papara', 'Getir', 'Yemeksepeti', 'Starbucks', 'Burger King', 
   'McDonald\'s', 'MediaMarkt', 'Trendyol', 'Coca-Cola', 'Efes Pilsen'
 ];
 
 const SECTORS = [
-  'Ulaşım & Havacılık', 'Ulaşım & Havacılık', 'Ulaşım & Havacılık', 'Turizm & Seyahat', 'Turizm & Seyahat',
-  'Turizm & Seyahat', 'Turizm & Seyahat', 'Telekomünikasyon', 'Telekomünikasyon', 'Telekomünikasyon',
-  'Finans & Bankacılık', 'Finans & Bankacılık', 'Finans & Bankacılık', 'Finans & Bankacılık', 'Otomotiv',
-  'Otomotiv', 'Otomotiv', 'Otomotiv', 'Elektronik', 'Elektronik',
+  'Ulaşım & Havacılık', 'Turizm & Seyahat', 'Turizm & Seyahat',
+  'Turizm & Seyahat', 'Turizm & Seyahat', 'Telekomünikasyon', 'Telekomünikasyon',
+  'Finans & Bankacılık', 'Finans & Bankacılık', 'Finans & Bankacılık', 'Finans & Bankacılık',
+  'Otomotiv', 'Otomotiv', 'Otomotiv', 'Elektronik',
   'Tekstil & Perakende', 'Gıda & Retail', 'Gıda & Retail', 'E-Ticaret', 'E-Ticaret',
   'Fintech', 'Hızlı Teslimat', 'Gıda İletişimi', 'Gıda İletişimi', 'Hızlı Servis',
   'Hızlı Servis', 'Elektronik Perakende', 'E-Ticaret', 'Hızlı Tüketim', 'Hızlı Tüketim'
@@ -563,7 +563,7 @@ export const demoSeedingService = {
         };
       }),
       activities: [
-        { id: 'ACT-01', type: 'collection', message: 'Global Air ₺12.000.000 tahsilat gerçekleştirildi.', time: '1 saat önce' }
+        { id: 'ACT-01', type: 'collection', message: 'AJet ₺12.000.000 tahsilat gerçekleştirildi.', time: '1 saat önce' }
       ]
     };
 

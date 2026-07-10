@@ -1,32 +1,17 @@
 import React from 'react';
 import { Sparkles, ArrowUpRight } from 'lucide-react';
+import { parseAnyDate } from '@/utils/dateHelper';
 
 interface FinanceSummaryCardProps {
   accounts?: any[];
 }
 
 export function FinanceSummaryCard({ accounts = [] }: FinanceSummaryCardProps) {
-  // Helper to parse DD.MM.YYYY string
-  const parseDate = (str?: string): Date | null => {
-    if (!str) return null;
-    const parts = str.split('.');
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const year = parseInt(parts[2], 10);
-      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        return new Date(year, month, day);
-      }
-    }
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  let totalDebtAllTime = 0;
-  let totalPaidAllTime = 0;
+  let totalPaidVadesiGelmis = 0;
+  let totalTotalVadesiGelmis = 0;
   let totalOverdue = 0;
   let currentMonthTarget = 0;
 
@@ -47,20 +32,23 @@ export function FinanceSummaryCard({ accounts = [] }: FinanceSummaryCardProps) {
     const plans = acc.paymentPlan || [];
     plans.forEach((plan: any) => {
       const planAmt = parseFloat((plan.amount || '').replace(/[^0-9]/g, '')) || 0;
-      const planDate = parseDate(plan.dueDate);
+      const planDate = parseAnyDate(plan.dueDate);
       if (!planDate) return;
 
       const isUnpaid = plan.status !== 'Ödendi';
 
-      // 1. All-time stats
-      if (plan.status === 'Ödendi') {
-        totalPaidAllTime += planAmt;
-        totalDebtAllTime += planAmt;
-      } else {
-        totalDebtAllTime += planAmt;
+      // 1. Success Rate variables (dueDate <= today only)
+      const isDueOrPast = planDate.getTime() <= today.getTime();
+      if (isDueOrPast) {
+        if (plan.status === 'Ödendi') {
+          totalPaidVadesiGelmis += planAmt;
+          totalTotalVadesiGelmis += planAmt;
+        } else {
+          totalTotalVadesiGelmis += planAmt;
+        }
       }
 
-      // 2. Overdue (Gecikti or past date unpaid)
+      // 2. Overdue
       const isPast = planDate.getTime() < today.getTime();
       if (plan.status === 'Gecikti' || (isUnpaid && isPast)) {
         totalOverdue += planAmt;
@@ -84,7 +72,9 @@ export function FinanceSummaryCard({ accounts = [] }: FinanceSummaryCardProps) {
     });
   });
 
-  const successRate = totalDebtAllTime > 0 ? (totalPaidAllTime / totalDebtAllTime) * 100 : 100;
+  const successRateText = totalTotalVadesiGelmis > 0 
+    ? `%${((totalPaidVadesiGelmis / totalTotalVadesiGelmis) * 100).toFixed(1)}` 
+    : 'Veri yok';
 
   const formatLargeAmount = (val: number) => {
     if (val === 0) return '₺0';
@@ -93,7 +83,7 @@ export function FinanceSummaryCard({ accounts = [] }: FinanceSummaryCardProps) {
     return `₺ ${val.toLocaleString('tr-TR')}`;
   };
 
-  const hasData = accounts.length > 0 && totalDebtAllTime > 0;
+  const hasData = accounts.length > 0;
 
   if (!hasData) {
     return (
@@ -105,7 +95,6 @@ export function FinanceSummaryCard({ accounts = [] }: FinanceSummaryCardProps) {
     );
   }
 
-  // Generate dynamic 5 insights points
   const points = [
     highestRiskClientName && highestRiskScore > 2.0
       ? `${highestRiskClientName} faturasında risk skoru nedeniyle gecikme ihtimali yüksektir.`
@@ -117,7 +106,7 @@ export function FinanceSummaryCard({ accounts = [] }: FinanceSummaryCardProps) {
       ? `Vadesi geçen toplam gecikmiş alacak tutarı ${formatLargeAmount(totalOverdue)} seviyesindedir.`
       : 'Vadesi geçmiş geciken tahsilat kaydı bulunmamaktadır.',
     `Bu ay sonuna kadar hedeflenen net tahsilat girdisi: ${formatLargeAmount(currentMonthTarget)}.`,
-    `Genel tahsilat başarı oranı: %${successRate.toFixed(1)} olarak gerçekleşmiştir.`
+    `Genel tahsilat başarı oranı: ${successRateText} olarak gerçekleşmiştir.`
   ];
 
   return (

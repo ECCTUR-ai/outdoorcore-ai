@@ -1,86 +1,77 @@
 import React from 'react';
 import { CalendarRange } from 'lucide-react';
+import { parseAnyDate } from '@/utils/dateHelper';
 
 interface PaymentTimelineProps {
   accounts: any[];
 }
 
 export function PaymentTimeline({ accounts }: PaymentTimelineProps) {
-  // Helper to parse DD.MM.YYYY string
-  const parseDate = (str?: string): Date | null => {
-    if (!str) return null;
-    const parts = str.split('.');
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const year = parseInt(parts[2], 10);
-      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-        return new Date(year, month, day);
-      }
-    }
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? null : d;
-  };
-
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const endOfWeek = new Date(today);
+  endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+  const startOfNextPeriod = new Date(today);
+  startOfNextPeriod.setDate(startOfNextPeriod.getDate() + 8);
+
+  const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  endOfMonth.setHours(0, 0, 0, 0);
+
   let gecikenTotal = 0;
   let gecikenCount = 0;
+  const gecikenClients = new Set<string>();
 
   let bugunTotal = 0;
   let bugunCount = 0;
+  const bugunClients = new Set<string>();
 
   let haftaTotal = 0;
   let haftaCount = 0;
+  const haftaClients = new Set<string>();
 
   let ayTotal = 0;
   let ayCount = 0;
-
-  // Track distinct clients
-  const gecikenClients = new Set<string>();
-  const bugunClients = new Set<string>();
-  const haftaClients = new Set<string>();
   const ayClients = new Set<string>();
 
   (accounts || []).forEach(acc => {
     const plans = acc.paymentPlan || [];
     plans.forEach((plan: any) => {
       const planAmt = parseFloat((plan.amount || '').replace(/[^0-9]/g, '')) || 0;
-      const planDate = parseDate(plan.dueDate);
+      const planDate = parseAnyDate(plan.dueDate);
       if (!planDate) return;
 
       const isUnpaid = plan.status !== 'Ödendi';
+      if (!isUnpaid) return; // Only open/unpaid balances go to timeline
 
-      // 1. Gecikenler
-      const isPastDue = planDate.getTime() < today.getTime();
-      if (plan.status === 'Gecikti' || (isUnpaid && isPastDue)) {
+      const planTime = planDate.getTime();
+      const todayTime = today.getTime();
+      const tomorrowTime = tomorrow.getTime();
+      const endOfWeekTime = endOfWeek.getTime();
+      const startOfNextPeriodTime = startOfNextPeriod.getTime();
+      const endOfMonthTime = endOfMonth.getTime();
+
+      if (planTime < todayTime) {
+        // 1. Gecikenler: bugünden önce vadesi geçmiş açık tutarlar
         gecikenTotal += planAmt;
         gecikenCount++;
         gecikenClients.add(acc.name);
-      }
-
-      // 2. Bugün
-      const isToday = planDate.getTime() === today.getTime();
-      if (isToday && isUnpaid) {
+      } else if (planTime === todayTime) {
+        // 2. Bugün: yalnızca bugün vadeli açık tutarlar
         bugunTotal += planAmt;
         bugunCount++;
         bugunClients.add(acc.name);
-      }
-
-      // 3. Bu Hafta
-      const nextWeek = new Date(today);
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      const isWithinWeek = planDate.getTime() >= today.getTime() && planDate.getTime() <= nextWeek.getTime();
-      if (isWithinWeek && isUnpaid) {
+      } else if (planTime >= tomorrowTime && planTime <= endOfWeekTime) {
+        // 3. Bu Hafta: yarından başlayarak sonraki 7 gün içindeki açık tutarlar
         haftaTotal += planAmt;
         haftaCount++;
         haftaClients.add(acc.name);
-      }
-
-      // 4. Bu Ay
-      const isWithinMonth = planDate.getFullYear() === today.getFullYear() && planDate.getMonth() === today.getMonth() && planDate.getTime() >= today.getTime();
-      if (isWithinMonth && isUnpaid) {
+      } else if (planTime >= startOfNextPeriodTime && planTime <= endOfMonthTime) {
+        // 4. Bu Ay: hafta döneminden sonraki günlerden ay sonuna kadar açık tutarlar
         ayTotal += planAmt;
         ayCount++;
         ayClients.add(acc.name);
