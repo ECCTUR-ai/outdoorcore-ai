@@ -6,10 +6,30 @@
  *
  * Run with: node scripts/generate-mga-json.cjs
  *
- * Output: src/data/mgaSpaces.ts (bundled with app, no localStorage needed)
+ * === NETWORK / PLAYLIST SLOT KURALLAR ===
+ *
+ * Network Adedi dolu olan satırlar için:
+ *   - physicalUnitCount = Adet      (gerçek fiziksel ekran/ünite sayısı)
+ *   - totalFaceCount    = Face adet  (toplam yüz sayısı)
+ *   - slotCount         = Network Adedi (satılabilir playlist slotu)
+ *
+ * Bu satırlar için slotCount adet SLOT kaydı üretilir (Adet adet değil).
+ * Her slot kaydı:
+ *   - salesModel      = 'playlist_slot'
+ *   - slotIndex       = 1..slotCount
+ *   - physicalUnitCount, totalFaceCount taşır
+ *   - screenSlotCapacity = totalFaceCount × slotCount
+ *
+ * Network Adedi boş veya 0 olan satırlar için:
+ *   - salesModel = 'physical_unit'
+ *   - Adet adet fiziksel kayıt üretilir (mevcut davranış)
+ *
+ * Statik + Network Adedi bulunan satırlar:
+ *   - networkInterpretationStatus = 'needs_review'
+ *   - salesModel = 'physical_unit' (slot üretilmez)
  */
 
-const fs = require('fs');
+const fs   = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 
@@ -19,13 +39,21 @@ function normalizeString(str) {
   return String(str)
     .toLowerCase()
     .trim()
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ı/g, 'i')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+    .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
     .replace(/[^a-z0-9]/g, '');
+}
+
+// ── Network Adedi parser — handles "6 NETWORK", "2 Network", "4", "  6  " ─────
+function parseNetworkCount(raw) {
+  if (!raw && raw !== 0) return 0;
+  const str = String(raw).trim();
+  if (!str) return 0;
+  // Extract leading integer from any format
+  const match = str.match(/^(\d+)/);
+  if (!match) return 0;
+  const n = parseInt(match[1], 10);
+  return isNaN(n) || n <= 0 ? 0 : n;
 }
 
 // ── Column header mapper ──────────────────────────────────────────────────────
@@ -33,7 +61,7 @@ function normalizeHeaders(headers) {
   const mapping = {};
   headers.forEach((h) => {
     const norm = normalizeString(h);
-    if (norm === 'sirano' || norm.startsWith('sira') && norm.length <= 6) {
+    if (norm === 'sirano' || (norm.startsWith('sira') && norm.length <= 6)) {
       mapping.sequenceNo = h;
     } else if (norm.startsWith('slayt')) {
       mapping.slideNo = h;
@@ -47,7 +75,7 @@ function normalizeHeaders(headers) {
       mapping.quantity = h;
     } else if (norm === 'faceadet' || norm === 'face') {
       mapping.faceCount = h;
-    } else if (norm === 'ekranturu' || norm.includes('ekranturu')) {
+    } else if (norm.includes('ekranturu')) {
       mapping.screenType = h;
     } else if (norm.startsWith('network')) {
       mapping.networkCount = h;
@@ -122,15 +150,20 @@ function parseDimensions(dimStr) {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-const EXCEL_PATH = path.join(__dirname, '..', 'MGA REKLAM ALANLARI.xlsx');
+let EXCEL_PATH   = path.join(__dirname, '..', 'MGA REKLAM ALANLARI.xlsx');
 const OUT_PATH   = path.join(__dirname, '..', 'src', 'data', 'mgaSpaces.ts');
 
 if (!fs.existsSync(EXCEL_PATH)) {
-  console.error(`ERROR: Excel file not found at ${EXCEL_PATH}`);
-  process.exit(1);
+  const altPath = path.join(__dirname, '..', 'private-imports', 'MGA REKLAM ALANLARI.xlsx');
+  if (!fs.existsSync(altPath)) {
+    console.error(`ERROR: Excel file not found at:\n  ${EXCEL_PATH}\n  ${altPath}`);
+    process.exit(1);
+  }
+  console.log(`Using private-imports fallback: ${altPath}`);
+  EXCEL_PATH = altPath;
 }
 
-console.log(`Reading: ${EXCEL_PATH}`);
+console.log(`\nReading: ${EXCEL_PATH}`);
 const buffer   = fs.readFileSync(EXCEL_PATH);
 const workbook = XLSX.read(buffer, { type: 'buffer' });
 const sheet    = workbook.Sheets[workbook.SheetNames[0]];
@@ -147,7 +180,7 @@ const mapping = normalizeHeaders(headers);
 console.log('Detected column mapping:', mapping);
 
 if (!mapping.name) {
-  console.error('ERROR: Could not detect the "Reklam Alanı Adı" column. Check header spelling.');
+  console.error('ERROR: Could not detect the "Reklam Alanı Adı" column.');
   console.error('Available headers:', headers);
   process.exit(1);
 }
@@ -158,14 +191,25 @@ let invalidRows = 0;
 let skippedDups = 0;
 const fingerprintSet = new Set();
 
+// ── Network audit tracking ─────────────────────────────────────────────────
+const networkAudit = [];
+const networkDistribution = {};
+
 const stats = {
-  sourceRows: rawRows.length,
-  validRows: 0,
-  totalQuantity: 0,
-  groups: 0,
-  digital: 0,
-  static: 0,
-  other: 0,
+  sourceRows:              rawRows.length,
+  validRows:               0,
+  invalidRows:             0,
+  totalPhysicalUnits:      0, // sum of Adet for non-network rows
+  totalNetworkGroups:      0, // rows with valid network count
+  totalPlaylistSlots:      0, // sum of slot records created
+  totalFaceSlotCapacity:   0, // sum of (Face × slotCount)
+  physicalUnitRecords:     0, // actual MGA records for physical_unit
+  playlistSlotRecords:     0, // actual MGA records for playlist_slot
+  needsReviewRows:         0,
+  totalMgaRecords:         0,
+  digital:                 0,
+  static:                  0,
+  other:                   0,
 };
 
 rawRows.forEach((row, idx) => {
@@ -180,102 +224,206 @@ rawRows.forEach((row, idx) => {
   const slideNo    = row[mapping.slideNo] || '';
   const sequenceNo = row[mapping.sequenceNo] || '';
 
-  if (!name) { invalidRows++; return; }
+  if (!name) { invalidRows++; stats.invalidRows++; return; }
 
-  let quantity = parseInt(qtyRaw, 10);
-  if (isNaN(quantity) || quantity <= 0) {
+  // ── Core counts ─────────────────────────────────────────────────────────
+  let physicalUnitCount = parseInt(qtyRaw, 10);
+  if (isNaN(physicalUnitCount) || physicalUnitCount <= 0) {
     const face = parseInt(faceRaw, 10);
-    quantity = (!isNaN(face) && face > 0) ? face : 1;
+    physicalUnitCount = (!isNaN(face) && face > 0) ? face : 1;
   }
+  const totalFaceCount = parseInt(faceRaw, 10) || physicalUnitCount;
+
+  // ── Network parse ────────────────────────────────────────────────────────
+  const networkCount = parseNetworkCount(networkRaw);
+
+  // ── Media classification ─────────────────────────────────────────────────
+  const cls = classifyMedia(name, screenType);
+  const parsedDim = parseDimensions(dimensions);
+  const groupId = `GRP-${String(idx + 1).padStart(3, '0')}`;
+  const fpKey   = { name, terminal, dimensions, screenType, slideNo, sequenceNo,
+                    quantity: physicalUnitCount, networkCount: networkRaw };
 
   stats.validRows++;
-  stats.totalQuantity += quantity;
-  stats.groups++;
 
-  const cls         = classifyMedia(name, screenType);
-  const parsedDim   = parseDimensions(dimensions);
-  const faceCount   = parseInt(faceRaw, 10) || 1;
-  const networkCount = parseInt(networkRaw, 10) || 0;
+  // ── Determine sales model ────────────────────────────────────────────────
+  let salesModel = 'physical_unit';
+  let networkInterpretationStatus = null;
+  let slotCount = 0;
+  let screenSlotCapacity = 0;
 
-  if (cls.isDigital) stats.digital += quantity;
-  else if (cls.isStatic) stats.static += quantity;
-  else stats.other += quantity;
+  if (networkCount > 0) {
+    stats.totalNetworkGroups++;
 
-  const groupId = `GRP-${String(idx + 1).padStart(3, '0')}`;
+    // Track distribution
+    const key = String(networkCount);
+    networkDistribution[key] = (networkDistribution[key] || 0) + 1;
 
-  const fpKey = { name, terminal, dimensions, screenType, slideNo, sequenceNo, quantity, networkCount: networkRaw };
+    if (cls.isStatic) {
+      // Statik + network → flag for review, don't create slots
+      salesModel = 'physical_unit';
+      networkInterpretationStatus = 'needs_review';
+      stats.needsReviewRows++;
+      console.warn(`  ⚠ NEEDS_REVIEW Row ${idx + 2}: "${name}" — STATIC media with Network Adedi="${networkRaw}"`);
+    } else {
+      // Digital or unclassified but has network — create playlist slots
+      salesModel = 'playlist_slot';
+      slotCount = networkCount;
+      screenSlotCapacity = totalFaceCount * slotCount;
+      stats.totalPlaylistSlots += slotCount;
+      stats.totalFaceSlotCapacity += screenSlotCapacity;
+    }
 
-  for (let i = 1; i <= quantity; i++) {
+    networkAudit.push({
+      rowNum: idx + 2,
+      name,
+      screenType,
+      isDigital: cls.isDigital,
+      isStatic: cls.isStatic,
+      adet: physicalUnitCount,
+      faceAdet: totalFaceCount,
+      networkRaw,
+      networkCount,
+      salesModel,
+      slotCount: salesModel === 'playlist_slot' ? slotCount : 0,
+      screenSlotCapacity,
+      networkInterpretationStatus: networkInterpretationStatus || 'ok',
+    });
+  }
+
+  // ── How many records to create ───────────────────────────────────────────
+  // playlist_slot → slotCount records  (NOT physicalUnitCount)
+  // physical_unit → physicalUnitCount records
+  const recordCount = salesModel === 'playlist_slot' ? slotCount : physicalUnitCount;
+
+  if (cls.isDigital)     stats.digital += recordCount;
+  else if (cls.isStatic) stats.static  += recordCount;
+  else                   stats.other   += recordCount;
+
+  if (salesModel === 'playlist_slot') stats.playlistSlotRecords += recordCount;
+  else                                stats.physicalUnitRecords  += recordCount;
+
+  stats.totalPhysicalUnits += physicalUnitCount;
+
+  // ── Create records ───────────────────────────────────────────────────────
+  for (let i = 1; i <= recordCount; i++) {
     const fp = generateFingerprint(fpKey, i);
     if (fingerprintSet.has(fp)) { skippedDups++; continue; }
     fingerprintSet.add(fp);
 
     currentSeq++;
-    const codeNum     = String(currentSeq).padStart(6, '0');
-    const unitIdx3    = String(i).padStart(3, '0');
+    const codeNum  = String(currentSeq).padStart(6, '0');
+    const idxLabel = String(i).padStart(3, '0');
+
+    // Display name: for slots show "SLOT-01", for physical show "— 001"
+    const unitLabel = salesModel === 'playlist_slot'
+      ? `SLOT-${idxLabel}`
+      : `— ${idxLabel}`;
 
     spaces.push({
-      id:                `SPC-MGA${codeNum}`,
-      code:              `MGA-${codeNum}`,
-      name:              `${name} — ${unitIdx3}`,
-      groupName:         name,
-      inventoryGroupId:  groupId,
-      unitIndex:         i,
-      sequenceNo:        typeof sequenceNo === 'number' ? sequenceNo : (parseInt(String(sequenceNo)) || 0),
-      slideNo:           typeof slideNo    === 'number' ? slideNo    : (parseInt(String(slideNo))    || 0),
-      terminal:          terminal || 'Ortak Alan',
-      location:          terminal || 'Ortak Alan',
+      id:                       `SPC-MGA${codeNum}`,
+      code:                     `MGA-${codeNum}`,
+      name:                     `${name} ${unitLabel}`,
+      groupName:                name,
+      inventoryGroupId:         groupId,
+      unitIndex:                i,
+      sequenceNo:               typeof sequenceNo === 'number' ? sequenceNo : (parseInt(String(sequenceNo)) || 0),
+      slideNo:                  typeof slideNo    === 'number' ? slideNo    : (parseInt(String(slideNo))    || 0),
+      terminal:                 terminal || 'Ortak Alan',
+      location:                 terminal || 'Ortak Alan',
       dimensions,
-      size:              dimensions || 'Muhtelif',
-      width:             parsedDim.width,
-      height:            parsedDim.height,
-      measurementUnit:   parsedDim.unit,
-      faceCount,
-      screenType:        screenType || '',
-      type:              cls.spaceType,
-      mediaType:         cls.typeLabel,
-      networkName:       networkRaw || '',
-      networkCount,
-      notes:             notes || '',
-      status:            'bos',
-      salesStatus:       'available',
-      isDigital:         cls.isDigital,
-      isStatic:          cls.isStatic,
-      isActive:          true,
-      price:             '₺0',
-      priceNumeric:      0,
-      dailyPrice:        0,
-      monthlyPrice:      0,
-      currency:          'TRY',
-      source:            'excel_import',
-      sourceFile:        'MGA REKLAM ALANLARI.xlsx',
-      sourceRow:         idx + 2,
-      importFingerprint: fp,
-      importBatchId:     'STATIC_JSON_v1',
-      created_at:        '2026-07-11T00:00:00.000Z',
+      size:                     dimensions || 'Muhtelif',
+      width:                    parsedDim.width,
+      height:                   parsedDim.height,
+      measurementUnit:          parsedDim.unit,
+
+      // ── Physical / slot counts ─────────────────────────────────────────
+      physicalUnitCount,        // Adet — gerçek fiziksel ekran sayısı
+      totalFaceCount,           // Face adet — toplam yüz sayısı
+      slotCount:                salesModel === 'playlist_slot' ? slotCount : null,
+      slotIndex:                salesModel === 'playlist_slot' ? i         : null,
+      screenSlotCapacity:       salesModel === 'playlist_slot' ? screenSlotCapacity : null,
+      // Legacy compat
+      faceCount:                totalFaceCount,
+      networkName:              networkRaw || '',
+      networkCount:             networkCount,
+
+      screenType:               screenType || '',
+      type:                     cls.spaceType,
+      mediaType:                cls.typeLabel,
+      notes:                    notes || '',
+
+      // ── Sales model ────────────────────────────────────────────────────
+      salesModel,               // 'playlist_slot' | 'physical_unit'
+      networkInterpretationStatus: networkInterpretationStatus || null,
+
+      status:                   'bos',
+      salesStatus:              'available',
+      isDigital:                cls.isDigital,
+      isStatic:                 cls.isStatic,
+      isActive:                 true,
+      price:                    '₺0',
+      priceNumeric:             0,
+      dailyPrice:               0,
+      monthlyPrice:             0,
+      currency:                 'TRY',
+      source:                   'excel_import',
+      sourceFile:               'MGA REKLAM ALANLARI.xlsx',
+      sourceRow:                idx + 2,
+      importFingerprint:        fp,
+      importBatchId:            'STATIC_JSON_v2',
+      created_at:               '2026-07-11T00:00:00.000Z',
     });
   }
 });
 
+stats.totalMgaRecords = spaces.length;
+
+// ── Console report ────────────────────────────────────────────────────────────
 const firstCode = spaces.length > 0 ? spaces[0].code : 'N/A';
 const lastCode  = spaces.length > 0 ? spaces[spaces.length - 1].code : 'N/A';
 
-console.log('\n=== IMPORT STATISTICS ===');
-console.log(`Source rows        : ${stats.sourceRows}`);
-console.log(`Valid rows (groups): ${stats.validRows}`);
-console.log(`Invalid rows       : ${invalidRows}`);
-console.log(`Total Adet (units) : ${stats.totalQuantity}`);
-console.log(`Created records    : ${spaces.length}`);
-console.log(`Skipped duplicates : ${skippedDups}`);
-console.log(`Digital units      : ${stats.digital}`);
-console.log(`Static units       : ${stats.static}`);
-console.log(`Other units        : ${stats.other}`);
-console.log(`First MGA code     : ${firstCode}`);
-console.log(`Last MGA code      : ${lastCode}`);
-console.log(`Unique fingerprints: ${fingerprintSet.size}`);
-console.log('=========================\n');
+console.log('\n═══════════════════════════════════════════════════════════════════');
+console.log('  MGA IMPORT STATISTICS');
+console.log('═══════════════════════════════════════════════════════════════════');
+console.log(`Excel source rows               : ${stats.sourceRows}`);
+console.log(`Valid rows (groups)             : ${stats.validRows}`);
+console.log(`Invalid rows (no name)          : ${stats.invalidRows}`);
+console.log(`Skipped duplicates              : ${skippedDups}`);
+console.log('───────────────────────────────────────────────────────────────────');
+console.log(`Total physicalUnitCount (Adet Σ): ${stats.totalPhysicalUnits}`);
+console.log(`Network groups detected         : ${stats.totalNetworkGroups}`);
+console.log(`  needs_review (static+network) : ${stats.needsReviewRows}`);
+console.log(`Total playlist slots created    : ${stats.totalPlaylistSlots}`);
+console.log(`Total face-slot capacity        : ${stats.totalFaceSlotCapacity.toLocaleString('tr-TR')}`);
+console.log('───────────────────────────────────────────────────────────────────');
+console.log(`Physical_unit MGA records       : ${stats.physicalUnitRecords}`);
+console.log(`Playlist_slot MGA records       : ${stats.playlistSlotRecords}`);
+console.log(`TOTAL MGA records               : ${stats.totalMgaRecords}`);
+console.log(`First MGA code                  : ${firstCode}`);
+console.log(`Last  MGA code                  : ${lastCode}`);
+console.log(`Unique fingerprints             : ${fingerprintSet.size}`);
+console.log('───────────────────────────────────────────────────────────────────');
+console.log(`Digital records                 : ${stats.digital}`);
+console.log(`Static records                  : ${stats.static}`);
+console.log(`Other records                   : ${stats.other}`);
+console.log('───────────────────────────────────────────────────────────────────');
+console.log('Network distribution:');
+Object.entries(networkDistribution).sort((a,b) => parseInt(a[0])-parseInt(b[0])).forEach(([k,v]) => {
+  console.log(`  ${k} Network : ${v} grup`);
+});
+
+console.log('\n── Network Audit Detail ──────────────────────────────────────────');
+networkAudit.forEach(r => {
+  const status = r.networkInterpretationStatus === 'needs_review' ? '⚠ NEEDS_REVIEW' : '✓';
+  console.log(`  [Row ${r.rowNum}] ${status} "${r.name.substring(0,50)}"`);
+  console.log(`         Adet=${r.adet}, Face=${r.faceAdet}, Network="${r.networkRaw}" → slotCount=${r.slotCount}, faceSlotCap=${r.screenSlotCapacity}`);
+});
+console.log('═══════════════════════════════════════════════════════════════════\n');
 
 // ── Generate TypeScript output ────────────────────────────────────────────────
+const networkAuditJson = JSON.stringify(networkAudit, null, 2);
+
 const ts = `/**
  * src/data/mgaSpaces.ts
  *
@@ -284,15 +432,18 @@ const ts = `/**
  * Source file : MGA REKLAM ALANLARI.xlsx
  * Generated at: ${new Date().toISOString()}
  *
- * Import stats:
- *   Source rows   : ${stats.sourceRows}
- *   Valid rows    : ${stats.validRows}
- *   Total units   : ${spaces.length}
- *   Digital       : ${stats.digital}
- *   Static        : ${stats.static}
- *   Other         : ${stats.other}
- *   First code    : ${firstCode}
- *   Last code     : ${lastCode}
+ * ═══ IMPORT STATISTICS ════════════════════════════════════════════════
+ * Source rows           : ${stats.sourceRows}
+ * Valid rows            : ${stats.validRows}
+ * Network groups        : ${stats.totalNetworkGroups}
+ * Playlist slot records : ${stats.playlistSlotRecords}
+ * Physical unit records : ${stats.physicalUnitRecords}
+ * Total MGA records     : ${stats.totalMgaRecords}
+ * Total face-slot cap.  : ${stats.totalFaceSlotCapacity.toLocaleString('tr-TR')}
+ * Needs review          : ${stats.needsReviewRows}
+ * First code            : ${firstCode}
+ * Last code             : ${lastCode}
+ * ══════════════════════════════════════════════════════════════════════
  */
 
 export interface MgaSpace {
@@ -311,13 +462,33 @@ export interface MgaSpace {
   width: number | null;
   height: number | null;
   measurementUnit: string;
+
+  /** Fiziksel ekran/ünite sayısı (Excel Adet kolonu) */
+  physicalUnitCount: number;
+  /** Toplam yüz sayısı (Excel Face adet kolonu) */
+  totalFaceCount: number;
+  /** Playlist slot sayısı — yalnızca salesModel='playlist_slot' olanlar için */
+  slotCount: number | null;
+  /** Bu kaydın slot indeksi (1..slotCount) */
+  slotIndex: number | null;
+  /** totalFaceCount × slotCount kapasitesi */
+  screenSlotCapacity: number | null;
+
+  // Legacy compat
   faceCount: number;
+  networkName: string;
+  networkCount: number;
+
   screenType: string;
   type: string;
   mediaType: string;
-  networkName: string;
-  networkCount: number;
   notes: string;
+
+  /** 'playlist_slot' | 'physical_unit' */
+  salesModel: string;
+  /** null | 'needs_review' */
+  networkInterpretationStatus: string | null;
+
   status: string;
   salesStatus: string;
   isDigital: boolean;
@@ -339,18 +510,30 @@ export interface MgaSpace {
 export const mgaSpaces: MgaSpace[] = ${JSON.stringify(spaces, null, 2)};
 
 export const mgaImportStats = {
-  sourceRows:   ${stats.sourceRows},
-  validRows:    ${stats.validRows},
-  totalUnits:   ${spaces.length},
-  digital:      ${stats.digital},
-  staticCount:  ${stats.static},
-  other:        ${stats.other},
-  firstCode:    '${firstCode}',
-  lastCode:     '${lastCode}',
-  generatedAt:  '${new Date().toISOString()}',
+  sourceRows:            ${stats.sourceRows},
+  validRows:             ${stats.validRows},
+  totalPhysicalUnits:    ${stats.totalPhysicalUnits},
+  networkGroups:         ${stats.totalNetworkGroups},
+  totalPlaylistSlots:    ${stats.totalPlaylistSlots},
+  totalFaceSlotCapacity: ${stats.totalFaceSlotCapacity},
+  playlistSlotRecords:   ${stats.playlistSlotRecords},
+  physicalUnitRecords:   ${stats.physicalUnitRecords},
+  totalMgaRecords:       ${stats.totalMgaRecords},
+  needsReviewRows:       ${stats.needsReviewRows},
+  digital:               ${stats.digital},
+  staticCount:           ${stats.static},
+  other:                 ${stats.other},
+  firstCode:             '${firstCode}',
+  lastCode:              '${lastCode}',
+  generatedAt:           '${new Date().toISOString()}',
 };
+
+/** Network audit log — rows where Network Adedi was found */
+export const mgaNetworkAudit = ${networkAuditJson};
 `;
 
 fs.writeFileSync(OUT_PATH, ts, 'utf-8');
 console.log(`✅  Written to: ${OUT_PATH}`);
-console.log(`    Total records in file: ${spaces.length}`);
+console.log(`    Total MGA records: ${spaces.length}`);
+console.log(`    Playlist slots   : ${stats.playlistSlotRecords}`);
+console.log(`    Physical units   : ${stats.physicalUnitRecords}`);
