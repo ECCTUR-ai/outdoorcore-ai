@@ -28,3 +28,9 @@ dist-ssr
 *.sw?
 .vercel
 .env*
+
+# Private import files — never commit to repo
+private-imports/
+
+# Scratch/debug scripts
+scratch/

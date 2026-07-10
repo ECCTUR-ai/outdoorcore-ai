@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { AdvertisingSpace } from '@/data/advertisingSpaces';
 import { spaceRepository } from '@/repositories';
+import { ExcelImportModal } from '@/components/design-system/ExcelImportModal';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { AdvertisingSpaceModal } from '@/components/design-system/AdvertisingSpaceModal';
 import { AdvertisingSpaceDetailPanel } from '@/components/design-system/AdvertisingSpaceDetailPanel';
@@ -89,11 +90,25 @@ export function InventoryListPage({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingSpace, setEditingSpace] = useState<AdvertisingSpace | undefined>(undefined);
   
+  // Excel import modal state
+  const [importModalOpen, setImportModalOpen] = useState(false);
+
+  // Group view state
+  const [viewMode, setViewMode] = useState<'single' | 'group'>('group');
+  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
+  
   // Bulk operations states
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const [bulkTerminalOpen, setBulkTerminalOpen] = useState(false);
+  const [bulkNetworkOpen, setBulkNetworkOpen] = useState(false);
+  const [bulkActiveOpen, setBulkActiveOpen] = useState(false);
+
   const [newBulkStatus, setNewBulkStatus] = useState<AdvertisingSpace['status']>('bos');
   const [newBulkPrice, setNewBulkPrice] = useState('');
+  const [newBulkTerminal, setNewBulkTerminal] = useState('');
+  const [newBulkNetwork, setNewBulkNetwork] = useState('');
+  const [newBulkActive, setNewBulkActive] = useState(true);
 
   // Load spaces
   const fetchSpaces = async (selectFirst = false) => {
@@ -232,7 +247,59 @@ export function InventoryListPage({
     return sortedSpaces.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   }, [sortedSpaces, currentPage, pageSize]);
 
-  const totalPages = Math.ceil(sortedSpaces.length / pageSize);
+  // Grouped spaces memo
+  const groupedSpaces = useMemo(() => {
+    const groupsMap = new Map<string, {
+      id: string;
+      groupName: string;
+      terminal: string;
+      size: string;
+      type: string;
+      mediaType: string;
+      networkName: string;
+      faceCount: number;
+      price: string;
+      priceNumeric: number;
+      units: AdvertisingSpace[];
+    }>();
+
+    sortedSpaces.forEach(space => {
+      const gId = space.inventoryGroupId || `SINGLE-${space.id}`;
+      const existing = groupsMap.get(gId);
+      
+      if (existing) {
+        existing.units.push(space);
+      } else {
+        groupsMap.set(gId, {
+          id: gId,
+          groupName: space.groupName || space.name,
+          terminal: space.terminal || space.location || '-',
+          size: space.size || space.dimensions || '-',
+          type: space.type || '-',
+          mediaType: space.mediaType || (space.isDigital ? 'Dijital' : (space.isStatic ? 'Statik' : 'Diğer')),
+          networkName: space.networkName || (space.networkId === 'saw-airport' ? 'SAW Network' : space.networkId === 'outdoor-istanbul' ? 'İstanbul Network' : ''),
+          faceCount: space.faceCount || 1,
+          price: space.price || '₺0',
+          priceNumeric: (space as any).priceNumeric || 0,
+          units: [space]
+        });
+      }
+    });
+
+    return Array.from(groupsMap.values());
+  }, [sortedSpaces]);
+
+  // Paginated groups
+  const paginatedGroups = useMemo(() => {
+    return groupedSpaces.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [groupedSpaces, currentPage, pageSize]);
+
+  const totalPages = useMemo(() => {
+    if (viewMode === 'group') {
+      return Math.ceil(groupedSpaces.length / pageSize);
+    }
+    return Math.ceil(sortedSpaces.length / pageSize);
+  }, [viewMode, groupedSpaces, sortedSpaces, pageSize]);
 
   // Headers sort toggle
   const handleSort = (col: string) => {
@@ -254,11 +321,38 @@ export function InventoryListPage({
     }
   };
 
+  const handleSelectGroup = (groupId: string, checked: boolean, groupUnits: AdvertisingSpace[]) => {
+    const unitIds = groupUnits.map(u => u.id);
+    if (checked) {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...unitIds])));
+    } else {
+      setSelectedIds(prev => prev.filter(id => !unitIds.includes(id)));
+    }
+  };
+
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(paginatedSpaces.map(s => s.id));
+      if (viewMode === 'group') {
+        const allPageUnitIds = paginatedGroups.flatMap(g => g.units.map(u => u.id));
+        setSelectedIds(prev => Array.from(new Set([...prev, ...allPageUnitIds])));
+      } else {
+        setSelectedIds(paginatedSpaces.map(s => s.id));
+      }
     } else {
-      setSelectedIds([]);
+      if (viewMode === 'group') {
+        const allPageUnitIds = paginatedGroups.flatMap(g => g.units.map(u => u.id));
+        setSelectedIds(prev => prev.filter(id => !allPageUnitIds.includes(id)));
+      } else {
+        setSelectedIds([]);
+      }
+    }
+  };
+
+  const toggleGroupExpand = (groupId: string) => {
+    if (expandedGroupIds.includes(groupId)) {
+      setExpandedGroupIds(prev => prev.filter(id => id !== groupId));
+    } else {
+      setExpandedGroupIds(prev => [...prev, groupId]);
     }
   };
 
@@ -275,9 +369,7 @@ export function InventoryListPage({
     if (selectedIds.length === 0) return;
     try {
       setLoading(true);
-      for (const id of selectedIds) {
-        await spaceRepository.update(id, { status: newBulkStatus });
-      }
+      await spaceRepository.updateBulk(selectedIds, { status: newBulkStatus });
       setSuccess(`${selectedIds.length} alanın durumu başarıyla güncellendi.`);
       setSelectedIds([]);
       setBulkStatusOpen(false);
@@ -293,14 +385,12 @@ export function InventoryListPage({
     if (selectedIds.length === 0 || !newBulkPrice) return;
     try {
       setLoading(true);
-      const numericVal = parseFloat(newBulkPrice) || 0;
+      const numericVal = parseFloat(newBulkPrice.replace(/[^\d.]/g, '')) || 0;
       const formattedPrice = `₺${numericVal.toLocaleString('tr-TR')}`;
-      for (const id of selectedIds) {
-        await spaceRepository.update(id, { 
-          price: formattedPrice,
-          priceNumeric: numericVal
-        });
-      }
+      await spaceRepository.updateBulk(selectedIds, { 
+        price: formattedPrice,
+        priceNumeric: numericVal
+      });
       setSuccess(`${selectedIds.length} alanın fiyatı başarıyla güncellendi.`);
       setSelectedIds([]);
       setBulkPriceOpen(false);
@@ -313,19 +403,82 @@ export function InventoryListPage({
     }
   };
 
+  const handleBulkTerminalUpdate = async () => {
+    if (selectedIds.length === 0 || !newBulkTerminal) return;
+    try {
+      setLoading(true);
+      await spaceRepository.updateBulk(selectedIds, { 
+        terminal: newBulkTerminal,
+        location: newBulkTerminal
+      });
+      setSuccess(`${selectedIds.length} alanın bölgesi/terminali başarıyla güncellendi.`);
+      setSelectedIds([]);
+      setBulkTerminalOpen(false);
+      setNewBulkTerminal('');
+      fetchSpaces(false);
+    } catch (e) {
+      setError('Toplu terminal güncelleme başarısız oldu.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkNetworkUpdate = async () => {
+    if (selectedIds.length === 0 || !newBulkNetwork) return;
+    try {
+      setLoading(true);
+      await spaceRepository.updateBulk(selectedIds, { 
+        networkName: newBulkNetwork
+      });
+      setSuccess(`${selectedIds.length} alanın network grubu başarıyla güncellendi.`);
+      setSelectedIds([]);
+      setBulkNetworkOpen(false);
+      setNewBulkNetwork('');
+      fetchSpaces(false);
+    } catch (e) {
+      setError('Toplu network güncelleme başarısız oldu.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkActiveUpdate = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      setLoading(true);
+      await spaceRepository.updateBulk(selectedIds, { 
+        isActive: newBulkActive
+      });
+      setSuccess(`${selectedIds.length} alanın aktiflik durumu başarıyla güncellendi.`);
+      setSelectedIds([]);
+      setBulkActiveOpen(false);
+      fetchSpaces(false);
+    } catch (e) {
+      setError('Toplu aktiflik durumu güncelleme başarısız oldu.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return;
+    
+    // Check space bindings first
+    const bindings = spaceRepository.checkSpaceBindings(selectedIds);
+    if (bindings.hasBindings) {
+      alert(`HATA: Seçtiğiniz reklam alanlarından ${bindings.reservedCount} adedi aktif rezervasyona, ${bindings.campaignedCount} adedi ise aktif kampanyalara bağlıdır. Bunlar toplu olarak silinemez! Lütfen önce bu rezervasyon/kampanya bağlarını kaldırın.`);
+      return;
+    }
+
     if (confirm(`Seçilen ${selectedIds.length} reklam alanını silmek istediğinize emin misiniz?`)) {
       try {
         setLoading(true);
-        for (const id of selectedIds) {
-          await spaceRepository.softDelete(id);
-        }
+        await spaceRepository.deleteBulk(selectedIds);
         setSuccess(`${selectedIds.length} reklam alanı silindi.`);
         setSelectedIds([]);
         fetchSpaces(true);
-      } catch (e) {
-        setError('Toplu silme işlemi sırasında bir hata oluştu.');
+      } catch (e: any) {
+        setError(e.message || 'Toplu silme işlemi sırasında bir hata oluştu.');
       } finally {
         setLoading(false);
       }
@@ -609,7 +762,7 @@ export function InventoryListPage({
             variant="minimal" 
             size="sm" 
             leftIcon={<UploadCloud size={13} />}
-            onClick={() => alert('Excel envanter listesi yükleniyor...')}
+            onClick={() => setImportModalOpen(true)}
           >
             İçe Aktar
           </Button>
@@ -834,6 +987,28 @@ export function InventoryListPage({
             </Button>
           </FormGroup>
         </div>
+
+        <div className="flex justify-between items-center border-t border-white/5 pt-3 mt-1 select-none text-[9px]">
+          <div className="flex items-center gap-1.5 bg-slate-950/60 border border-white/5 p-1 rounded-xl">
+            <button
+              type="button"
+              onClick={() => { setViewMode('single'); setCurrentPage(1); }}
+              className={`px-3 py-1 rounded-lg text-[8.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${viewMode === 'single' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+            >
+              Tekil Görünüm
+            </button>
+            <button
+              type="button"
+              onClick={() => { setViewMode('group'); setCurrentPage(1); }}
+              className={`px-3 py-1 rounded-lg text-[8.5px] font-black uppercase tracking-wider transition-all cursor-pointer ${viewMode === 'group' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+            >
+              Grup Görünümü
+            </button>
+          </div>
+          <span className="text-slate-500 font-bold uppercase tracking-wider text-[8.5px]">
+            Görünüm: {viewMode === 'group' ? 'Grup Bazlı Sıkıştırılmış Liste' : 'Tekil Birim Listesi'}
+          </span>
+        </div>
       </div>
 
       {/* Bulk Actions Panel */}
@@ -899,12 +1074,86 @@ export function InventoryListPage({
               )}
             </div>
 
+            <div className="relative">
+              <Button 
+                variant="minimal" 
+                size="xs" 
+                className="bg-white/5 hover:bg-white/10 text-[9.5px] uppercase font-bold"
+                onClick={() => setBulkTerminalOpen(!bulkTerminalOpen)}
+              >
+                Bölge Güncelle
+              </Button>
+              {bulkTerminalOpen && (
+                <div className="absolute right-0 bottom-9 bg-slate-900 border border-white/10 rounded-xl p-2 z-30 flex gap-1 items-center shadow-xl">
+                  <Input 
+                    placeholder="Terminal/Bölge"
+                    value={newBulkTerminal}
+                    onChange={(e) => setNewBulkTerminal(e.target.value)}
+                    className="h-7 py-0 px-2 text-[9px] w-28"
+                  />
+                  <Button variant="primary" size="xs" onClick={handleBulkTerminalUpdate} className="h-7 py-0 px-2 text-[8px] font-black uppercase">
+                    Uygula
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <Button 
+                variant="minimal" 
+                size="xs" 
+                className="bg-white/5 hover:bg-white/10 text-[9.5px] uppercase font-bold"
+                onClick={() => setBulkNetworkOpen(!bulkNetworkOpen)}
+              >
+                Network Güncelle
+              </Button>
+              {bulkNetworkOpen && (
+                <div className="absolute right-0 bottom-9 bg-slate-900 border border-white/10 rounded-xl p-2 z-30 flex gap-1 items-center shadow-xl">
+                  <Input 
+                    placeholder="Network ismi"
+                    value={newBulkNetwork}
+                    onChange={(e) => setNewBulkNetwork(e.target.value)}
+                    className="h-7 py-0 px-2 text-[9px] w-28"
+                  />
+                  <Button variant="primary" size="xs" onClick={handleBulkNetworkUpdate} className="h-7 py-0 px-2 text-[8px] font-black uppercase">
+                    Uygula
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <Button 
+                variant="minimal" 
+                size="xs" 
+                className="bg-white/5 hover:bg-white/10 text-[9.5px] uppercase font-bold"
+                onClick={() => setBulkActiveOpen(!bulkActiveOpen)}
+              >
+                Aktif/Pasif
+              </Button>
+              {bulkActiveOpen && (
+                <div className="absolute right-0 bottom-9 bg-slate-900 border border-white/10 rounded-xl p-2 z-30 flex gap-1 items-center shadow-xl">
+                  <Select 
+                    value={newBulkActive ? 'true' : 'false'} 
+                    onChange={(e) => setNewBulkActive(e.target.value === 'true')} 
+                    className="h-7 py-0 px-2 text-[9px] w-20 bg-slate-950"
+                  >
+                    <option value="true">Aktif</option>
+                    <option value="false">Pasif</option>
+                  </Select>
+                  <Button variant="primary" size="xs" onClick={handleBulkActiveUpdate} className="h-7 py-0 px-2 text-[8px] font-black uppercase">
+                    Uygula
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <PermissionGate permission="spaces.delete">
               <Button 
                 variant="danger" 
                 size="xs" 
                 onClick={handleBulkDelete}
-                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 text-[9.5px] uppercase font-bold border border-rose-500/15"
+                className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-455 text-[9.5px] uppercase font-bold border border-rose-500/15 animate-pulse"
               >
                 Sil
               </Button>
@@ -931,6 +1180,154 @@ export function InventoryListPage({
                   </Button>
                 ) : null}
               </div>
+            ) : viewMode === 'group' ? (
+              <Table 
+                headers={[
+                  <input 
+                    type="checkbox" 
+                    checked={paginatedGroups.length > 0 && paginatedGroups.every(g => g.units.every(u => selectedIds.includes(u.id)))} 
+                    onChange={(e) => handleSelectAll(e.target.checked)}
+                    className="rounded border-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 bg-slate-950"
+                  />,
+                  'Grup Adı',
+                  'Terminal',
+                  'Ölçü',
+                  'Medya Sınıfı',
+                  'Ünite Sayısı',
+                  'Fiyat',
+                  'Aksiyonlar'
+                ]}
+                className="min-w-full"
+              >
+                {paginatedGroups.map((g) => {
+                  const isGroupExpanded = expandedGroupIds.includes(g.id);
+                  const isAllChecked = g.units.every(u => selectedIds.includes(u.id));
+                  const isSomeChecked = g.units.some(u => selectedIds.includes(u.id)) && !isAllChecked;
+
+                  return (
+                    <React.Fragment key={g.id}>
+                      <TableRow 
+                        className={`cursor-pointer transition-colors border-b border-white/3 hover:bg-white/2 ${
+                          isGroupExpanded ? 'bg-blue-900/5 font-semibold text-white' : ''
+                        }`}
+                        onClick={() => toggleGroupExpand(g.id)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <input 
+                            type="checkbox" 
+                            checked={isAllChecked}
+                            ref={el => {
+                              if (el) el.indeterminate = isSomeChecked;
+                            }}
+                            onChange={(e) => handleSelectGroup(g.id, e.target.checked, g.units)}
+                            className="rounded border-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 bg-slate-950"
+                          />
+                        </TableCell>
+                        <TableCell className="font-extrabold text-white text-[10px]">
+                          <span className="mr-2 text-slate-500">{isGroupExpanded ? '▼' : '►'}</span>
+                          {g.groupName}
+                        </TableCell>
+                        <TableCell className="text-slate-400 font-bold text-[9.5px]">{g.terminal}</TableCell>
+                        <TableCell className="text-slate-400 font-bold text-[9.5px]">{g.size}</TableCell>
+                        <TableCell>
+                          <span className="text-[8.5px] font-black bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/10 uppercase tracking-widest leading-none">
+                            {g.mediaType}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-slate-300 font-bold text-[9.5px]">
+                          {g.units.length} Ünite
+                        </TableCell>
+                        <TableCell className="text-emerald-450 font-black text-[9.5px]">
+                          {g.price}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button 
+                            variant="minimal" 
+                            size="xs" 
+                            onClick={() => toggleGroupExpand(g.id)}
+                            className="h-6 px-2 bg-white/3 hover:bg-white/7 border-white/5 rounded-lg text-slate-400 hover:text-white text-[8px] font-black uppercase tracking-wider"
+                          >
+                            {isGroupExpanded ? 'Kapat' : 'Gör'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      
+                      {isGroupExpanded && (
+                        <tr className="bg-slate-950/40 border-b border-white/5">
+                          <td colSpan={8} className="p-3">
+                            <div className="rounded-xl border border-white/5 overflow-hidden bg-slate-950/60 p-2.5 space-y-2.5 max-h-60 overflow-y-auto">
+                              <div className="flex justify-between items-center text-[8px] text-slate-500 font-black uppercase tracking-widest px-2 border-b border-white/5 pb-1">
+                                <span>Grup Üniteleri Listesi ({g.units.length} Birim)</span>
+                                <span>Fingerprint Korumalı</span>
+                              </div>
+                              <table className="w-full text-left border-collapse">
+                                <thead>
+                                  <tr className="text-[8px] text-slate-400 uppercase tracking-wider border-b border-white/3">
+                                    <th className="py-1 px-2 w-8">Seç</th>
+                                    <th className="py-1 px-2">Birim Kodu</th>
+                                    <th className="py-1 px-2">Birim Adı</th>
+                                    <th className="py-1 px-2">Durum</th>
+                                    <th className="py-1 px-2">Fiyat</th>
+                                    <th className="py-1 px-2 text-right">İşlem</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {g.units.map(unit => {
+                                    const isUnitChecked = selectedIds.includes(unit.id);
+                                    const isUnitSelected = selectedCode === unit.code;
+                                    return (
+                                      <tr 
+                                        key={unit.id}
+                                        onClick={(e) => { e.stopPropagation(); setSelectedCode(unit.code); }}
+                                        className={`hover:bg-white/3 transition-colors cursor-pointer border-b border-white/2 ${isUnitSelected ? 'bg-blue-900/10' : ''}`}
+                                      >
+                                        <td className="py-1.5 px-2" onClick={e => e.stopPropagation()}>
+                                          <input 
+                                            type="checkbox"
+                                            checked={isUnitChecked}
+                                            onChange={e => handleSelectRow(unit.id, e.target.checked)}
+                                            className="rounded border-slate-700 text-blue-600 focus:ring-blue-500 bg-slate-950 text-[8px]"
+                                          />
+                                        </td>
+                                        <td className="py-1.5 px-2 font-mono text-slate-300 font-extrabold text-[9px]">{unit.code}</td>
+                                        <td className="py-1.5 px-2 text-white font-extrabold text-[9.5px]">{unit.name}</td>
+                                        <td className="py-1.5 px-2">
+                                          <SpaceStatusBadge status={unit.status} />
+                                        </td>
+                                        <td className="py-1.5 px-2 text-emerald-450 font-black text-[9px]">{unit.price}</td>
+                                        <td className="py-1.5 px-2 text-right" onClick={e => e.stopPropagation()}>
+                                          <div className="flex justify-end gap-1">
+                                            <Button 
+                                              variant="minimal" 
+                                              size="xs" 
+                                              onClick={() => handleEdit(unit)}
+                                              className="h-5 w-5 p-0 bg-white/3 border-white/5 rounded text-slate-400 hover:text-white"
+                                            >
+                                              <Edit3 size={8} />
+                                            </Button>
+                                            <Button 
+                                              variant="minimal" 
+                                              size="xs" 
+                                              onClick={() => handleDelete(unit.id)}
+                                              className="h-5 w-5 p-0 bg-rose-500/5 border-rose-500/10 rounded text-rose-500"
+                                            >
+                                              <Trash2 size={8} />
+                                            </Button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </Table>
             ) : (
               <Table 
                 headers={[
@@ -970,12 +1367,14 @@ export function InventoryListPage({
                 })}
               </Table>
             )}
-
+ 
             {/* Pagination Controls */}
-            {!loading && filteredSpaces.length > 0 && (
+            {!loading && (viewMode === 'group' ? groupedSpaces.length > 0 : filteredSpaces.length > 0) && (
               <div className="flex justify-between items-center px-6 py-4.5 border-t border-white/5 select-none bg-slate-950/20 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                 <div className="flex items-center gap-4">
-                  <span>Toplam {filteredSpaces.length} kayıttan {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredSpaces.length)} gösteriliyor</span>
+                  <span>
+                    Toplam {viewMode === 'group' ? groupedSpaces.length : filteredSpaces.length} kayıttan {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, viewMode === 'group' ? groupedSpaces.length : filteredSpaces.length)} gösteriliyor
+                  </span>
                   <div className="flex items-center gap-1.5">
                     <span>Sayfa Başı:</span>
                     <Select 
@@ -989,7 +1388,7 @@ export function InventoryListPage({
                     </Select>
                   </div>
                 </div>
-
+ 
                 <div className="flex gap-1">
                   <Button 
                     variant="outline" 
@@ -1031,7 +1430,7 @@ export function InventoryListPage({
             )}
           </div>
         </div>
-
+ 
         {/* Selected Space Detail Panel Drawer (Sticky Right) */}
         <div className="lg:col-span-4">
           {selectedSpace ? (
@@ -1048,7 +1447,7 @@ export function InventoryListPage({
           )}
         </div>
       </div>
-
+ 
       {/* Add / Edit Modal */}
       <AdvertisingSpaceModal 
         isOpen={modalOpen} 
@@ -1056,6 +1455,13 @@ export function InventoryListPage({
         onSuccess={() => fetchSpaces(false)}
         space={editingSpace}
         defaultType={defaultType}
+      />
+
+      {/* Excel Import Wizard Modal */}
+      <ExcelImportModal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        onSuccess={() => fetchSpaces(true)}
       />
 
     </div>

@@ -52,9 +52,11 @@ import { SalesWizard } from '@/pages/SalesWizard';
 import { DigitalSignage } from '@/pages/DigitalSignage';
 import { ProofOfPlayTable } from '@/components/design-system/ProofOfPlayTable';
 
+
 function AppContent() {
   const { currentRoute } = useApp();
   const { isAuthenticated, loading } = useAuth();
+
 
   if (loading) {
     return (

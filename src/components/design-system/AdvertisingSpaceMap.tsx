@@ -218,7 +218,7 @@ export function AdvertisingSpaceMap({ selectedCode, onSelectCode, spaces }: Adve
                 isSelected 
                   ? 'scale-115 ring-2 ring-white/20 border-white animate-bounce' 
                   : 'group-hover:scale-110'
-              } ${statusColors[space.status]}`}>
+              } ${statusColors[space.status as keyof typeof statusColors] || statusColors.bos}`}>
                 {space.code}
               </div>
 
@@ -234,7 +234,7 @@ export function AdvertisingSpaceMap({ selectedCode, onSelectCode, spaces }: Adve
                     space.status === 'teklif' ? 'text-amber-400' :
                     space.status === 'dolu' ? 'text-rose-455' : 'text-slate-400'
                   }`}>
-                    {statusLabels[space.status]}
+                    {statusLabels[space.status as keyof typeof statusLabels] || 'Bilinmiyor'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center mt-0.5">

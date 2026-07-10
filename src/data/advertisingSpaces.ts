@@ -57,6 +57,29 @@ export interface AdvertisingSpace {
   priceNumeric?: number;
   gazeTime?: number;
   visibilityIndex?: number;
+
+  inventoryGroupId?: string;
+  unitIndex?: number;
+  groupName?: string;
+  displayName?: string;
+  sequenceNo?: number | null;
+  slideNo?: number | null;
+  faceCount?: number;
+  screenType?: string;
+  mediaType?: string;
+  networkCount?: number;
+  description?: string;
+  salesStatus?: string;
+  isDigital?: boolean;
+  isStatic?: boolean;
+  isActive?: boolean;
+  dailyPrice?: number;
+  monthlyPrice?: number;
+  currency?: string;
+  sourceFile?: string;
+  sourceRow?: number;
+  importBatchId?: string;
+  importFingerprint?: string;
 }
 
 export const advertisingSpaces: AdvertisingSpace[] = [];

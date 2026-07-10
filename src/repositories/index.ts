@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from '@/utils/supabaseClient';
 import { companies } from '@/data/companies';
 import { advertisingSpaces } from '@/data/advertisingSpaces';
+import { mgaSpaces } from '@/data/mgaSpaces';
 import { offers } from '@/data/offers';
 import { contracts, Contract } from '@/data/contracts';
 import { reservations, conflicts } from '@/data/reservations';
@@ -156,6 +157,38 @@ if (typeof window !== 'undefined') {
       }
     });
     localStorage.setItem('outdoorcore_production_reset_done_v1', 'true');
+  }
+
+  // One-time migration: remove old auto-import localStorage artifacts
+  // MGA data is now bundled as static mgaSpaces.ts — no localStorage needed
+  const mgaCleanupKey = 'outdoorcore_mga_localstorage_cleanup_v1';
+  if (!localStorage.getItem(mgaCleanupKey)) {
+    try {
+      // Remove auto-import flags
+      localStorage.removeItem('outdoorcore_mga_auto_imported');
+      localStorage.removeItem('outdoorcore_mga_import_summary');
+
+      // Remove MGA-coded spaces from advertisingSpaces localStorage
+      const spacesStr = localStorage.getItem('outdoorcore_mock_advertisingSpaces');
+      if (spacesStr) {
+        const spaces = JSON.parse(spacesStr);
+        if (Array.isArray(spaces)) {
+          const cleaned = spaces.filter((s: any) => {
+            // Keep only non-MGA spaces (user-created, not from Excel import)
+            const isMga = (s.code && s.code.startsWith('MGA-')) ||
+                          (s.source === 'excel_import') ||
+                          (s.importFingerprint && s.importFingerprint.startsWith('MGA-FP-')) ||
+                          (s.importBatchId && s.importBatchId.startsWith('STATIC_JSON'));
+            return !isMga;
+          });
+          localStorage.setItem('outdoorcore_mock_advertisingSpaces', JSON.stringify(cleaned));
+          console.log(`[Migration] Cleaned ${spaces.length - cleaned.length} old MGA entries from localStorage. MGA data is now static.`);
+        }
+      }
+      localStorage.setItem(mgaCleanupKey, 'true');
+    } catch (e) {
+      console.warn('[Migration] MGA localStorage cleanup failed:', e);
+    }
   }
   
   if (!localStorage.getItem('outdoorcore_mock_companies')) {
@@ -811,13 +844,14 @@ export const companyRepository = {
 };
 
 export const spaceRepository = {
-  getAllSync() {
-    const local = getLocalData('advertisingSpaces', advertisingSpaces);
-    return local.filter((s: any) => !s.deleted_at);
+  getAllSync(): any[] {
+    // MGA static inventory is the authoritative base; merge with user-added spaces from localStorage
+    const userAdded = getLocalData('advertisingSpaces', []).filter((s: any) => !s.deleted_at && !s.importFingerprint);
+    return [...(mgaSpaces as any[]), ...userAdded];
   },
   getByIdSync(id: string) {
-    const local = getLocalData('advertisingSpaces', advertisingSpaces);
-    return local.find((s: any) => (s.id === id || s.code === id) && !s.deleted_at) || local[0];
+    const all = this.getAllSync();
+    return all.find((s: any) => (s.id === id || s.code === id)) || all[0];
   },
   async list() {
     const { organizationId } = getSessionInfo();
@@ -829,13 +863,15 @@ export const spaceRepository = {
           .eq('organization_id', organizationId)
           .is('deleted_at', null);
         if (error) throw error;
+        // If Supabase returns data, use it; otherwise fall through to static+local
         if (data && data.length > 0) return data.map(mapDbSpaceToUi);
       } catch (e) {
-        console.warn('Supabase spaces list failed, falling back:', e);
+        console.warn('Supabase spaces list failed, falling back to static data:', e);
       }
     }
-    const local = getLocalData('advertisingSpaces', advertisingSpaces);
-    return local.filter((s: any) => !s.deleted_at);
+    // Static MGA data + any user-created spaces in localStorage
+    const userAdded = getLocalData('advertisingSpaces', []).filter((s: any) => !s.deleted_at && !s.importFingerprint);
+    return [...mgaSpaces, ...userAdded] as any[];
   },
   async getById(id: string) {
     const { organizationId } = getSessionInfo();
@@ -1012,6 +1048,182 @@ export const spaceRepository = {
       return true;
     }
     return false;
+  },
+  async createBulk(spacesInput: any[]) {
+    const { organizationId, email } = getSessionInfo();
+    
+    const formattedSpaces = spacesInput.map((input: any) => {
+      const newId = input.id || 'SPC-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      return {
+        ...input,
+        id: newId,
+        organizationId,
+        created_at: new Date().toISOString(),
+        created_by: email,
+        status: input.status || 'bos',
+        price: input.price || '₺0',
+        priceNumeric: input.priceNumeric || 0,
+        currency: input.currency || 'TRY',
+        type: input.type || 'Diğer'
+      };
+    });
+
+    if (isSupabaseConfigured()) {
+      try {
+        const dbPayloads = formattedSpaces.map((item: any) => mapUiSpaceToDb(item.id, organizationId, email, item));
+        const { error } = await supabase
+          .from('spaces')
+          .insert(dbPayloads);
+        if (error) throw error;
+        
+        await auditLogRepository.log('space.bulk_created', 'space', `${formattedSpaces.length} units`);
+        await activityLogRepository.log(`Toplu envanter içe aktarıldı: ${formattedSpaces.length} ünite`, 'spaces');
+        
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('spaces_updated'));
+        }
+        return formattedSpaces;
+      } catch (e) {
+        console.warn('Supabase bulk insert failed, falling back:', e);
+      }
+    }
+
+    const local = getLocalData('advertisingSpaces', advertisingSpaces);
+    local.push(...formattedSpaces);
+    setLocalData('advertisingSpaces', local);
+
+    await auditLogRepository.log('space.bulk_created', 'space', `${formattedSpaces.length} units`);
+    await activityLogRepository.log(`Toplu envanter içe aktarıldı (Demo): ${formattedSpaces.length} ünite`, 'spaces');
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('spaces_updated'));
+    }
+    return formattedSpaces;
+  },
+  checkSpaceBindings(ids: string[]) {
+    const localRes = getLocalData('reservations', reservations).filter((r: any) => r.status !== 'İptal');
+    const localCampaigns = getLocalData('campaigns', campaigns).filter((c: any) => c.status !== 'İptal');
+    const localSpaces = getLocalData('advertisingSpaces', advertisingSpaces);
+    const spaceMap = new Map(localSpaces.map(s => [s.id, s.code]));
+
+    const reservedIds = new Set<string>();
+    const campaignedIds = new Set<string>();
+
+    ids.forEach(id => {
+      const code = spaceMap.get(id);
+      const hasRes = localRes.some((r: any) => r.spaceId === id || (code && r.spaceCode === code));
+      if (hasRes) {
+        reservedIds.add(id);
+      }
+      const hasCamp = localCampaigns.some((c: any) => c.spaceIds && c.spaceIds.includes(id));
+      if (hasCamp) {
+        campaignedIds.add(id);
+      }
+    });
+
+    return {
+      reservedCount: reservedIds.size,
+      campaignedCount: campaignedIds.size,
+      reservedIds: Array.from(reservedIds),
+      campaignedIds: Array.from(campaignedIds),
+      hasBindings: reservedIds.size > 0 || campaignedIds.size > 0
+    };
+  },
+  async updateBulk(ids: string[], updatePayload: any) {
+    const { email, organizationId } = getSessionInfo();
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase
+          .from('spaces')
+          .update(updatePayload)
+          .in('id', ids)
+          .eq('organization_id', organizationId);
+        if (error) throw error;
+        
+        await auditLogRepository.log('space.bulk_updated', 'space', `${ids.length} units`);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('spaces_updated'));
+        }
+        return ids.length;
+      } catch (e) {
+        console.warn('Supabase updateBulk failed, falling back:', e);
+      }
+    }
+
+    const local = getLocalData('advertisingSpaces', advertisingSpaces);
+    let updatedCount = 0;
+    
+    ids.forEach(id => {
+      const idx = local.findIndex((s: any) => s.id === id);
+      if (idx !== -1) {
+        local[idx] = {
+          ...local[idx],
+          ...updatePayload,
+          updated_at: new Date().toISOString(),
+          updated_by: email
+        };
+        updatedCount++;
+      }
+    });
+    
+    if (updatedCount > 0) {
+      setLocalData('advertisingSpaces', local);
+      await auditLogRepository.log('space.bulk_updated', 'space', `${updatedCount} units`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('spaces_updated'));
+      }
+    }
+    return updatedCount;
+  },
+  async deleteBulk(ids: string[]) {
+    const { email, organizationId } = getSessionInfo();
+    const bindings = this.checkSpaceBindings(ids);
+    if (bindings.hasBindings) {
+      throw new Error('Aktif rezervasyon veya kampanyaya bağlı alanlar toplu olarak silinemez. Bağlantıları kaldırın veya tekil olarak pasife alın.');
+    }
+    
+    if (isSupabaseConfigured()) {
+      try {
+        const timestamp = new Date().toISOString();
+        const { error } = await supabase
+          .from('spaces')
+          .update({ deleted_at: timestamp, deleted_by: email } as any)
+          .in('id', ids)
+          .eq('organization_id', organizationId);
+        if (error) throw error;
+        
+        await auditLogRepository.log('space.bulk_deleted', 'space', `${ids.length} units`);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('spaces_updated'));
+        }
+        return ids.length;
+      } catch (e) {
+        console.warn('Supabase deleteBulk failed, falling back:', e);
+      }
+    }
+
+    const local = getLocalData('advertisingSpaces', advertisingSpaces);
+    const timestamp = new Date().toISOString();
+    let deletedCount = 0;
+    
+    ids.forEach(id => {
+      const idx = local.findIndex((s: any) => s.id === id);
+      if (idx !== -1) {
+        local[idx].deleted_at = timestamp;
+        local[idx].deleted_by = email;
+        deletedCount++;
+      }
+    });
+    
+    if (deletedCount > 0) {
+      setLocalData('advertisingSpaces', local);
+      await auditLogRepository.log('space.bulk_deleted', 'space', `${deletedCount} units`);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('spaces_updated'));
+      }
+    }
+    return deletedCount;
   },
   async search(query: string) {
     const { organizationId } = getSessionInfo();
@@ -2344,6 +2556,54 @@ export const settingRepository = {
       return data.value;
     } catch {
       return defaultValue;
+    }
+  }
+};
+
+export const importBatchRepository = {
+  async list() {
+    try {
+      const stored = localStorage.getItem('outdoorcore_mock_import_batches');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  },
+  async create(batch: any) {
+    try {
+      const list = await this.list();
+      const newBatch = {
+        ...batch,
+        id: batch.id || 'BAT-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+        startedAt: batch.startedAt || new Date().toISOString(),
+        completedAt: batch.completedAt || new Date().toISOString(),
+        status: batch.status || 'Hazırlanıyor'
+      };
+      list.push(newBatch);
+      localStorage.setItem('outdoorcore_mock_import_batches', JSON.stringify(list));
+      return newBatch;
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
+  },
+  async update(id: string, updatePayload: any) {
+    try {
+      const list = await this.list();
+      const idx = list.findIndex((b: any) => b.id === id);
+      if (idx !== -1) {
+        list[idx] = {
+          ...list[idx],
+          ...updatePayload,
+          completedAt: new Date().toISOString()
+        };
+        localStorage.setItem('outdoorcore_mock_import_batches', JSON.stringify(list));
+        return list[idx];
+      }
+      throw new Error('Batch bulunamadı.');
+    } catch (e) {
+      console.error(e);
+      throw e;
     }
   }
 };
