@@ -6,6 +6,14 @@ import { Label, Input, Switch, FormGroup } from '@/components/design-system/Form
 export function Ayarlar() {
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifySms, setNotifySms] = useState(false);
+  const [optionDuration, setOptionDuration] = useState(() => 
+    Number(localStorage.getItem('outdoorcore_option_duration_hours') || '72')
+  );
+
+  const handleSave = () => {
+    localStorage.setItem('outdoorcore_option_duration_hours', String(optionDuration));
+    alert('Ayarlar başarıyla kaydedildi!');
+  };
 
   return (
     <div className="max-w-xl mx-auto space-y-6">
@@ -25,6 +33,14 @@ export function Ayarlar() {
             <Label>Destek E-Posta Adresi</Label>
             <Input defaultValue="destek@outdoorcore.ai" />
           </FormGroup>
+          <FormGroup>
+            <Label>Varsayılan Rezervasyon Opsiyon Süresi (Saat)</Label>
+            <Input 
+              type="number" 
+              value={optionDuration} 
+              onChange={e => setOptionDuration(Number(e.target.value) || 0)} 
+            />
+          </FormGroup>
           <div className="border-t border-slate-100 dark:border-slate-850 pt-4 space-y-3">
             <Label>Bildirim Kanalları</Label>
             <Switch 
@@ -39,7 +55,7 @@ export function Ayarlar() {
             />
           </div>
           <div className="border-t border-slate-100 dark:border-slate-850 pt-4 flex justify-end">
-            <Button variant="primary" size="sm" onClick={() => alert('Ayarlar başarıyla kaydedildi mockup!')}>
+            <Button variant="primary" size="sm" onClick={handleSave}>
               Ayarları Kaydet
             </Button>
           </div>

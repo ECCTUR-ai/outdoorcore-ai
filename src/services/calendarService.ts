@@ -197,12 +197,20 @@ export const calendarService = {
       // 1. Reservations
       const reservations = await reservationRepository.getAll();
       reservations.forEach((r: any) => {
-        if (r.status === 'İptal' || r.status === 'cancelled' || r.is_deleted || r.deleted_at) return;
+        if (r.status === 'CANCELLED' || r.status === 'İptal' || r.status === 'cancelled' || r.is_deleted || r.deleted_at) return;
         const startIso = parseTurkishDate(r.startDate);
         const endIso = parseTurkishDate(r.endDate);
         const eId = `rsv-${r.id}`;
         
         if (deletedIds.has(eId)) return;
+
+        let defaultColor = 'yellow';
+        const normStatus = (r.status || '').toUpperCase();
+        if (normStatus === 'CONFIRMED' || normStatus === 'AKTİF') defaultColor = 'green';
+        else if (normStatus === 'CONTRACT_PENDING') defaultColor = 'amber';
+        else if (normStatus === 'SALES_APPROVAL_PENDING') defaultColor = 'orange';
+        else if (normStatus === 'OPTION_EXPIRED') defaultColor = 'light-gray';
+        else if (normStatus === 'CANCELLED') defaultColor = 'gray';
 
         events.push({
           eventId: eId,
@@ -217,7 +225,8 @@ export const calendarService = {
           sourceEntityId: r.id,
           companyId: r.companyId,
           spaceIds: r.spaceId ? [r.spaceId] : [],
-          amount: parseFloat((r.budget || '').replace(/[^0-9]/g, '')) || 0
+          amount: parseFloat((r.budget || '').replace(/[^0-9]/g, '')) || 0,
+          color: defaultColor
         });
       });
 

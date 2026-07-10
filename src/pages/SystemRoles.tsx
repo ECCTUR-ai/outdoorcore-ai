@@ -93,8 +93,72 @@ export function SystemRoles() {
     { name: 'Kadir Kaya', email: 'customer@outdoorcore.ai', role: 'Customer', status: 'Aktif', twoFactor: false, lastLogin: 'Dün' }
   ];
 
+  const handleDevRoleChange = (newRole: string) => {
+    const cachedSession = localStorage.getItem('outdoorcore_mock_session');
+    if (cachedSession) {
+      try {
+        const session = JSON.parse(cachedSession);
+        session.user.role = newRole;
+        localStorage.setItem('outdoorcore_mock_session', JSON.stringify(session));
+        alert(`Aktif oturum rolünüz "${newRole}" olarak değiştirildi. Sayfa yenileniyor.`);
+        window.location.reload();
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      const mockSession = {
+        user: {
+          id: 'mock-user-id',
+          email: 'demo@outdoorcore.ai',
+          name: 'Demo Kullanıcısı',
+          role: newRole,
+          organizationId: 'org-prod-0001',
+          lastLogin: new Date().toLocaleString()
+        },
+        org: {
+          id: 'org-prod-0001',
+          name: 'MGA Production Org',
+          tier: 'Tier A',
+          licenseStatus: 'Aktif',
+          licenseExpiry: '31.12.2026'
+        }
+      };
+      localStorage.setItem('outdoorcore_mock_session', JSON.stringify(mockSession));
+      alert(`Aktif oturum rolünüz "${newRole}" olarak değiştirildi. Sayfa yenileniyor.`);
+      window.location.reload();
+    }
+  };
+
   return (
     <div className="space-y-6 text-left select-none pb-12">
+      
+      {/* Dev/Demo Active Role Switcher Alert */}
+      <div className="p-4 rounded-3xl bg-blue-950/20 border border-blue-500/15 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-blue-400 uppercase tracking-wider">
+            <Key size={12} className="animate-pulse" />
+            DEV / DEMO HIZLI YETKİ TEST PANELİ
+          </div>
+          <p className="text-[9.5px] text-slate-400 font-semibold m-0 leading-tight">
+            Yeni MGA operasyonel akışını farklı yetki seviyelerinde test etmek için aktif kullanıcı rolünüzü anlık değiştirebilirsiniz.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-[8.5px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Mevcut: <span className="text-white font-extrabold">{currentUser?.role || 'Super Admin'}</span></span>
+          <select 
+            value={currentUser?.role || 'Super Admin'}
+            onChange={(e) => handleDevRoleChange(e.target.value)}
+            className="bg-[#0b1329] border border-blue-500/30 rounded-xl px-3 py-1.5 text-[9.5px] font-black text-white focus:outline-none cursor-pointer uppercase tracking-wider select-none shrink-0"
+          >
+            <option value="Super Admin">SUPER ADMIN</option>
+            <option value="CEO">CEO</option>
+            <option value="Sales Director">SATIŞ MÜDÜRÜ (Sales Director)</option>
+            <option value="Sales Representative">SATIŞ TEMSİLCİSİ (Sales Rep)</option>
+            <option value="Finance Manager">FİNANS MÜDÜRÜ</option>
+            <option value="Read Only">SALT OKUNUR (Read Only)</option>
+          </select>
+        </div>
+      </div>
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/3 p-5 rounded-3xl border border-white/5 shadow-sm text-left">

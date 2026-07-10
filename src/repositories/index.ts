@@ -1354,14 +1354,143 @@ const parseDDMMYYYY = (dateStr: string): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+// ----------------------------------------------------
+// RESERVATION AUDIT LOG REPOSITORY
+// ----------------------------------------------------
+
+export interface ReservationAuditLog {
+  id: string;
+  reservationId: string;
+  user: string;
+  date: string;
+  oldStatus: string;
+  newStatus: string;
+  description: string;
+}
+
+export const reservationAuditRepository = {
+  getLogs(): ReservationAuditLog[] {
+    try {
+      const stored = localStorage.getItem('outdoorcore_reservation_audit_logs');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  },
+  log(reservationId: string, oldStatus: string, newStatus: string, description: string, user?: string) {
+    try {
+      const logs = this.getLogs();
+      const sessionUser = getSessionInfo().email || user || 'Sistem';
+      const newLog: ReservationAuditLog = {
+        id: 'AUD-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+        reservationId,
+        user: sessionUser,
+        date: new Date().toLocaleString('tr-TR'),
+        oldStatus,
+        newStatus,
+        description
+      };
+      logs.unshift(newLog);
+      localStorage.setItem('outdoorcore_reservation_audit_logs', JSON.stringify(logs.slice(0, 100)));
+      window.dispatchEvent(new Event('reservation_audit_logs_updated'));
+    } catch (e) {
+      console.error('Failed to log reservation audit:', e);
+    }
+  }
+};
+
+export const normalizeReservationStatus = (status: string): string => {
+  const s = (status || '').toUpperCase();
+  if (s === 'AKTİF' || s === 'ACTIVE' || s === 'CONFIRMED' || s === 'KESİNLEŞTİ' || s === 'REZERVE') {
+    return 'CONFIRMED';
+  }
+  if (s === 'YAKLAŞAN' || s === 'OPTIONED' || s === 'OPSİYONLU') {
+    return 'OPTIONED';
+  }
+  if (s === 'İPTAL' || s === 'CANCELLED') {
+    return 'CANCELLED';
+  }
+  if (s === 'DRAFT' || s === 'TASLAK') {
+    return 'DRAFT';
+  }
+  if (s === 'CONTRACT_PENDING' || s === 'SÖZLEŞME BEKLİYOR') {
+    return 'CONTRACT_PENDING';
+  }
+  if (s === 'SALES_APPROVAL_PENDING' || s === 'SATIŞ ONAYI BEKLİYOR') {
+    return 'SALES_APPROVAL_PENDING';
+  }
+  if (s === 'OPTION_EXPIRED' || s === 'OPSİYON SÜRESİ DOLDU') {
+    return 'OPTION_EXPIRED';
+  }
+  return status || 'OPTIONED';
+};
+
 export const reservationRepository = {
+  checkAndExpireOptionsSync() {
+    try {
+      const list = getLocalData('reservations', reservations);
+      let changed = false;
+      const now = new Date();
+      
+      const updatedList = list.map((r: any) => {
+        // Kural: Sözleşme imzalanmamışsa (contractStatus !== 'SIGNED') opsiyon süresi dolduğunda otomatik OPTION_EXPIRED yapılır.
+        if (r.status === 'OPTIONED' && r.contractStatus !== 'SIGNED' && r.optionExpiresAt) {
+          const expireDate = new Date(r.optionExpiresAt);
+          if (now > expireDate) {
+            changed = true;
+            reservationAuditRepository.log(
+              r.id, 
+              r.status, 
+              'OPTION_EXPIRED', 
+              'Opsiyon süresi doldu. Sistem tarafından otomatik olarak serbest bırakıldı.', 
+              'Sistem'
+            );
+            
+            // Sistem bildirimi oluştur
+            try {
+              const notifsStr = localStorage.getItem('outdoorcore_mock_notifications');
+              const notifs = notifsStr ? JSON.parse(notifsStr) : [];
+              notifs.unshift({
+                id: 'NTF-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+                title: 'Opsiyon Süresi Doldu',
+                desc: `${r.clientName} firmasına ait ${r.spaceCode} opsiyonunun süresi dolduğu için serbest bırakıldı.`,
+                time: 'Şimdi',
+                type: 'alert'
+              });
+              localStorage.setItem('outdoorcore_mock_notifications', JSON.stringify(notifs.slice(0, 50)));
+            } catch (e) {
+              console.error(e);
+            }
+            
+            return { ...r, status: 'OPTION_EXPIRED' };
+          }
+        }
+        return r;
+      });
+
+      if (changed) {
+        localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(updatedList));
+        reservations.length = 0;
+        reservations.push(...updatedList);
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (e) {
+      console.error('Failed to run checkAndExpireOptionsSync:', e);
+    }
+  },
   getAllSync() {
-    return getLocalData('reservations', reservations);
+    this.checkAndExpireOptionsSync();
+    const data = getLocalData('reservations', reservations);
+    return data.map((d: any) => ({
+      ...d,
+      status: normalizeReservationStatus(d.status)
+    }));
   },
   getConflictsSync() {
     return conflicts;
   },
   async getAll() {
+    this.checkAndExpireOptionsSync();
     if (isSupabaseConfigured()) {
       try {
         const { data, error } = await supabase.from('reservations').select('*');
@@ -1377,7 +1506,7 @@ export const reservationRepository = {
             startDate: d.start_date,
             endDate: d.end_date,
             durationDays: d.duration_days,
-            status: d.status,
+            status: normalizeReservationStatus(d.status),
             budget: d.budget,
             creativeFiles: d.creative_files || [],
             aiRecommendation: d.ai_recommendation,
@@ -1385,23 +1514,55 @@ export const reservationRepository = {
             spaceId: d.space_id,
             offerId: d.offer_id,
             contractId: d.contract_id,
-            campaignId: d.campaign_id
+            campaignId: d.campaign_id,
+            optionStartedAt: d.option_started_at,
+            optionExpiresAt: d.option_expires_at,
+            optionDurationHours: d.option_duration_hours,
+            optionCreatedBy: d.option_created_by,
+            optionExtendedAt: d.option_extended_at,
+            optionExtendedBy: d.option_extended_by,
+            optionExtensionCount: d.option_extension_count,
+            contractStatus: d.contract_status || 'DRAFT',
+            salesApprovalStatus: d.sales_approval_status || 'PENDING',
+            salesApprovedBy: d.sales_approved_by,
+            salesApprovedAt: d.sales_approved_at,
+            salesRejectionReason: d.sales_rejection_reason,
+            salesRevisionNote: d.sales_revision_note,
+            confirmedAt: d.confirmed_at,
+            confirmedBy: d.confirmed_by,
+            inventoryLockedAt: d.inventory_locked_at
           }));
         }
       } catch (e) {
         console.warn('Supabase reservations fetch failed, using local:', e);
       }
     }
-    return getLocalData('reservations', reservations);
+    const data = getLocalData('reservations', reservations);
+    return data.map((d: any) => ({
+      ...d,
+      status: normalizeReservationStatus(d.status)
+    }));
   },
-  isSpaceAvailableSync(spaceId: string, spaceCode: string, startDateStr: string, endDateStr: string): boolean {
+  isSpaceAvailableSync(spaceId: string, spaceCode: string, startDateStr: string, endDateStr: string, excludeReservationId?: string): boolean {
     const startA = parseDDMMYYYY(startDateStr);
     const endA = parseDDMMYYYY(endDateStr);
     if (!startA || !endA) return true;
 
-    const list = this.getAllSync();
+    // Her denetimde süresi biten opsiyonları kapat
+    this.checkAndExpireOptionsSync();
+
+    const list = getLocalData('reservations', reservations);
     for (const r of list) {
-      if (r.status === 'İptal') continue;
+      if (excludeReservationId && r.id === excludeReservationId) continue;
+      
+      const normalizedStatus = normalizeReservationStatus(r.status);
+      // Müsaitliği engelleyen statüler: OPTIONED, CONTRACT_PENDING, SALES_APPROVAL_PENDING, CONFIRMED
+      const consumesCapacity = normalizedStatus === 'OPTIONED' || 
+                               normalizedStatus === 'CONTRACT_PENDING' || 
+                               normalizedStatus === 'SALES_APPROVAL_PENDING' || 
+                               normalizedStatus === 'CONFIRMED';
+      if (!consumesCapacity) continue;
+
       const matchSpace = (r.spaceId && r.spaceId === spaceId) || (r.spaceCode && r.spaceCode === spaceCode);
       if (matchSpace) {
         const startB = parseDDMMYYYY(r.startDate);
@@ -1416,54 +1577,81 @@ export const reservationRepository = {
     return true;
   },
   async update(id: string, input: any) {
-    const { organizationId, email } = getSessionInfo();
+    const { email } = getSessionInfo();
     
-    if (isSupabaseConfigured()) {
-      try {
-        const payload: any = {};
-        if (input.spaceCode !== undefined) payload.space_code = input.spaceCode;
-        if (input.spaceName !== undefined) payload.space_name = input.spaceName;
-        if (input.location !== undefined) payload.location = input.location;
-        if (input.clientName !== undefined) payload.client_name = input.clientName;
-        if (input.agencyName !== undefined) payload.agency_name = input.agencyName;
-        if (input.startDate !== undefined) payload.start_date = input.startDate;
-        if (input.endDate !== undefined) payload.end_date = input.endDate;
-        if (input.durationDays !== undefined) payload.duration_days = input.durationDays;
-        if (input.status !== undefined) payload.status = input.status;
-        if (input.budget !== undefined) payload.budget = input.budget;
-        if (input.creativeFiles !== undefined) payload.creative_files = input.creativeFiles;
-        if (input.aiRecommendation !== undefined) payload.ai_recommendation = input.aiRecommendation;
-        if (input.companyId !== undefined) payload.company_id = input.companyId;
-        if (input.spaceId !== undefined) payload.space_id = input.spaceId;
-        if (input.offerId !== undefined) payload.offer_id = input.offerId;
-        if (input.contractId !== undefined) payload.contract_id = input.contractId;
-        if (input.campaignId !== undefined) payload.campaign_id = input.campaignId;
-        
-        payload.updated_at = new Date().toISOString();
-        payload.updated_by = email;
-
-        const { error } = await supabase
-          .from('reservations')
-          .update(payload)
-          .eq('id', id);
-        if (error) throw error;
-      } catch (e) {
-        console.warn('Supabase reservation update failed:', e);
-      }
-    }
-
+    // Yalnızca değişen alanları güncellemeden önce eski durumu saklayalım (Audit log için)
     const local = getLocalData('reservations', reservations);
     const idx = local.findIndex(r => r.id === id);
     if (idx !== -1) {
-      local[idx] = { ...local[idx], ...input };
+      const oldRecord = local[idx];
+      const oldStatus = oldRecord.status;
+      const newStatus = input.status !== undefined ? normalizeReservationStatus(input.status) : oldStatus;
+      
+      const updatedRecord = { 
+        ...oldRecord, 
+        ...input,
+        status: newStatus 
+      };
+
+      if (isSupabaseConfigured()) {
+        try {
+          const payload: any = {};
+          if (input.spaceCode !== undefined) payload.space_code = input.spaceCode;
+          if (input.spaceName !== undefined) payload.space_name = input.spaceName;
+          if (input.location !== undefined) payload.location = input.location;
+          if (input.clientName !== undefined) payload.client_name = input.clientName;
+          if (input.agencyName !== undefined) payload.agency_name = input.agencyName;
+          if (input.startDate !== undefined) payload.start_date = input.startDate;
+          if (input.endDate !== undefined) payload.end_date = input.endDate;
+          if (input.durationDays !== undefined) payload.duration_days = input.durationDays;
+          if (input.status !== undefined) payload.status = newStatus;
+          if (input.budget !== undefined) payload.budget = input.budget;
+          if (input.creativeFiles !== undefined) payload.creative_files = input.creativeFiles;
+          if (input.aiRecommendation !== undefined) payload.ai_recommendation = input.aiRecommendation;
+          if (input.companyId !== undefined) payload.company_id = input.companyId;
+          if (input.spaceId !== undefined) payload.space_id = input.spaceId;
+          if (input.offerId !== undefined) payload.offer_id = input.offerId;
+          if (input.contractId !== undefined) payload.contract_id = input.contractId;
+          if (input.campaignId !== undefined) payload.campaign_id = input.campaignId;
+          if (input.contractStatus !== undefined) payload.contract_status = input.contractStatus;
+          if (input.salesApprovalStatus !== undefined) payload.sales_approval_status = input.salesApprovalStatus;
+          if (input.salesApprovedBy !== undefined) payload.sales_approved_by = input.salesApprovedBy;
+          if (input.salesApprovedAt !== undefined) payload.sales_approved_at = input.salesApprovedAt;
+          if (input.salesRejectionReason !== undefined) payload.sales_rejection_reason = input.salesRejectionReason;
+          if (input.salesRevisionNote !== undefined) payload.sales_revision_note = input.salesRevisionNote;
+          if (input.confirmedAt !== undefined) payload.confirmed_at = input.confirmedAt;
+          if (input.confirmedBy !== undefined) payload.confirmed_by = input.confirmedBy;
+          if (input.inventoryLockedAt !== undefined) payload.inventory_locked_at = input.inventoryLockedAt;
+          
+          payload.updated_at = new Date().toISOString();
+          payload.updated_by = email;
+
+          const { error } = await supabase
+            .from('reservations')
+            .update(payload)
+            .eq('id', id);
+          if (error) throw error;
+        } catch (e) {
+          console.warn('Supabase reservation update failed:', e);
+        }
+      }
+
+      local[idx] = updatedRecord;
       localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(local));
       
-      // Sync in-memory mutations
       const resIdx = reservations.findIndex(r => r.id === id);
       if (resIdx !== -1) {
-        reservations[resIdx] = { ...reservations[resIdx], ...input };
+        reservations[resIdx] = updatedRecord;
       }
-      return local[idx];
+
+      // Log status transition if changed
+      if (oldStatus !== newStatus || input.auditLogDescription) {
+        const desc = input.auditLogDescription || `${oldStatus} durumundan ${newStatus} durumuna geçildi.`;
+        reservationAuditRepository.log(id, oldStatus, newStatus, desc, email);
+      }
+
+      window.dispatchEvent(new Event('storage'));
+      return updatedRecord;
     }
     throw new Error('Reservation not found');
   },
@@ -1471,31 +1659,94 @@ export const reservationRepository = {
     const { organizationId, email } = getSessionInfo();
     const newId = input.id || 'RSV-' + Math.random().toString(36).substring(2, 6).toUpperCase();
     
+    // Varsayılan opsiyon süresi ayardan okunur
+    const optionDuration = Number(localStorage.getItem('outdoorcore_option_duration_hours') || '72');
+    const optionStartedAt = new Date().toISOString();
+    let optionExpiresAt = input.optionExpiresAt;
+    if (!optionExpiresAt) {
+      const expDate = new Date();
+      expDate.setHours(expDate.getHours() + optionDuration);
+      optionExpiresAt = expDate.toISOString();
+    }
+
+    const defaultStatus = normalizeReservationStatus(input.status || 'OPTIONED');
+
+    // Müsaitlik kontrolü (Super Admin override edebilmeli)
+    const isAvail = this.isSpaceAvailableSync(
+      input.spaceId || '', 
+      input.spaceCode || '', 
+      input.startDate || '', 
+      input.endDate || '', 
+      newId
+    );
+
+    if (!isAvail && !input.overrideConflict) {
+      throw new Error('Seçilen mecra belirtilen tarihlerde dolu veya opsiyonludur.');
+    }
+
+    const newRecord: any = {
+      id: newId,
+      spaceCode: input.spaceCode || '',
+      spaceName: input.spaceName || '',
+      location: input.location || '',
+      clientName: input.clientName || '',
+      agencyName: input.agencyName || '-',
+      startDate: input.startDate || '',
+      endDate: input.endDate || '',
+      durationDays: input.durationDays || 30,
+      status: defaultStatus,
+      budget: input.budget || '₺0',
+      creativeFiles: input.creativeFiles || [],
+      aiRecommendation: input.aiRecommendation || 'Planlama yapıldı.',
+      companyId: input.companyId || '',
+      spaceId: input.spaceId || '',
+      offerId: input.offerId || '',
+      contractId: input.contractId || '',
+      campaignId: input.campaignId || '',
+      
+      // Opsiyon verileri
+      optionStartedAt,
+      optionExpiresAt,
+      optionDurationHours: optionDuration,
+      optionCreatedBy: email,
+      optionExtensionCount: 0,
+
+      // Durum verileri
+      contractStatus: input.contractStatus || 'DRAFT',
+      salesApprovalStatus: input.salesApprovalStatus || 'PENDING'
+    };
+
     if (isSupabaseConfigured()) {
       try {
         const payload: any = {
           id: newId,
           organization_id: organizationId,
           created_by: email,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          space_code: newRecord.spaceCode,
+          space_name: newRecord.spaceName,
+          location: newRecord.location,
+          client_name: newRecord.clientName,
+          agency_name: newRecord.agencyName,
+          start_date: newRecord.startDate,
+          end_date: newRecord.endDate,
+          duration_days: newRecord.durationDays,
+          status: newRecord.status,
+          budget: newRecord.budget,
+          creative_files: newRecord.creativeFiles,
+          ai_recommendation: newRecord.aiRecommendation,
+          company_id: newRecord.companyId,
+          space_id: newRecord.spaceId,
+          offer_id: newRecord.offerId,
+          contract_id: newRecord.contractId,
+          campaign_id: newRecord.campaignId,
+          option_started_at: newRecord.optionStartedAt,
+          option_expires_at: newRecord.optionExpiresAt,
+          option_duration_hours: newRecord.optionDurationHours,
+          option_created_by: newRecord.optionCreatedBy,
+          contract_status: newRecord.contractStatus,
+          sales_approval_status: newRecord.salesApprovalStatus
         };
-        if (input.spaceCode !== undefined) payload.space_code = input.spaceCode;
-        if (input.spaceName !== undefined) payload.space_name = input.spaceName;
-        if (input.location !== undefined) payload.location = input.location;
-        if (input.clientName !== undefined) payload.client_name = input.clientName;
-        if (input.agencyName !== undefined) payload.agency_name = input.agencyName;
-        if (input.startDate !== undefined) payload.start_date = input.startDate;
-        if (input.endDate !== undefined) payload.end_date = input.endDate;
-        if (input.durationDays !== undefined) payload.duration_days = input.durationDays;
-        if (input.status !== undefined) payload.status = input.status;
-        if (input.budget !== undefined) payload.budget = input.budget;
-        if (input.creativeFiles !== undefined) payload.creative_files = input.creativeFiles;
-        if (input.aiRecommendation !== undefined) payload.ai_recommendation = input.aiRecommendation;
-        if (input.companyId !== undefined) payload.company_id = input.companyId;
-        if (input.spaceId !== undefined) payload.space_id = input.spaceId;
-        if (input.offerId !== undefined) payload.offer_id = input.offerId;
-        if (input.contractId !== undefined) payload.contract_id = input.contractId;
-        if (input.campaignId !== undefined) payload.campaign_id = input.campaignId;
 
         const { error } = await supabase
           .from('reservations')
@@ -1507,16 +1758,17 @@ export const reservationRepository = {
     }
 
     const local = getLocalData('reservations', reservations);
-    const newRecord = {
-      id: newId,
-      ...input
-    };
     local.push(newRecord);
     localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(local));
-    
-    // Sync in-memory mutations
     reservations.push(newRecord);
-    
+
+    // Audit log
+    const desc = input.overrideConflict 
+      ? `Rezervasyon oluşturuldu. Opsiyon Süresi: ${optionDuration} Saat. ⚠️ KAPASİTE ÇAKIŞMASI BİLİNÇLİ AŞILDI. Gerekçe: ${input.conflictOverrideReason || 'Belirtilmedi'}`
+      : `Rezervasyon oluşturuldu. Durum: ${newRecord.status}. Opsiyon Süresi: ${optionDuration} Saat.`;
+    reservationAuditRepository.log(newId, 'NONE', newRecord.status, desc, email);
+
+    window.dispatchEvent(new Event('storage'));
     return newRecord;
   }
 };

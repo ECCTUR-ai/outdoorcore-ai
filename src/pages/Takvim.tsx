@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { CalendarEvent } from '@/types/calendar';
 import { calendarService } from '@/services/calendarService';
-import { companyRepository, spaceRepository, taskRepository, notificationRepository } from '@/repositories';
+import { companyRepository, spaceRepository, taskRepository, notificationRepository, reservationRepository } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
 import { EntityLink } from '@/components/design-system/EntityLink';
@@ -504,14 +504,31 @@ export function PlanningEmptyState({ onClearFilters }: PlanningEmptyStateProps) 
   );
 }
 
+const getEventColorClass = (color?: string, isSelected?: boolean, fallbackClass = '') => {
+  if (isSelected) return 'bg-blue-600 text-white border-blue-600 shadow-md scale-102';
+  if (color === 'red') return 'bg-rose-500/15 border-rose-500/30 text-rose-500';
+  if (color === 'yellow') return 'bg-yellow-500/15 border-yellow-500/30 text-yellow-500 dark:text-yellow-400';
+  if (color === 'amber') return 'bg-amber-500/15 border-amber-500/30 text-amber-500 dark:text-amber-400';
+  if (color === 'orange') return 'bg-orange-500/15 border-orange-500/30 text-orange-500 dark:text-orange-400';
+  if (color === 'green') return 'bg-emerald-500/15 border-emerald-500/30 text-emerald-500 dark:text-emerald-400';
+  if (color === 'gray') return 'bg-slate-500/15 border-slate-500/35 text-slate-500';
+  if (color === 'light-gray') return 'bg-slate-700/10 border-slate-700/20 text-slate-500 dark:text-slate-400';
+  return fallbackClass || 'bg-slate-100 dark:bg-white/3 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/10';
+};
+
 export function Takvim() {
   const { setCurrentRoute } = useApp();
   const { resolvedTheme } = useTheme();
   
-  // Date context default: June 2026 (mock data peak)
-  const [currentYear, setCurrentYear] = useState(2026);
-  const [currentMonth, setCurrentMonth] = useState(5); // 0-indexed, so 5 is June
-  const [selectedDate, setSelectedDate] = useState<string>('2026-06-15'); // Mock standard selected day
+  // Date context default: current year
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth()); // 0-indexed current month
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${today.getFullYear()}-${mm}-${dd}`;
+  });
   
   // View states: 'day' | 'week' | 'month' | 'timeline' | 'resource'
   const [activeView, setActiveView] = useState<'day' | 'week' | 'month' | 'timeline' | 'resource'>('month');
@@ -527,18 +544,54 @@ export function Takvim() {
   const [movingEvent, setMovingEvent] = useState<CalendarEvent | null>(null);
   const [newDates, setNewDates] = useState({ start: '', end: '' });
 
-  // Event inputs
-  const [eventInput, setEventInput] = useState({
-    title: '',
-    description: '',
-    type: 'task' as CalendarEvent['type'],
-    start: '2026-06-15',
-    end: '2026-06-15',
-    status: 'Yapılacak',
-    priority: 'medium' as CalendarEvent['priority'],
-    companyId: '',
-    spaceId: '',
-    amount: ''
+  // Event inputs (dynamic dates)
+  const [eventInput, setEventInput] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    return {
+      title: '',
+      description: '',
+      type: 'task' as CalendarEvent['type'],
+      start: dateStr,
+      end: dateStr,
+      status: 'Yapılacak',
+      priority: 'medium' as CalendarEvent['priority'],
+      companyId: '',
+      spaceId: '',
+      amount: ''
+    };
+  });
+
+  const [resInput, setResInput] = useState(() => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    
+    const expDate = new Date();
+    expDate.setHours(expDate.getHours() + 72);
+    const expYyyy = expDate.getFullYear();
+    const expMm = String(expDate.getMonth() + 1).padStart(2, '0');
+    const expDd = String(expDate.getDate()).padStart(2, '0');
+    const expDateStr = `${expYyyy}-${expMm}-${expDd}`;
+
+    return {
+      companyId: '',
+      brand: '',
+      campaignName: '',
+      startDate: dateStr,
+      endDate: dateStr,
+      spaceId: '',
+      optionExpiresAt: expDateStr,
+      salesRep: 'ceo@outdoorcore.ai',
+      notes: '',
+      overrideConflict: false,
+      conflictOverrideReason: ''
+    };
   });
 
   const [reservationType, setReservationType] = useState<'static' | 'led'>('static');
@@ -662,6 +715,67 @@ export function Takvim() {
   };
 
   // Add custom event handler
+  const handleCreateStaticReservation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resInput.companyId || !resInput.campaignName || !resInput.spaceId || !resInput.brand || !resInput.startDate || !resInput.endDate || !resInput.optionExpiresAt || !resInput.salesRep) {
+      alert('Lütfen tüm zorunlu alanları doldurun.');
+      return;
+    }
+
+    const space = spacesList.find(s => s.id === resInput.spaceId);
+    const company = companiesList.find(c => c.id === resInput.companyId);
+    if (!space || !company) return;
+
+    try {
+      const budgetVal = `₺ ${(space.price || '0').replace(/[^0-9]/g, '')}`;
+      await reservationRepository.create({
+        spaceId: space.id,
+        spaceCode: space.code,
+        spaceName: space.name,
+        location: space.location || 'İstanbul',
+        clientName: company.name,
+        startDate: resInput.startDate.split('-').reverse().join('.'),
+        endDate: resInput.endDate.split('-').reverse().join('.'),
+        durationDays: Math.ceil(Math.abs(new Date(resInput.endDate).getTime() - new Date(resInput.startDate).getTime()) / (1000 * 60 * 60 * 24)) || 30,
+        status: 'OPTIONED',
+        budget: budgetVal,
+        companyId: company.id,
+        optionExpiresAt: new Date(resInput.optionExpiresAt).toISOString(),
+        optionCreatedBy: resInput.salesRep,
+        notes: `${resInput.brand} - Not: ${resInput.notes}`,
+        overrideConflict: resInput.overrideConflict,
+        conflictOverrideReason: resInput.conflictOverrideReason
+      });
+
+      setSuccess('Opsiyonlu Rezervasyon başarıyla oluşturuldu ve mecra geçici olarak soft-lock altına alındı.');
+      setCreateModalOpen(false);
+      
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      const dateStr = `${yyyy}-${mm}-${dd}`;
+      setResInput({
+        companyId: '',
+        brand: '',
+        campaignName: '',
+        startDate: dateStr,
+        endDate: dateStr,
+        spaceId: '',
+        optionExpiresAt: dateStr,
+        salesRep: 'ceo@outdoorcore.ai',
+        notes: '',
+        overrideConflict: false,
+        conflictOverrideReason: ''
+      });
+
+      await loadEvents();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Rezervasyon oluşturulurken bir hata meydana geldi.');
+    }
+  };
+
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -869,11 +983,7 @@ export function Takvim() {
                     setSelectedDate(dateStr);
                   }}
                   className={`text-[8.5px] px-1 py-0.5 rounded truncate font-bold leading-tight flex items-center gap-1 select-none border transition-all ${
-                    hasConflict 
-                      ? 'bg-rose-500/15 border-rose-500/30 text-rose-500'
-                      : e.eventId === selectedEventId
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-102'
-                        : 'bg-slate-100 dark:bg-white/3 border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-white/10'
+                    getEventColorClass(e.color, e.eventId === selectedEventId)
                   }`}
                   title={`${e.title} (${getEventTypeName(e.type)})`}
                 >
@@ -1109,11 +1219,7 @@ export function Takvim() {
                             position: 'absolute'
                           }}
                           className={`h-9 px-2.5 rounded-full flex items-center justify-between text-[9px] font-black uppercase tracking-wide cursor-pointer transition-all border shadow-sm truncate select-none ${
-                            isConflict
-                              ? 'bg-rose-500/20 border-rose-500/40 text-rose-500 animate-pulse'
-                              : isSelected
-                                ? 'bg-blue-600 border-blue-600 text-white scale-102 z-20 shadow-md'
-                                : 'bg-slate-150 dark:bg-white/4 border-slate-250 dark:border-white/5 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/8'
+                            getEventColorClass(e.color, e.eventId === selectedEventId, 'bg-slate-150 dark:bg-white/4 border-slate-250 dark:border-white/5 text-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/8')
                           }`}
                           title={`${e.title}: ${e.start} - ${e.end}`}
                         >
@@ -1209,14 +1315,8 @@ export function Takvim() {
                             position: 'absolute'
                           }}
                           className={`h-8 px-2 rounded-lg flex items-center justify-between text-[8px] font-black uppercase tracking-wide cursor-pointer transition-all border shadow-sm select-none truncate ${
-                            isConflict
-                              ? 'bg-rose-500/25 border-rose-500/50 text-rose-500'
-                              : isSelected
-                                ? 'bg-blue-600 border-blue-600 text-white scale-102 z-20'
-                                : e.type === 'campaign' 
-                                  ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' 
-                                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                          }`}
+                             getEventColorClass(e.color, e.eventId === selectedEventId, e.type === 'campaign' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400')
+                           }`}
                           title={`${e.title}: ${e.start} - ${e.end}`}
                         >
                           <span className="truncate flex items-center gap-1">
@@ -1797,6 +1897,196 @@ export function Takvim() {
               }}
               onCancel={() => setCreateModalOpen(false)}
             />
+          ) : eventInput.type === 'reservation' && reservationType === 'static' ? (
+            <form onSubmit={handleCreateStaticReservation} className="space-y-4 text-left">
+              {/* Dynamic Conflict Alert */}
+              {(() => {
+                const startReverse = resInput.startDate.split('-').reverse().join('.');
+                const endReverse = resInput.endDate.split('-').reverse().join('.');
+                const isConflicted = resInput.spaceId && resInput.startDate && resInput.endDate
+                  ? !reservationRepository.isSpaceAvailableSync(resInput.spaceId, '', startReverse, endReverse)
+                  : false;
+                
+                return isConflicted ? (
+                  <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-500 flex items-start gap-2 text-[10.5px]">
+                    <ShieldAlert size={14} className="shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-black uppercase tracking-wider block mb-0.5">⚠️ KAPASİTE ÇAKIŞMASI</span>
+                      Seçilen mecra belirtilen tarihlerde doludur. Rezervasyonu tamamlamak için Super Admin yetkilendirmesiyle "Çakışmayı Zorla" seçeneğini açıp gerekçe belirtmelisiniz.
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormGroup>
+                  <Label htmlFor="res-company">Firma *</Label>
+                  <Select
+                    id="res-company"
+                    required
+                    value={resInput.companyId}
+                    onChange={e => setResInput(prev => ({ ...prev, companyId: e.target.value }))}
+                  >
+                    <option value="">Firma Seçin...</option>
+                    {companiesList.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </Select>
+                </FormGroup>
+
+                <FormGroup>
+                  <Label htmlFor="res-brand">Marka *</Label>
+                  <Input
+                    id="res-brand"
+                    required
+                    placeholder="Müşteri markası..."
+                    value={resInput.brand}
+                    onChange={e => setResInput(prev => ({ ...prev, brand: e.target.value }))}
+                  />
+                </FormGroup>
+              </div>
+
+              <FormGroup>
+                <Label htmlFor="res-camp">Kampanya / Çalışma Adı *</Label>
+                <Input
+                  id="res-camp"
+                  required
+                  placeholder="Kampanya ismi girin..."
+                  value={resInput.campaignName}
+                  onChange={e => setResInput(prev => ({ ...prev, campaignName: e.target.value }))}
+                />
+              </FormGroup>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormGroup>
+                  <Label htmlFor="res-start">Başlangıç Tarihi *</Label>
+                  <Input
+                    id="res-start"
+                    type="date"
+                    required
+                    value={resInput.startDate}
+                    onChange={e => setResInput(prev => ({ ...prev, startDate: e.target.value }))}
+                  />
+                </FormGroup>
+                <FormGroup>
+                  <Label htmlFor="res-end">Bitiş Tarihi *</Label>
+                  <Input
+                    id="res-end"
+                    type="date"
+                    required
+                    value={resInput.endDate}
+                    onChange={e => setResInput(prev => ({ ...prev, endDate: e.target.value }))}
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormGroup>
+                  <Label htmlFor="res-space">Reklam Mecrası *</Label>
+                  <Select
+                    id="res-space"
+                    required
+                    value={resInput.spaceId}
+                    onChange={e => setResInput(prev => ({ ...prev, spaceId: e.target.value }))}
+                  >
+                    <option value="">Mecra Seçin...</option>
+                    {spacesList.map(s => (
+                      <option key={s.id} value={s.id}>{s.code} - {s.name}</option>
+                    ))}
+                  </Select>
+                </FormGroup>
+
+                <FormGroup>
+                  <Label htmlFor="res-expiry">Opsiyon Bitiş Tarihi *</Label>
+                  <Input
+                    id="res-expiry"
+                    type="date"
+                    required
+                    value={resInput.optionExpiresAt}
+                    onChange={e => setResInput(prev => ({ ...prev, optionExpiresAt: e.target.value }))}
+                  />
+                </FormGroup>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormGroup>
+                  <Label htmlFor="res-rep">Satış Temsilcisi *</Label>
+                  <Input
+                    id="res-rep"
+                    required
+                    placeholder="temsilci@outdoorcore.ai"
+                    value={resInput.salesRep}
+                    onChange={e => setResInput(prev => ({ ...prev, salesRep: e.target.value }))}
+                  />
+                </FormGroup>
+              </div>
+
+              <FormGroup>
+                <Label htmlFor="res-notes">Notlar</Label>
+                <textarea
+                  id="res-notes"
+                  rows={2}
+                  placeholder="Ek notlar ve açıklama..."
+                  className="w-full text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-white/3 border border-slate-250 dark:border-white/5 rounded-xl p-2.5 text-xs outline-none"
+                  value={resInput.notes}
+                  onChange={e => setResInput(prev => ({ ...prev, notes: e.target.value }))}
+                />
+              </FormGroup>
+
+              {/* Super Admin Override Control */}
+              {(() => {
+                const startReverse = resInput.startDate.split('-').reverse().join('.');
+                const endReverse = resInput.endDate.split('-').reverse().join('.');
+                const isConflicted = resInput.spaceId && resInput.startDate && resInput.endDate
+                  ? !reservationRepository.isSpaceAvailableSync(resInput.spaceId, '', startReverse, endReverse)
+                  : false;
+
+                return isConflicted ? (
+                  <div className="p-3.5 rounded-2xl bg-white/3 border border-white/5 space-y-3.5">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-black text-white select-none">
+                      <input
+                        type="checkbox"
+                        checked={resInput.overrideConflict}
+                        onChange={e => setResInput(prev => ({ ...prev, overrideConflict: e.target.checked }))}
+                        className="rounded border-white/10 bg-[#0f172a] text-blue-500 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+                      />
+                      ÇAKIŞMAYI ZORLA VE KAYDET (Super Admin Yetkisi)
+                    </label>
+                    {resInput.overrideConflict && (
+                      <FormGroup>
+                        <Label htmlFor="res-reason">Çakışma Gerekçesi *</Label>
+                        <Input
+                          id="res-reason"
+                          required
+                          placeholder="Neden bu mecrada çakışmaya izin verildi?"
+                          value={resInput.conflictOverrideReason}
+                          onChange={e => setResInput(prev => ({ ...prev, conflictOverrideReason: e.target.value }))}
+                        />
+                      </FormGroup>
+                    )}
+                  </div>
+                ) : null;
+              })()}
+
+              <div className="flex justify-end gap-2.5 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCreateModalOpen(false)}
+                >
+                  İptal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className="bg-blue-650 hover:bg-blue-600 text-white font-bold"
+                >
+                  Opsiyonlu Rezervasyon Oluştur
+                </Button>
+              </div>
+            </form>
           ) : (
             <form onSubmit={handleCreateEvent} className="space-y-4 text-left">
               <FormGroup>

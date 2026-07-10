@@ -105,16 +105,24 @@ export function Dashboard() {
   // 1. ÜST KPI Calculations from real state
   const metrics = useMemo(() => {
     const totalSpaces = spaces.length;
-    const doluSpaces = spaces.filter(s => s.status === 'dolu').length;
+    const doluSpaces = spaces.filter(s => s.status === 'rezerve').length;
     const occupancyRate = totalSpaces > 0 ? ((doluSpaces / totalSpaces) * 100).toFixed(1) : '0';
 
-    // Ciro this month (ending or active in June 2026)
-    const thisMonthContracts = contracts.filter(c => 
-      c.status !== 'cancelled' && 
-      c.status !== 'İptal' &&
-      (c.endDate.includes('.06.2026') || c.endDate.includes('2026-06'))
+    // Kesinleşmiş Ciro (Yalnızca CONFIRMED durumundaki rezervasyonların toplam bütçesi)
+    const confirmedRes = reservations.filter(r => r.status === 'CONFIRMED');
+    const thisMonthCiro = confirmedRes.reduce((sum, r) => {
+      const val = parseFloat((r.budget || '').replace(/[^0-9]/g, '')) || 0;
+      return sum + val;
+    }, 0);
+
+    // Opsiyonel / Bekleyen Pipeline Değeri (OPTIONED, CONTRACT_PENDING, SALES_APPROVAL_PENDING)
+    const pipelineRes = reservations.filter(r => 
+      ['OPTIONED', 'CONTRACT_PENDING', 'SALES_APPROVAL_PENDING'].includes(r.status)
     );
-    const thisMonthCiro = thisMonthContracts.reduce((sum, c) => sum + (c.valueNumeric || 0), 0);
+    const optionedPipelineValue = pipelineRes.reduce((sum, r) => {
+      const val = parseFloat((r.budget || '').replace(/[^0-9]/g, '')) || 0;
+      return sum + val;
+    }, 0);
 
     const totalExpectedCiro = spaces.reduce((sum, s) => sum + ((s as any).priceNumeric || 0), 0);
     const activeContractsCount = contracts.filter(c => c.status === 'signed' || c.status === 'active' || c.status === 'Aktif').length;
@@ -136,23 +144,31 @@ export function Dashboard() {
     }
 
     const activeCampaignsCount = campaigns.filter(c => c.status === 'Aktif' || c.status === 'active').length;
-    const activeReservationsCount = reservations.filter(r => r.status === 'Aktif' || r.status === 'active').length;
+    
+    // MGA Akış Sayıları
+    const optionedCount = reservations.filter(r => r.status === 'OPTIONED').length;
+    const approvalPendingCount = reservations.filter(r => r.status === 'SALES_APPROVAL_PENDING').length;
+    const confirmedCount = reservations.filter(r => r.status === 'CONFIRMED').length;
+    const expiredCount = reservations.filter(r => r.status === 'OPTION_EXPIRED').length;
 
-    // Pipeline sum
-    const pipelineValue = offers.reduce((sum, o) => sum + (o.valueNumeric || 0), 0);
+    const totalTracked = confirmedCount + optionedCount + approvalPendingCount + expiredCount;
+    const conversionRate = totalTracked > 0 ? ((confirmedCount / totalTracked) * 100).toFixed(1) : '0';
 
     return {
       totalSpaces,
       occupancyRate,
-      thisMonthCiro: `₺${(thisMonthCiro / 1000000).toFixed(1)}M`,
+      thisMonthCiro: `₺${(thisMonthCiro / 1000000).toFixed(2)}M`,
       totalExpectedCiro: `₺${(totalExpectedCiro / 1000000).toFixed(1)}M`,
       activeContractsCount,
       expiringThisMonthCount,
       pendingCollections: `₺${(pendingCollections / 1000000).toFixed(1)}M`,
       pendingCollectionsVal: pendingCollections,
       activeCampaignsCount,
-      activeReservationsCount,
-      pipelineValue: `₺${(pipelineValue / 1000000).toFixed(1)}M`,
+      optionedCount,
+      approvalPendingCount,
+      confirmedCount,
+      optionedPipelineValue: `₺${(optionedPipelineValue / 1000000).toFixed(2)}M`,
+      conversionRate,
       rawOccupancy: totalSpaces > 0 ? (doluSpaces / totalSpaces) * 100 : 0
     };
   }, [spaces, offers, contracts, reservations, campaigns, finance]);
@@ -350,10 +366,10 @@ export function Dashboard() {
           glowColor="purple"
         />
         <DarkKpiCard
-          title="Bu Ay Ciro"
+          title="Kesinleşmiş Ciro"
           value={loading ? '...' : metrics.thisMonthCiro}
           percentage=""
-          subtext="Aktif fatura"
+          subtext="Konfirme edilen ciro"
           icon={<Coins size={13} />}
           iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-500/10"
           glowColor="green"
@@ -401,20 +417,39 @@ export function Dashboard() {
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
         />
         <DarkKpiCard
-          title="Aktif Rezervasyon"
-          value={loading ? '...' : String(metrics.activeReservationsCount)}
+          title="Kesinleşmiş Ciro"
+          value={loading ? '...' : metrics.thisMonthCiro}
           percentage=""
-          subtext="Onaylanan yerler"
-          icon={<Calendar size={13} />}
+          subtext="Kesin satışı onaylanan"
+          icon={<Coins size={13} />}
           iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-500/10"
+          glowColor="green"
         />
         <DarkKpiCard
-          title="Pipeline Satış"
-          value={loading ? '...' : metrics.pipelineValue}
+          title="Opsiyon Pipeline"
+          value={loading ? '...' : metrics.optionedPipelineValue}
           percentage=""
-          subtext="Teklif havuzu"
+          subtext="Opsiyon & Onay bekleyen"
           icon={<TrendingUp size={13} />}
           iconBgColor="bg-indigo-500/10 text-indigo-400 border-indigo-500/10"
+          glowColor="yellow"
+        />
+        <DarkKpiCard
+          title="Mecra Konfirmasyon"
+          value={loading ? '...' : `${metrics.confirmedCount} Kesin`}
+          percentage={`${metrics.conversionRate}%`}
+          subtext={`Dönüşüm: %${metrics.conversionRate}`}
+          icon={<Calendar size={13} />}
+          iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
+          glowColor="blue"
+        />
+        <DarkKpiCard
+          title="Süreç Havuzu"
+          value={loading ? '...' : `${metrics.optionedCount} Ops / ${metrics.approvalPendingCount} Onay`}
+          percentage=""
+          subtext="Opsiyonlu & Onay bekleyenler"
+          icon={<Activity size={13} />}
+          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
         />
       </div>
 

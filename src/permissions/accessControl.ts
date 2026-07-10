@@ -50,7 +50,10 @@ export type PermissionKey =
   | 'calendar.create'
   | 'calendar.update'
   | 'calendar.delete'
-  | 'calendar.export';
+  | 'calendar.export'
+  | 'reservations.create'
+  | 'reservations.approve'
+  | 'reservations.confirm';
 
 export type EnterpriseRoleType = 
   | 'Super Admin'
@@ -76,7 +79,8 @@ export const ROLE_PERMISSIONS_MATRIX: Record<EnterpriseRoleType, PermissionKey[]
     'media.upload', 'media.delete', 'maintenance.assign', 'maintenance.close', 'users.view', 'users.create',
     'users.update', 'users.delete', 'roles.manage', 'settings.manage', 'audit.view', 'activity.view', 'ai.use', 'executive.view',
     'notifications.view', 'notifications.manage', 'tasks.view', 'tasks.create', 'tasks.assign', 'tasks.complete',
-    'calendar.view', 'calendar.create', 'calendar.update', 'calendar.delete', 'calendar.export'
+    'calendar.view', 'calendar.create', 'calendar.update', 'calendar.delete', 'calendar.export',
+    'reservations.create', 'reservations.approve', 'reservations.confirm'
   ],
   'CEO': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update', 'companies.delete',
@@ -86,20 +90,23 @@ export const ROLE_PERMISSIONS_MATRIX: Record<EnterpriseRoleType, PermissionKey[]
     'media.upload', 'maintenance.close', 'users.view', 'users.create', 'roles.manage', 'settings.manage',
     'audit.view', 'activity.view', 'ai.use', 'executive.view',
     'notifications.view', 'notifications.manage', 'tasks.view', 'tasks.create', 'tasks.assign', 'tasks.complete',
-    'calendar.view', 'calendar.create', 'calendar.update', 'calendar.delete', 'calendar.export'
+    'calendar.view', 'calendar.create', 'calendar.update', 'calendar.delete', 'calendar.export',
+    'reservations.create', 'reservations.approve', 'reservations.confirm'
   ],
   'Sales Director': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'companies.create', 'companies.update',
     'spaces.view', 'offers.view', 'offers.create', 'offers.update', 'offers.delete', 'offers.approve',
     'contracts.view', 'contracts.sign', 'campaigns.view', 'media.upload',
     'reports.view', 'reports.export', 'ai.use', 'notifications.view', 'tasks.view', 'tasks.create', 'tasks.assign', 'tasks.complete',
-    'calendar.view', 'calendar.create', 'calendar.update', 'calendar.export'
+    'calendar.view', 'calendar.create', 'calendar.update', 'calendar.export',
+    'reservations.create', 'reservations.approve', 'reservations.confirm'
   ],
   'Sales Representative': [
     'dashboard.view', 'companies.view', 'companies.create',
     'spaces.view', 'offers.view', 'offers.create', 'offers.update',
     'contracts.view', 'campaigns.view', 'media.upload', 'ai.use', 'notifications.view', 'tasks.view',
-    'calendar.view', 'calendar.create', 'calendar.update'
+    'calendar.view', 'calendar.create', 'calendar.update',
+    'reservations.create'
   ],
   'Finance Manager': [
     'dashboard.view', 'dashboard.export', 'companies.view', 'contracts.view',
@@ -193,5 +200,8 @@ export const ALL_PERMISSIONS_LIST: { key: PermissionKey; name: string; group: st
   { key: 'calendar.create', name: 'Planlama Eylemi Ekle', group: 'Calendar' },
   { key: 'calendar.update', name: 'Planlama Eylemi Güncelle', group: 'Calendar' },
   { key: 'calendar.delete', name: 'Planlama Eylemi Kaldır', group: 'Calendar' },
-  { key: 'calendar.export', name: 'Takvimi Dışa Aktar', group: 'Calendar' }
+  { key: 'calendar.export', name: 'Takvimi Dışa Aktar', group: 'Calendar' },
+  { key: 'reservations.create', name: 'Rezervasyon Oluştur', group: 'Reservations' },
+  { key: 'reservations.approve', name: 'Satış Onayı Ver', group: 'Reservations' },
+  { key: 'reservations.confirm', name: 'Kesin Satış Onayla (Confirme)', group: 'Reservations' }
 ];

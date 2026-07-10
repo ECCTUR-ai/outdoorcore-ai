@@ -11,6 +11,7 @@ export type WorkflowEventType =
   | 'contract.expiring_7'
   | 'reservation.created'
   | 'reservation.approved'
+  | 'reservation.confirmed'
   | 'reservation.conflict_detected'
   | 'campaign.created'
   | 'campaign.ready'

@@ -289,7 +289,9 @@ export function Teklifler() {
             startDate: startDate,
             endDate: endDate,
             durationDays: diffDays,
-            status: 'Kesin Rezervasyon',
+            status: 'SALES_APPROVAL_PENDING',
+            contractStatus: 'SIGNED',
+            salesApprovalStatus: 'PENDING' as const,
             budget: `₺ ${(space.price || '0').replace(/[^0-9]/g, '')}`,
             companyId: original.companyId || 'CMP-0001',
             offerId: original.id,
@@ -303,45 +305,30 @@ export function Teklifler() {
           reservationIds.push(rObj.id);
         }
 
-        // C. Mark selected spaces as reserved
+        // C. Mark selected spaces as teklif (keep as soft lock via reservation)
         if (original.spaceIds) {
           for (const sId of original.spaceIds) {
             try {
-              await spaceRepository.update(sId, { status: 'rezerve' });
+              await spaceRepository.update(sId, { status: 'teklif' });
             } catch (se) {
               console.warn("Space update error", se);
             }
           }
         }
 
-        // D. Finance payment plan is created
-        await financeRepository.createPaymentPlan(original.companyId || 'CMP-0001', original.clientName, original.valueNumeric, contract.id);
-
-        // E. Campaign record is created
-        const campaign = await campaignRepository.create({
-          clientName: original.clientName,
-          campaignName: original.campaignName,
-          status: 'Kurulum Bekliyor',
-          startDate: startDate,
-          endDate: endDate,
-          valueNumeric: original.valueNumeric,
-          companyId: original.companyId || 'CMP-0001',
-          contractId: contract.id
-        });
+        // D. Campaign, Finance and hard lock are deferred to "CONFIRME ET" action
 
         // F. Save stage change and linked reference IDs to Offer DB
         await offerRepository.update(id, {
           stage: newStage,
           approved: approved,
           contractId: contract.id,
-          reservationId: reservationIds[0],
-          campaignId: campaign.id
+          reservationId: reservationIds[0]
         });
 
-        // Show multiple toasts
-        showToast("Sözleşme İmzalandı", "Sözleşme imzalandı. Rezervasyon oluşturuldu.", "success");
-        showToast("Reklam Alanları", "Reklam alanları firmaya kapatıldı.", "success");
-        showToast("Finans Planı", "Finans planı oluşturuldu.", "success");
+        // Show toasts
+        showToast("Sözleşme İmzalandı", "Sözleşme imzalandı. Rezervasyon Satış Onayı Bekliyor durumunda oluşturuldu.", "success");
+        showToast("Satış Onayı Başlatıldı", "Yetkili satış onayı bekleniyor.", "success");
       } else {
         // Standard Stage Change
         if (newStage === 'İptal') {

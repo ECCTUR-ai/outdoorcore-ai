@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { EntityLink } from './EntityLink';
 import { FileUpload } from './FileUpload';
-import { contractRepository, activityLogRepository } from '@/repositories';
+import { contractRepository, activityLogRepository, reservationRepository } from '@/repositories';
 import { createWorkflowEvent } from '@/automation/workflowEvents';
 import { workflowEngine } from '@/automation/workflowEngine';
 
@@ -324,7 +324,7 @@ export function ContractDetailPanel({ contract: initialContract, onDelete }: Con
 
       {/* Bottom CTA Action keys */}
       <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5">
-        {contract.status === 'pending' && (
+        {(contract.status === 'pending' || contract.status === 'draft' || contract.status === 'İmza Bekleyen') && (
           <Button 
             variant="primary" 
             size="sm" 
@@ -332,8 +332,25 @@ export function ContractDetailPanel({ contract: initialContract, onDelete }: Con
             className="col-span-2 bg-gradient-to-r from-emerald-600 to-teal-650 hover:from-emerald-500 hover:to-teal-600 text-white font-black animate-pulse py-2.5"
             onClick={async () => {
               try {
-                const updated = await contractRepository.update(contract.id, { status: 'Aktif' });
-                alert('Sözleşme imzalandı ve Aktifleştirildi! Workflow Automation tetikleniyor.');
+                const updated = await contractRepository.update(contract.id, { status: 'signed' });
+                
+                // Find and update the related reservation
+                try {
+                  const resList = await reservationRepository.getAll();
+                  const relatedRes = resList.find(r => r.contractId === contract.id || r.id === contract.reservationId);
+                  if (relatedRes) {
+                    await reservationRepository.update(relatedRes.id, {
+                      status: 'SALES_APPROVAL_PENDING',
+                      contractStatus: 'SIGNED',
+                      salesApprovalStatus: 'PENDING',
+                      auditLogDescription: 'Sözleşme imzalandı. Rezervasyon Satış Departmanı onayına gönderildi.'
+                    });
+                  }
+                } catch (resErr) {
+                  console.error('Failed to link and update reservation status on contract signature:', resErr);
+                }
+
+                alert('Sözleşme imzalandı! Rezervasyon durumu Satış Departmanı Onayı Bekliyor (SALES_APPROVAL_PENDING) olarak güncellendi.');
                 
                 const event = createWorkflowEvent('contract.signed', 'contract', contract.id, {
                   clientName: contract.clientName,
@@ -348,7 +365,7 @@ export function ContractDetailPanel({ contract: initialContract, onDelete }: Con
               }
             }}
           >
-            Sözleşmeyi İmzala & Aktifleştir
+            Sözleşmeyi İmzala & Satış Onayına Gönder
           </Button>
         )}
         <Button variant="primary" size="sm" type="button" onClick={() => alert(`${contract.contractNo || 'CON'} düzenleme modalı açılacak.`)}>

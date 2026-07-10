@@ -4,7 +4,9 @@ import {
   spaceRepository, 
   offerRepository,
   financeRepository,
-  activityLogRepository
+  activityLogRepository,
+  reservationRepository,
+  reservationAuditRepository
 } from '@/repositories';
 
 function safeBackgroundTask(name: string, fn: () => Promise<any>) {
@@ -63,6 +65,12 @@ export const workflowService = {
 
       // 3. Save Reservation to Calendar (Kritik)
       const startRes = performance.now();
+      const optionDuration = Number(localStorage.getItem('outdoorcore_option_duration_hours') || '72');
+      const optionStartedAt = new Date().toISOString();
+      const expDate = new Date();
+      expDate.setHours(expDate.getHours() + optionDuration);
+      const optionExpiresAt = expDate.toISOString();
+
       const newReservation = {
         id: mockReservationId,
         contractId: mockContractId,
@@ -70,16 +78,43 @@ export const workflowService = {
         campaignName: campaign.name,
         startDate: reservation.startDate,
         endDate: reservation.endDate,
+        spaceCode: selectedSpaces[0]?.code || '',
+        spaceName: selectedSpaces[0]?.name || '',
+        location: selectedSpaces[0]?.location || '',
+        agencyName: company.mediaAgency || '-',
+        durationDays: 30,
+        budget: offer.value,
+        creativeFiles: [],
+        aiRecommendation: 'Planlama sihirbazı tarafından otomatik oluşturuldu.',
         spaceCodes: selectedSpaces.map(s => s.code),
         spaceIds: selectedSpaces.map(s => s.id),
-        status: 'Rezerve' as const,
+        
+        // MGA Akışı Durumları
+        status: 'OPTIONED',
+        contractStatus: 'DRAFT',
+        salesApprovalStatus: 'PENDING',
+        
+        // Opsiyon Bilgileri
+        optionStartedAt,
+        optionExpiresAt,
+        optionDurationHours: optionDuration,
+        optionCreatedBy: 'ceo@outdoorcore.ai',
+        optionExtensionCount: 0,
         notes: reservation.notes
       };
+
       try {
         const storedReservations = localStorage.getItem('outdoorcore_mock_reservations');
         const list = storedReservations ? JSON.parse(storedReservations) : [];
         list.push(newReservation);
         localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(list));
+        reservationAuditRepository.log(
+          mockReservationId, 
+          'NONE', 
+          'OPTIONED', 
+          `Rezervasyon Satış Sihirbazı üzerinden oluşturuldu. Opsiyon Süresi: ${optionDuration} Saat.`, 
+          'ceo@outdoorcore.ai'
+        );
       } catch (e) {
         console.error('Failed to append to local reservations:', e);
       }
