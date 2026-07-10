@@ -106,7 +106,7 @@ export function runCopilotQuery(query: string): CopilotResponse {
       relatedEntities: getEntities(topPremium.map(s => s.id)),
       suggestedActions: [
         { label: 'Yeni Teklif Oluştur', actionType: 'offer', route: 'teklifler' },
-        { label: 'Takvim Planlama', actionType: 'calendar', route: 'takvim' }
+        { label: 'Envanter Listesi', actionType: 'inventory', route: 'inventory' }
       ],
       confidenceScore: 99,
       sourceModules: ['Reklam Alanları', 'Teklifler']

@@ -22,7 +22,7 @@ export function EntityLink({ type, id, label }: EntityLinkProps) {
       case 'contract':
         return { route: 'sozlesmeler', param: `contractId=${id}` };
       case 'reservation':
-        return { route: 'takvim', param: `reservationId=${id}` };
+        return { route: 'dashboard', param: `reservationId=${id}` };
       case 'campaign':
         return { route: 'kampanyalar', param: `campaignId=${id}` };
       case 'invoice':

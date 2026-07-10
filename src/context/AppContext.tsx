@@ -26,7 +26,6 @@ type RouteType =
   | 'alan-haritasi' 
   | 'map-dashboard'
   | 'firmalar-markalar' 
-  | 'takvim' 
   | 'kampanyalar' 
   | 'teklifler' 
   | 'sozlesmeler' 
@@ -64,7 +63,6 @@ const routeToPath: Record<RouteType, string> = {
   'alan-haritasi': '/alan-haritasi',
   'map-dashboard': '/map-dashboard',
   'firmalar-markalar': '/firmalar-markalar',
-  'takvim': '/takvim',
   'kampanyalar': '/kampanyalar',
   'teklifler': '/teklifler',
   'sozlesmeler': '/sozlesmeler',

@@ -127,7 +127,7 @@ export function Sidebar() {
         key={routeKey}
         onClick={() => {
           if (routeKey === 'rezervasyonlar') {
-            setCurrentRoute('takvim');
+            setCurrentRoute('dashboard');
           } else {
             setCurrentRoute(routeKey);
           }
@@ -329,7 +329,7 @@ export function Sidebar() {
                 <Coins size={13} />,
                 satisExpanded,
                 setSatisExpanded,
-                currentRoute === 'firmalar-markalar' || currentRoute === 'teklifler' || currentRoute === 'rezervasyonlar' || currentRoute === 'sozlesmeler' || currentRoute === 'takvim',
+                currentRoute === 'firmalar-markalar' || currentRoute === 'teklifler' || currentRoute === 'rezervasyonlar' || currentRoute === 'sozlesmeler',
                 undefined
               )}
               {satisExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
@@ -350,13 +350,12 @@ export function Sidebar() {
                 <Megaphone size={13} />,
                 operasyonExpanded,
                 setOperasyonExpanded,
-                currentRoute === 'kampanyalar' || currentRoute === 'takvim' || currentRoute === 'proof-of-play' || currentRoute === 'maintenance',
+                currentRoute === 'kampanyalar' || currentRoute === 'proof-of-play' || currentRoute === 'maintenance',
                 undefined
               )}
               {operasyonExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
                 <div className="space-y-0.5 pl-3 border-l border-white/5 animate-slide-in duration-200">
                   {showCampaigns && renderSidebarItem('kampanyalar', 'Kampanyalar', <Megaphone size={11} className="opacity-60" />, true)}
-                  {showCalendar && renderSidebarItem('takvim', 'Takvim / Planlama', <Calendar size={11} className="opacity-60" />, true)}
                   {renderSidebarItem('proof-of-play', 'Proof of Play', <Eye size={11} className="opacity-60" />, true)}
                   {renderSidebarItem('maintenance', 'Bakım / Servis', <Wrench size={11} className="opacity-60" />, true)}
                 </div>

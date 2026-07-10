@@ -667,8 +667,8 @@ export function Dashboard() {
             size="sm" 
             leftIcon={<Calendar size={12} />} 
             onClick={() => {
-              alert('Hızlı rezervasyon planlayıcısı. Lütfen takvim modülünden bir alan seçin.');
-              setCurrentRoute('takvim');
+              alert('Yeni Rezervasyon oluşturmak için lütfen Satış Sihirbazını kullanın.');
+              setCurrentRoute('sales-wizard');
             }}
             className="text-[9px] uppercase tracking-wider py-1.5 h-8"
           >

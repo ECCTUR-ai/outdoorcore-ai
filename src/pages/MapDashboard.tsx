@@ -798,11 +798,11 @@ export function MapDashboard() {
               <span className="text-[8px] font-black uppercase tracking-wider">Raporlar</span>
             </button>
             <button
-              onClick={() => setCurrentRoute('takvim')}
+              onClick={() => setCurrentRoute('dashboard')}
               className="p-3 bg-purple-500/10 border border-purple-500/15 text-purple-400 hover:bg-purple-500/15 rounded-xl flex flex-col items-center justify-center gap-1.5 transition-colors cursor-pointer select-none text-center"
             >
-              <Calendar size={16} />
-              <span className="text-[8px] font-black uppercase tracking-wider">Planlama Takvimi</span>
+              <TrendingUp size={16} />
+              <span className="text-[8px] font-black uppercase tracking-wider">CEO Dashboard</span>
             </button>
           </div>
         </div>
