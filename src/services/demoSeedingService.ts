@@ -176,8 +176,8 @@ export const demoSeedingService = {
       const sumPrice = selectedSpaces.reduce((sum, s) => sum + (s.priceNumeric || 0), 0);
       const valText = `₺${sumPrice.toLocaleString('tr-TR')}`;
 
-      const startDate = `01.${String(idx % 12 + 1).padStart(2, '0')}.2025`;
-      const endDate = `30.${String(idx % 12 + 1).padStart(2, '0')}.2025`;
+      const startDate = `01.${String(idx % 12 + 1).padStart(2, '0')}.2026`;
+      const endDate = `30.${String(idx % 12 + 1).padStart(2, '0')}.2026`;
 
       if (!company.linkedOfferIds) company.linkedOfferIds = [];
       company.linkedOfferIds.push(id);
@@ -193,7 +193,7 @@ export const demoSeedingService = {
         lastActivity: 'Bugün',
         closeProbability: stage === 'Sözleşme İmzalandı' ? 100 : stage === 'İptal' ? 0 : 50 + (idx % 9) * 5,
         stage,
-        closingDate: '20.06.2025',
+        closingDate: '20.06.2026',
         campaignStartDate: startDate,
         campaignEndDate: endDate,
         details: `${company.name} için terminal içi premium lansman yayını teklifi.`,
@@ -216,7 +216,7 @@ export const demoSeedingService = {
 
       if (offer.stage === 'Sözleşme İmzalandı') {
         const contractId = `CON-${String(contractIndex).padStart(3, '0')}`;
-        const contractNo = `CTR-2025-${String(100 + contractIndex)}`;
+        const contractNo = `CTR-2026-${String(100 + contractIndex)}`;
         contractIndex++;
 
         const newContract: Contract = {
@@ -228,8 +228,8 @@ export const demoSeedingService = {
           value: offer.value,
           valueNumeric: offer.valueNumeric,
           status: 'signed',
-          startDate: offer.campaignStartDate || '01.06.2025',
-          endDate: offer.campaignEndDate || '31.12.2025',
+          startDate: offer.campaignStartDate || '01.06.2026',
+          endDate: offer.campaignEndDate || '31.12.2026',
           daysLeft: 120 + (contractIndex * 10),
           notes: ['ERP Demo kapsamında imzalanmış aktif sözleşme.'],
           offerId: offer.id,
@@ -314,8 +314,8 @@ export const demoSeedingService = {
             location: associatedSpaces[0]?.location || 'Terminal',
             clientName: offer.clientName,
             agencyName: company.mediaAgency,
-            startDate: offer.campaignStartDate || '01.06.2025',
-            endDate: offer.campaignEndDate || '31.12.2025',
+            startDate: offer.campaignStartDate || '01.06.2026',
+            endDate: offer.campaignEndDate || '31.12.2026',
             durationDays: 30,
             status: 'Yaklaşan',
             budget: offer.value,
@@ -348,8 +348,8 @@ export const demoSeedingService = {
         location: space.location,
         clientName: comp.name,
         agencyName: comp.mediaAgency,
-        startDate: '01.08.2025',
-        endDate: '31.08.2025',
+        startDate: '01.08.2026',
+        endDate: '31.08.2026',
         durationDays: 30,
         status: 'Yaklaşan',
         budget: '₺45.000',
@@ -390,7 +390,7 @@ export const demoSeedingService = {
         mediaAgency: company.mediaAgency,
         creativeAgency: company.creativeAgency,
         creativeFiles: [
-          { name: 'ana-kampanya-tanitimi.mp4', type: 'Video MP4', uploadDate: '01.05.2025', status: 'Onaylandı' }
+          { name: 'ana-kampanya-tanitimi.mp4', type: 'Video MP4', uploadDate: '01.05.2026', status: 'Onaylandı' }
         ],
         aiAnalysisNotes: ['Göz temas süresi hedeflenenin üzerinde.'],
         impressions: `${(150 + idx * 45).toLocaleString('tr-TR')}K`,
@@ -435,8 +435,8 @@ export const demoSeedingService = {
         companyId: comp.id,
         companyName: comp.name,
         campaignId: `CAM-00${(idx % 5) + 1}`,
-        startDate: '01.06.2025',
-        endDate: '30.06.2025',
+        startDate: '01.06.2026',
+        endDate: '30.06.2026',
         durationSeconds: 15,
         sharePercent: 12.5,
         estimatedPlaysPerDay: 720,
@@ -477,8 +477,8 @@ export const demoSeedingService = {
       const invoices = compContracts.map((c, iIdx) => {
         return {
           id: `INV-${c.id}-${iIdx}`,
-          invoiceNo: `INV-2025-${10000 + idx * 100 + iIdx}`,
-          date: '05.06.2025',
+          invoiceNo: `INV-2026-${10000 + idx * 100 + iIdx}`,
+          date: '05.06.2026',
           amount: `₺ ${(c.valueNumeric).toLocaleString('tr-TR')}`,
           status: iIdx % 2 === 0 ? 'Ödendi' as const : 'Bekliyor' as const
         };
@@ -487,7 +487,7 @@ export const demoSeedingService = {
       const collections = compContracts.filter((_, iIdx) => iIdx % 2 === 0).map((c, iIdx) => {
         return {
           id: `COL-${c.id}-${iIdx}`,
-          date: '10.06.2025',
+          date: '10.06.2026',
           amount: `₺ ${(c.valueNumeric).toLocaleString('tr-TR')}`,
           method: 'Banka Havalesi (EFT)'
         };
@@ -496,7 +496,7 @@ export const demoSeedingService = {
       const paymentPlan = compContracts.map((c, iIdx) => {
         return {
           installment: '1. Taksit',
-          dueDate: '25.06.2025',
+          dueDate: '25.06.2026',
           amount: `₺ ${(c.valueNumeric).toLocaleString('tr-TR')}`,
           status: iIdx % 2 === 0 ? 'Ödendi' as const : 'Bekliyor' as const
         };
@@ -556,7 +556,7 @@ export const demoSeedingService = {
         return {
           clientName: a.name,
           logo: a.logo,
-          dueDate: '25.06.2025',
+          dueDate: '25.06.2026',
           daysLeft: 17,
           amount: a.balance,
           riskLevel: a.riskScore > 3 ? 'Kritik' as const : 'Düşük' as const

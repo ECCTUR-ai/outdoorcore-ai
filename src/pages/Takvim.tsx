@@ -508,10 +508,10 @@ export function Takvim() {
   const { setCurrentRoute } = useApp();
   const { resolvedTheme } = useTheme();
   
-  // Date context default: June 2025 (mock data peak)
-  const [currentYear, setCurrentYear] = useState(2025);
+  // Date context default: June 2026 (mock data peak)
+  const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(5); // 0-indexed, so 5 is June
-  const [selectedDate, setSelectedDate] = useState<string>('2025-06-15'); // Mock standard selected day
+  const [selectedDate, setSelectedDate] = useState<string>('2026-06-15'); // Mock standard selected day
   
   // View states: 'day' | 'week' | 'month' | 'timeline' | 'resource'
   const [activeView, setActiveView] = useState<'day' | 'week' | 'month' | 'timeline' | 'resource'>('month');
@@ -532,8 +532,8 @@ export function Takvim() {
     title: '',
     description: '',
     type: 'task' as CalendarEvent['type'],
-    start: '2025-06-15',
-    end: '2025-06-15',
+    start: '2026-06-15',
+    end: '2026-06-15',
     status: 'Yapılacak',
     priority: 'medium' as CalendarEvent['priority'],
     companyId: '',
@@ -655,10 +655,10 @@ export function Takvim() {
   };
 
   const handleGoToToday = () => {
-    // Standard mock date is June 2025
-    setCurrentYear(2025);
+    // Standard mock date is June 2026
+    setCurrentYear(2026);
     setCurrentMonth(5);
-    setSelectedDate('2025-06-15');
+    setSelectedDate('2026-06-15');
   };
 
   // Add custom event handler
@@ -689,8 +689,8 @@ export function Takvim() {
         title: '',
         description: '',
         type: 'task',
-        start: '2025-06-15',
-        end: '2025-06-15',
+        start: '2026-06-15',
+        end: '2026-06-15',
         status: 'Yapılacak',
         priority: 'medium',
         companyId: '',
@@ -818,7 +818,7 @@ export function Takvim() {
     // Actual day cells
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const isToday = dateStr === '2025-06-15'; // Standard mock today date
+      const isToday = dateStr === '2026-06-15'; // Standard mock today date
       const isSelected = dateStr === selectedDate;
 
       // Filter events on this specific day
@@ -968,7 +968,7 @@ export function Takvim() {
                   <th 
                     key={day.dateStr}
                     className={`p-3 border border-white/5 text-center font-black tracking-wide text-[10.5px] ${
-                      day.dateStr === '2025-06-15'
+                      day.dateStr === '2026-06-15'
                         ? 'text-blue-400 bg-blue-500/10 border-l border-r border-blue-500/30'
                         : day.dateStr === selectedDate 
                           ? 'text-blue-400 bg-blue-500/5' 
@@ -1000,7 +1000,7 @@ export function Takvim() {
                         <td 
                           key={day.dateStr} 
                           className={`p-2 border border-white/5 align-top min-h-14 ${
-                            day.dateStr === '2025-06-15'
+                            day.dateStr === '2026-06-15'
                               ? 'bg-blue-500/5 border-l border-r border-blue-500/15'
                               : day.dateStr === selectedDate 
                                 ? 'bg-blue-500/2' 

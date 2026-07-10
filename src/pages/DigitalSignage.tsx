@@ -70,7 +70,7 @@ export function DigitalSignage() {
     let totalPlays = 0;
 
     screens.forEach(s => {
-      const avail = digitalScreenRepository.getAvailability(s.screenId, '2025-06-15', '2025-07-15');
+      const avail = digitalScreenRepository.getAvailability(s.screenId, '2026-06-15', '2026-07-15');
       totalOccupancy += avail.occupancyPercent;
       totalPlays += digitalScreenRepository.calculateEstimatedPlays(s.screenId);
     });
@@ -96,7 +96,7 @@ export function DigitalSignage() {
 
   const availability = useMemo(() => {
     if (!selectedScreenId) return null;
-    return digitalScreenRepository.getAvailability(selectedScreenId, '2025-06-15', '2025-07-15');
+    return digitalScreenRepository.getAvailability(selectedScreenId, '2026-06-15', '2026-07-15');
   }, [selectedScreenId, refreshKey]);
 
   const selectedSlot = useMemo(() => {
@@ -107,7 +107,7 @@ export function DigitalSignage() {
   // Calculated average slot price for standard 15s slot
   const avgSlotPrice = useMemo(() => {
     if (!selectedScreenId) return 0;
-    return digitalScreenRepository.calculateSlotPrice(selectedScreenId, 15, '2025-06-15', '2025-07-15');
+    return digitalScreenRepository.calculateSlotPrice(selectedScreenId, 15, '2026-06-15', '2026-07-15');
   }, [selectedScreenId, refreshKey]);
 
   if (screens.length === 0) {
@@ -346,7 +346,7 @@ export function DigitalSignage() {
                   </div>
                   <LedReservationForm
                     initialScreenId={selectedScreen.screenId}
-                    initialDateRange={{ startDate: '2025-06-15', endDate: '2025-07-15' }}
+                    initialDateRange={{ startDate: '2026-06-15', endDate: '2026-07-15' }}
                     onSuccess={() => {
                       refreshData();
                       setShowAddForm(false);

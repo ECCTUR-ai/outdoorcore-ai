@@ -10,7 +10,7 @@ import { useAuth } from '@/auth/useAuth';
 import { ProfileDrawer } from '../design-system/ProfileDrawer';
 
 const calculateDateRangeValues = (type: DateRangeType, customStart?: string, customEnd?: string): { start: string; end: string } => {
-  const mockToday = new Date('2025-06-15');
+  const mockToday = new Date('2026-06-15');
   const formatDate = (d: Date) => d.toISOString().substring(0, 10);
   
   switch (type) {
@@ -34,9 +34,9 @@ const calculateDateRangeValues = (type: DateRangeType, customStart?: string, cus
     case 'all-time':
       return { start: '1970-01-01', end: '2099-12-31' };
     case 'custom':
-      return { start: customStart || '2025-05-01', end: customEnd || '2025-05-31' };
+      return { start: customStart || '2026-01-01', end: customEnd || '2026-12-31' };
     default:
-      return { start: '2025-05-01', end: '2025-05-31' };
+      return { start: '2026-01-01', end: '2026-12-31' };
   }
 };
 

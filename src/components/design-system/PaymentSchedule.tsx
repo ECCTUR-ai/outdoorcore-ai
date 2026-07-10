@@ -5,10 +5,10 @@ import { Coins } from 'lucide-react';
 
 export function PaymentSchedule() {
   const schedules = [
-    { client: 'Samsung Electronics', due: '15 Tem 2025', amount: '₺2.500.000', status: 'Bekliyor', no: '3. Taksit' },
-    { client: 'Turkcell', due: '15 Nis 2025', amount: '₺3.100.000', status: 'Gecikti', no: '2. Taksit' },
-    { client: 'Pegasus Airlines', due: '15 Tem 2025', amount: '₺2.250.000', status: 'Bekliyor', no: 'Kapanış' },
-    { client: 'Türk Hava Yolları', due: '01 Haz 2025', amount: '₺6.000.000', status: 'Ödendi', no: '2. Taksit' }
+    { client: 'Samsung Electronics', due: '15 Tem 2026', amount: '₺2.500.000', status: 'Bekliyor', no: '3. Taksit' },
+    { client: 'Turkcell', due: '15 Nis 2026', amount: '₺3.100.000', status: 'Gecikti', no: '2. Taksit' },
+    { client: 'Pegasus Airlines', due: '15 Tem 2026', amount: '₺2.250.000', status: 'Bekliyor', no: 'Kapanış' },
+    { client: 'Türk Hava Yolları', due: '01 Haz 2026', amount: '₺6.000.000', status: 'Ödendi', no: '2. Taksit' }
   ];
 
   return (

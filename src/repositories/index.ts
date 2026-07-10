@@ -1690,7 +1690,7 @@ export const financeRepository = {
     
     const newInvoice = {
       id: 'INV-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
-      invoiceNo: 'INV-2025-' + Math.floor(10000 + Math.random() * 90000),
+      invoiceNo: 'INV-2026-' + Math.floor(10000 + Math.random() * 90000),
       date: dateStr,
       amount: formattedAmount,
       status: 'Bekliyor' as const

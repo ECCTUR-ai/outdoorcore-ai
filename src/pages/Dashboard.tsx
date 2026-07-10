@@ -108,11 +108,11 @@ export function Dashboard() {
     const doluSpaces = spaces.filter(s => s.status === 'dolu').length;
     const occupancyRate = totalSpaces > 0 ? ((doluSpaces / totalSpaces) * 100).toFixed(1) : '0';
 
-    // Ciro this month (ending or active in June 2025)
+    // Ciro this month (ending or active in June 2026)
     const thisMonthContracts = contracts.filter(c => 
       c.status !== 'cancelled' && 
       c.status !== 'İptal' &&
-      (c.endDate.includes('.06.2025') || c.endDate.includes('2025-06'))
+      (c.endDate.includes('.06.2026') || c.endDate.includes('2026-06'))
     );
     const thisMonthCiro = thisMonthContracts.reduce((sum, c) => sum + (c.valueNumeric || 0), 0);
 
@@ -123,7 +123,7 @@ export function Dashboard() {
     const expiringThisMonthCount = contracts.filter(c => 
       c.status !== 'cancelled' && 
       c.status !== 'İptal' &&
-      (c.endDate.includes('.06.2025') || (c.daysLeft !== undefined && c.daysLeft <= 30))
+      (c.endDate.includes('.06.2026') || (c.daysLeft !== undefined && c.daysLeft <= 30))
     ).length;
 
     // Finance Outstanding dues

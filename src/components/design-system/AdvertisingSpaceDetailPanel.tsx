@@ -257,11 +257,11 @@ export function AdvertisingSpaceDetailPanel({ space, onEdit, onDelete }: Adverti
             <div className="p-3.5 bg-white/3 border border-white/5 rounded-xl space-y-1.5 text-[9.5px]">
               <span className="block text-slate-400 font-bold uppercase tracking-wider text-[8px] mb-1">Geriye Dönük Ciro Hacmi</span>
               <div className="flex justify-between text-slate-450 border-b border-white/3 pb-1">
-                <span>2024 Toplam Gelir:</span>
+                <span>2025 Toplam Gelir:</span>
                 <span className="text-white font-black">₺480,000</span>
               </div>
               <div className="flex justify-between text-slate-450 pb-0.5">
-                <span>2025 Hedeflenen:</span>
+                <span>2026 Hedeflenen:</span>
                 <span className="text-white font-black">₺600,000</span>
               </div>
             </div>

@@ -35,7 +35,7 @@ export function AiInsightDrawer({ isOpen, onClose, selectedSpaceCode = 'SG-001' 
       if (key === 'sectors') {
         replyText = `Mevcut yolcu akışı, ortalama bakış süresi ve terminal lokasyonu analizlerine göre ${selectedSpaceCode} için en yüksek dönüşüm sağlayacak sektörler: \n\n1. Finans & Bankacılık (%38 uyumluluk)\n2. Otomotiv (Premium SUV lansmanları - %29 uyumluluk)\n3. E-Ticaret / Hızlı Teslimat Hizmetleri (%25 uyumluluk)\n\nÖzellikle yolcuların terminal girişinde ve bekleme alanlarında geçirdikleri süre bu sektörlerin akılda kalıcılığını artırmaktadır.`;
       } else if (key === 'expiring') {
-        replyText = 'Haziran 2025 döneminde sözleşme süresi biterek boşa çıkacak reklam üniteleri:\n\n• SG-003 | Pasaport Kontrol Üstü LED (30 Haz 25)\n• SG-018 | Pasaport Çıkış Dijital Pano (15 Haz 25)\n• SG-067 | Dış Hatlar Kapı A1 Pano (22 Haz 25)\n\nBu alanlar için şimdiden yenileme teklifleri veya yeni müşteri rezervasyonları planlanması önerilir.';
+        replyText = 'Haziran 2026 döneminde sözleşme süresi biterek boşa çıkacak reklam üniteleri:\n\n• SG-003 | Pasaport Kontrol Üstü LED (30 Haz 26)\n• SG-018 | Pasaport Çıkış Dijital Pano (15 Haz 26)\n• SG-067 | Dış Hatlar Kapı A1 Pano (22 Haz 26)\n\nBu alanlar için şimdiden yenileme teklifleri veya yeni müşteri rezervasyonları planlanması önerilir.';
       } else if (key === 'price') {
         replyText = `Bölgesel yolcu trafiği artış trendi ve rakip panoların doluluk oranları analiz edildi. \n\n${selectedSpaceCode} ünitesi için önerilen güncel taban fiyat:\n• Aylık Kira Bedeli: ₺2.650.000\n\nMevcut fiyata (₺2.450.000) göre %8.1 oranında artış yapılması, pazar koşullarına göre optimize edilmiş bir getiri sağlayacaktır.`;
       } else if (key === 'premium_led') {

@@ -153,8 +153,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [globalDateRange, setGlobalDateRange] = useState<DateRangeState>({
     type: 'custom',
-    start: '2025-05-01',
-    end: '2025-05-31'
+    start: '2026-01-01',
+    end: '2026-12-31'
   });
 
   // Command palette keyboard shortcut listener

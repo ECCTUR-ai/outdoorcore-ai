@@ -115,11 +115,11 @@ export function runCopilotQuery(query: string): CopilotResponse {
 
   // 2. "Bu ay bitecek sözleşmeler"
   if (normalized.includes('bitecek sözleşme') || normalized.includes('bitecek') || normalized.includes('süresi dolacak')) {
-    // filter active contracts ending soon (endDate containing '.06.2025' or daysLeft < 45)
+    // filter active contracts ending soon (endDate containing '.06.2026' or daysLeft < 45)
     const expiring = allContracts.filter(c => 
       c.status !== 'cancelled' && 
       c.status !== 'İptal' &&
-      (c.endDate.includes('.06.2025') || (c.daysLeft !== undefined && c.daysLeft <= 45))
+      (c.endDate.includes('.06.2026') || (c.daysLeft !== undefined && c.daysLeft <= 45))
     );
 
     if (expiring.length === 0) {

@@ -4,8 +4,8 @@ import { CalendarRange } from 'lucide-react';
 export function OfferTaskList() {
   const tasks = [
     { text: 'Samsung teklif son takip', due: '2 gün kaldı', color: 'text-rose-400' },
-    { text: 'Mercedes sunum görüşmesi', due: '05 Haz 2025', color: 'text-amber-400' },
-    { text: 'Garanti BBVA revize teklif teslimi', due: '07 Haz 2025', color: 'text-slate-400' }
+    { text: 'Mercedes sunum görüşmesi', due: '05 Haz 2026', color: 'text-amber-400' },
+    { text: 'Garanti BBVA revize teklif teslimi', due: '07 Haz 2026', color: 'text-slate-400' }
   ];
 
   return (

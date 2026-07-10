@@ -23,8 +23,8 @@ export function LedReservationForm({ onSuccess, onCancel, initialScreenId, initi
   // Form State
   const [companyId, setCompanyId] = useState('');
   const [screenId, setScreenId] = useState(initialScreenId || (screens[0]?.screenId || ''));
-  const [startDate, setStartDate] = useState(initialDateRange?.startDate || '2025-06-15');
-  const [endDate, setEndDate] = useState(initialDateRange?.endDate || '2025-07-15');
+  const [startDate, setStartDate] = useState(initialDateRange?.startDate || '2026-06-15');
+  const [endDate, setEndDate] = useState(initialDateRange?.endDate || '2026-07-15');
   const [durationSeconds, setDurationSeconds] = useState(15);
   const [creativeFileUrl, setCreativeFileUrl] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high' | 'critical'>('medium');

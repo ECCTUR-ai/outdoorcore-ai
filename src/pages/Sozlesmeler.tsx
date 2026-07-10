@@ -102,7 +102,7 @@ export function Sozlesmeler() {
     c.status === 'active' || c.status === 'signed' || c.status === 'Aktif'
   );
 
-  const mockToday = new Date(2025, 5, 15); // 15 Haziran 2025
+  const mockToday = new Date(2026, 5, 15); // 15 Haziran 2026
   const willExpireThisMonth = activeContracts.filter(c => {
     if (!c.endDate) return false;
     const parts = c.endDate.split('.');
