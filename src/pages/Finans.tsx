@@ -65,6 +65,12 @@ export function Finans() {
 
   useEffect(() => {
     fetchFinanceData();
+    
+    const handleStorageChange = () => {
+      fetchFinanceData();
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   useEffect(() => {
@@ -241,7 +247,7 @@ export function Finans() {
       </div>
 
       {/* Section 1: AI Finans Özeti */}
-      <FinanceSummaryCard />
+      <FinanceSummaryCard accounts={accounts} />
 
       {/* Grid Layout: Accounts dock, main graphs, detail panel */}
       {loading ? (
@@ -304,7 +310,7 @@ export function Finans() {
       {!loading && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4">
-            <PaymentTimeline />
+            <PaymentTimeline accounts={accounts} />
           </div>
           <div className="lg:col-span-4">
             <TopRevenueCompanies />
@@ -317,7 +323,7 @@ export function Finans() {
 
       {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <FinancePredictionCard />
+          <FinancePredictionCard accounts={accounts} />
           <FinanceActivityFeed />
           <QuickFinanceActions />
         </div>

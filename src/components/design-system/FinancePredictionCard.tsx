@@ -1,13 +1,129 @@
 import React from 'react';
 import { Sparkles, Calendar, TrendingUp, Users } from 'lucide-react';
 
-export function FinancePredictionCard() {
+interface FinancePredictionCardProps {
+  accounts?: any[];
+}
+
+export function FinancePredictionCard({ accounts = [] }: FinancePredictionCardProps) {
+  // Helper to parse DD.MM.YYYY string
+  const parseDate = (str?: string): Date | null => {
+    if (!str) return null;
+    const parts = str.split('.');
+    if (parts.length === 3) {
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+        return new Date(year, month, day);
+      }
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const next30Days = new Date(today);
+  next30Days.setDate(next30Days.getDate() + 30);
+
+  let expectedRevenue30Days = 0;
+  let totalPaid = 0;
+  let totalVadesiGelmis = 0; // Paid + overdue
+  let riskVolume = 0;
+
+  // Track client metrics for details
+  const clientRevenueMap = new Map<string, number>();
+  let highestRiskClientName = '';
+  let highestRiskScore = 0;
+
+  accounts.forEach(acc => {
+    // 1. Highest Risk Client
+    const score = acc.riskScore || 0;
+    if (score > highestRiskScore) {
+      highestRiskScore = score;
+      highestRiskClientName = acc.name;
+    }
+
+    const plans = acc.paymentPlan || [];
+    plans.forEach((plan: any) => {
+      const planAmt = parseFloat((plan.amount || '').replace(/[^0-9]/g, '')) || 0;
+      const planDate = parseDate(plan.dueDate);
+      if (!planDate) return;
+
+      const isUnpaid = plan.status !== 'Ödendi';
+
+      // 2. Expected revenue (due next 30 days & unpaid)
+      const isWithin30Days = planDate.getTime() >= today.getTime() && planDate.getTime() <= next30Days.getTime();
+      if (isWithin30Days && isUnpaid) {
+        expectedRevenue30Days += planAmt;
+        clientRevenueMap.set(acc.name, (clientRevenueMap.get(acc.name) || 0) + planAmt);
+      }
+
+      // 3. Success Rate calculations:
+      // success rate = paid / vadesi gelmis total * 100
+      // vadesi gelmis = paid + (unpaid & due date in past or Gecikti)
+      const isPastDue = planDate.getTime() < today.getTime();
+      if (plan.status === 'Ödendi') {
+        totalPaid += planAmt;
+        totalVadesiGelmis += planAmt;
+      } else if (plan.status === 'Gecikti' || isPastDue) {
+        totalVadesiGelmis += planAmt;
+        // 4. Risk Volume (vadesi geçmiş)
+        riskVolume += planAmt;
+      }
+
+      // 5. Risk Volume (gecikme riski taşıyan açık bakiyeler)
+      // If client has high riskScore (> 2.0), sum future unpaid installments
+      const isFuture = planDate.getTime() >= today.getTime();
+      if (acc.riskScore > 2.0 && isUnpaid && isFuture) {
+        riskVolume += planAmt;
+      }
+    });
+  });
+
+  const successRate = totalVadesiGelmis > 0 ? (totalPaid / totalVadesiGelmis) * 100 : 100;
+
+  // Find client with highest expected revenue in 30 days
+  let topRevenueClientName = '';
+  let topRevenueVal = 0;
+  clientRevenueMap.forEach((val, key) => {
+    if (val > topRevenueVal) {
+      topRevenueVal = val;
+      topRevenueClientName = key;
+    }
+  });
+
+  const formatLargeAmount = (val: number) => {
+    if (val === 0) return '₺0';
+    if (val >= 1000000) return `₺ ${(val / 1000000).toFixed(2)}M`;
+    if (val >= 1000) return `₺ ${(val / 1000).toFixed(0)}K`;
+    return `₺ ${val.toLocaleString('tr-TR')}`;
+  };
+
+  const hasData = accounts.length > 0 && (totalPaid > 0 || expectedRevenue30Days > 0 || riskVolume > 0);
+
+  if (!hasData) {
+    return (
+      <div className="bg-gradient-to-br from-blue-950/40 to-indigo-950/40 border border-blue-500/15 rounded-3xl p-6 text-center select-none space-y-4 shadow-xl flex flex-col justify-center items-center min-h-[220px]">
+        <Sparkles size={20} className="text-slate-500 animate-pulse" />
+        <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">AI Finansal Öngörüler</span>
+        <span className="text-xs font-bold text-slate-500 italic">Henüz yeterli finansal veri bulunmuyor.</span>
+      </div>
+    );
+  }
+
   const points = [
-    'Önümüzdeki 30 gün içinde beklenen net tahsilat: ₺38.5M.',
-    'Riskli tahsilat hacmi: ₺4.8M seviyesindedir.',
-    'Tahmini tahsilat başarı oranı: %95.0.',
-    'En yüksek nakit girdisi Samsung Electronics carisinden beklenmektedir.',
-    'Mercedes-Benz cildinde ıslak imza kaynaklı gecikme riski bulunmaktadır.'
+    `Önümüzdeki 30 gün içinde beklenen net tahsilat: ${formatLargeAmount(expectedRevenue30Days)}.`,
+    `Gecikmiş ve risk taşıyan açık bakiye hacmi: ${formatLargeAmount(riskVolume)}.`,
+    `Ölçülen tahsilat başarı oranı: %${successRate.toFixed(1)}.`,
+    topRevenueClientName 
+      ? `En yüksek nakit girdisi ${topRevenueClientName} carisinden beklenmektedir.`
+      : `Önümüzdeki 30 günde planlanmış yeni nakit girdisi bulunmamaktadır.`,
+    highestRiskClientName && highestRiskScore > 1.5
+      ? `En yüksek risk skoru ${highestRiskClientName} carisine aittir (Risk: ${highestRiskScore.toFixed(1)}/5.0).`
+      : `Tüm aktif cari risk dereceleri güvenli seviyededir.`
   ];
 
   return (
@@ -24,17 +140,17 @@ export function FinancePredictionCard() {
         <div className="p-3.5 rounded-2xl bg-[#08111f]/40 border border-white/5 space-y-1">
           <div className="mx-auto text-blue-400 w-fit"><TrendingUp size={14} /></div>
           <span className="text-[8px] text-slate-500 block uppercase tracking-wider">Beklenen Gelir</span>
-          <span className="text-white block text-xs font-black">₺38.5M</span>
+          <span className="text-white block text-xs font-black">{formatLargeAmount(expectedRevenue30Days)}</span>
         </div>
         <div className="p-3.5 rounded-2xl bg-[#08111f]/40 border border-white/5 space-y-1">
           <div className="mx-auto text-emerald-400 w-fit"><Calendar size={14} /></div>
           <span className="text-[8px] text-slate-500 block uppercase tracking-wider">Başarı Oranı</span>
-          <span className="text-emerald-450 block text-xs font-black">%95.0</span>
+          <span className="text-emerald-450 block text-xs font-black">%{successRate.toFixed(1)}</span>
         </div>
         <div className="p-3.5 rounded-2xl bg-[#08111f]/40 border border-white/5 space-y-1">
           <div className="mx-auto text-rose-400 w-fit"><Users size={14} /></div>
           <span className="text-[8px] text-slate-500 block uppercase tracking-wider">Risk Hacmi</span>
-          <span className="text-rose-450 block text-xs font-black">₺4.8M</span>
+          <span className="text-rose-455 block text-xs font-black">{formatLargeAmount(riskVolume)}</span>
         </div>
       </div>
 

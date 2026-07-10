@@ -8,10 +8,10 @@ import { DigitalScreen, PlaylistSlot } from '@/types/digitalSignage';
 import { FinancialAccount } from '@/data/finance';
 
 const COMPANY_NAMES = [
-  'Turkish Airlines', 'Pegasus', 'AJet', 'Tatilbudur', 'ETS Tur', 
-  'Jolly', 'Setur', 'Turkcell', 'Vodafone', 'Türk Telekom', 
-  'Garanti BBVA', 'Akbank', 'İş Bankası', 'QNB', 'Mercedes', 
-  'BMW', 'Audi', 'Toyota', 'Samsung', 'Apple', 
+  'Global Air', 'Aura Jet', 'AJet', 'Tatilbudur', 'ETS Tur', 
+  'Jolly', 'Setur', 'Net İletişim', 'Vodafone', 'Türk Telekom', 
+  'Garanti BBVA', 'Akbank', 'İş Bankası', 'QNB', 'Volvo Cars', 
+  'BMW', 'Audi', 'Toyota', 'Xiaomi Türkiye', 'Apple', 
   'LC Waikiki', 'Migros', 'CarrefourSA', 'Hepsiburada', 'Amazon Türkiye', 
   'Papara', 'Getir', 'Yemeksepeti', 'Starbucks', 'Burger King', 
   'McDonald\'s', 'MediaMarkt', 'Trendyol', 'Coca-Cola', 'Efes Pilsen'
@@ -563,7 +563,7 @@ export const demoSeedingService = {
         };
       }),
       activities: [
-        { id: 'ACT-01', type: 'collection', message: 'Turkish Airlines ₺12.000.000 tahsilat gerçekleştirildi.', time: '1 saat önce' }
+        { id: 'ACT-01', type: 'collection', message: 'Global Air ₺12.000.000 tahsilat gerçekleştirildi.', time: '1 saat önce' }
       ]
     };
 

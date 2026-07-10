@@ -5,8 +5,8 @@ export const companySchema = z.object({
   name: z.string().min(2, 'Firma adı en az 2 karakter olmalıdır'),
   sector: z.string().min(1, 'Sektör seçilmelidir'),
   city: z.string().min(1, 'Şehir seçilmelidir'),
-  status: z.enum(['Aktif', 'Pasif']),
-  crmStatus: z.enum(['VIP', 'Gold', 'Silver', 'Lead']),
+  status: z.enum(['Aktif', 'Potansiyel', 'Pasif']),
+  crmStatus: z.enum(['VIP', 'Gold', 'Silver', 'Standard', 'Lead']),
   website: z.string()
     .url('Geçerli bir web sitesi adresi giriniz (örn: https://example.com)')
     .or(z.string().length(0))

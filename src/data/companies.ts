@@ -8,7 +8,7 @@ export interface Company {
   name: string;
   sector: string;
   city: string;
-  status: 'Aktif' | 'Pasif';
+  status: 'Aktif' | 'Potansiyel' | 'Pasif';
   deleted_at?: string;
   deleted_by?: string;
   campaignsCount: number;
@@ -32,7 +32,7 @@ export interface Company {
   email: string;
   taxNo: string;
   taxOffice: string;
-  crmStatus: 'VIP' | 'Gold' | 'Silver' | 'Lead';
+  crmStatus: 'VIP' | 'Gold' | 'Silver' | 'Standard' | 'Lead';
   mediaAgency: string;
   creativeAgency: string;
   budget: string;
