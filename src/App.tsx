@@ -51,6 +51,7 @@ import { ExecutiveDashboard } from '@/pages/ExecutiveDashboard';
 import { SystemRoles } from '@/pages/SystemRoles';
 import { SalesWizard } from '@/pages/SalesWizard';
 import { DigitalSignage } from '@/pages/DigitalSignage';
+import { ProofOfPlayTable } from '@/components/design-system/ProofOfPlayTable';
 
 function AppContent() {
   const { currentRoute } = useApp();
@@ -277,6 +278,18 @@ function AppContent() {
           <PermissionGate permission="spaces.view" fallback={<AccessDenied />}>
             <DigitalSignage />
           </PermissionGate>
+        );
+      case 'proof-of-play':
+        return (
+          <div className="space-y-6 text-left select-none">
+            <div className="space-y-1">
+              <h2 className="text-sm font-black text-white uppercase tracking-widest leading-none">Proof of Play Raporlama Terminali</h2>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Dijital ekranların gerçek zamanlı yayın loglarını ve oynatma kanıtlarını inceleyin.</p>
+            </div>
+            <div className="bg-[#0b0f19] border border-white/5 p-6 rounded-3xl">
+              <ProofOfPlayTable />
+            </div>
+          </div>
         );
       case 'design-system':
         return <DesignSystemDemo />;

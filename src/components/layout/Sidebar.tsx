@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Bell,
   ChevronDown,
-  Tv
+  Tv,
+  Users
 } from 'lucide-react';
 
 import { usePermission } from '@/permissions/permissionHooks';
@@ -31,9 +32,16 @@ import { isSpaceInFilter } from '@/utils/mediaTypeHelper';
 
 export function Sidebar() {
   const [unreadCount, setUnreadCount] = useState(0);
-  const [digitalExpanded, setDigitalExpanded] = useState(true);
-  const [staticExpanded, setStaticExpanded] = useState(true);
-  const [specialExpanded, setSpecialExpanded] = useState(true);
+  const [digitalExpanded, setDigitalExpanded] = useState(false);
+  const [staticExpanded, setStaticExpanded] = useState(false);
+  const [specialExpanded, setSpecialExpanded] = useState(false);
+
+  const [yonetimExpanded, setYonetimExpanded] = useState(true);
+  const [envanterExpanded, setEnvanterExpanded] = useState(false);
+  const [satisExpanded, setSatisExpanded] = useState(false);
+  const [operasyonExpanded, setOperasyonExpanded] = useState(false);
+  const [finansExpanded, setFinansExpanded] = useState(false);
+  const [sistemExpanded, setSistemExpanded] = useState(false);
 
   // Dynamic counts for each category
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -172,6 +180,8 @@ export function Sidebar() {
     badgeCount?: number
   ) => {
     const isActive = currentRoute === routeKey;
+    const isRealRoute = !routeKey.endsWith('-group');
+
     return (
       <div
         className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 select-none text-[10px] border border-transparent ${
@@ -185,7 +195,11 @@ export function Sidebar() {
         {/* Navigation Button */}
         <button
           onClick={() => {
-            setCurrentRoute(routeKey);
+            if (isRealRoute) {
+              setCurrentRoute(routeKey);
+            } else {
+              setExpanded(!expanded);
+            }
             setMobileSidebarOpen(false);
             if (sidebarCollapsed && !mobileSidebarOpen) {
               setSidebarCollapsed(false);
@@ -199,7 +213,7 @@ export function Sidebar() {
             {icon}
           </span>
           {(!sidebarCollapsed || mobileSidebarOpen) && (
-            <span className="text-[10px] uppercase tracking-wider flex items-center gap-1.5 truncate">
+            <span className="text-[10px] uppercase tracking-wider flex items-center gap-1.5 truncate font-extrabold">
               <span className="truncate">{label}</span>
               {badgeCount !== undefined && (
                 <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full shrink-0 leading-none ${
@@ -274,95 +288,109 @@ export function Sidebar() {
           </div>
 
           {/* Navigation Menu */}
-          <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-0.5 no-scrollbar">
-            {showDashboard && renderSidebarItem('dashboard', 'Genel Bakış', <Home size={13} />)}
+          <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-3 no-scrollbar text-left">
+            {/* GROUP 1: YÖNETİM */}
+            <div className="space-y-0.5">
+              {(!sidebarCollapsed || mobileSidebarOpen) && (
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-3 block mb-1">
+                  YÖNETİM
+                </span>
+              )}
+              {showDashboard && renderSidebarItem('dashboard', 'Dashboard', <Home size={13} />)}
+              {renderSidebarItem('executive-dashboard', 'CEO Ekranı', <Eye size={13} />)}
+              {showReports && renderSidebarItem('raporlar', 'Raporlar', <BarChart3 size={13} />)}
+            </div>
 
-            {/* Reklam Envanteri Categorized Accordion Section */}
-            {showSpaces && (
-              <div className="space-y-0.5 border-t border-b border-white/5 py-2 my-2">
-                {(!sidebarCollapsed || mobileSidebarOpen) && (
-                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-3 block mb-1">
-                    REKLAM MECRALARI
-                  </span>
-                )}
-                
-                {/* 1. Tüm Alanlar */}
-                {renderSidebarItem('inventory', 'Tüm Alanlar', <MapPin size={13} />, false, counts.all)}
-
-                {/* 3. Dijital Ekranlar Group */}
-                <div className="space-y-0.5">
-                  {renderAccordionHeader(
-                    'inventory-digital', 
-                    'Dijital Ekranlar', 
-                    <Tv size={13} />, 
-                    digitalExpanded, 
-                    setDigitalExpanded,
-                    currentRoute === 'inventory-digital' || currentRoute === 'inventory-digital-led',
-                    counts.digital
-                  )}
-                  {digitalExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
-                    <div className="space-y-0.5 animate-slide-in duration-200">
-                      {renderSidebarItem('inventory-digital-led', 'LED Ekranlar', <Tv size={11} className="opacity-60" />, true, counts.led)}
-                    </div>
-                  )}
+            {/* GROUP 2: ENVANTER */}
+            <div className="space-y-0.5">
+              {renderAccordionHeader(
+                'inventory-group',
+                'ENVANTER',
+                <MapPin size={13} />,
+                envanterExpanded,
+                setEnvanterExpanded,
+                currentRoute === 'inventory' || currentRoute === 'reklam-alanlari' || currentRoute === 'inventory-digital' || currentRoute === 'digital-signage',
+                counts.all
+              )}
+              {envanterExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
+                <div className="space-y-0.5 pl-3 border-l border-white/5 animate-slide-in duration-200">
+                  {showSpaces && renderSidebarItem('inventory', 'Reklam Alanları', <MapPin size={11} className="opacity-60" />, true, counts.all)}
+                  {showSpaces && renderSidebarItem('inventory-digital', 'Dijital Ekranlar', <Tv size={11} className="opacity-60" />, true, counts.digital)}
+                  {renderSidebarItem('digital-signage', 'Playlist', <Tv size={11} className="opacity-60" />, true)}
                 </div>
+              )}
+            </div>
 
-                {/* 4. Statik Alanlar Group */}
-                <div className="space-y-0.5">
-                  {renderAccordionHeader(
-                    'inventory-static', 
-                    'Statik Alanlar', 
-                    <Image size={13} />, 
-                    staticExpanded, 
-                    setStaticExpanded,
-                    currentRoute.startsWith('inventory-static'),
-                    counts.static
-                  )}
-                  {staticExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
-                    <div className="space-y-0.5 animate-slide-in duration-200">
-                      {renderSidebarItem('inventory-static-lightbox', 'Lightbox', <Image size={11} className="opacity-60" />, true, counts.lightbox)}
-                      {renderSidebarItem('inventory-static-duratrans', 'Duratrans', <Image size={11} className="opacity-60" />, true, counts.duratrans)}
-                      {renderSidebarItem('inventory-static-megalight', 'Megalight', <Image size={11} className="opacity-60" />, true, counts.megalight)}
-                      {renderSidebarItem('inventory-static-foil', 'Folyo Alanları', <Image size={11} className="opacity-60" />, true, counts.foil)}
-                      {renderSidebarItem('inventory-static-panel', 'Statik Panolar', <FileText size={11} className="opacity-60" />, true, counts.panel)}
-                    </div>
-                  )}
+            {/* GROUP 3: SATIŞ */}
+            <div className="space-y-0.5">
+              {renderAccordionHeader(
+                'sales-group',
+                'SATIŞ',
+                <Coins size={13} />,
+                satisExpanded,
+                setSatisExpanded,
+                currentRoute === 'firmalar-markalar' || currentRoute === 'teklifler' || currentRoute === 'rezervasyonlar' || currentRoute === 'sozlesmeler' || currentRoute === 'takvim',
+                undefined
+              )}
+              {satisExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
+                <div className="space-y-0.5 pl-3 border-l border-white/5 animate-slide-in duration-200">
+                  {showCompanies && renderSidebarItem('firmalar-markalar', 'Firmalar & Markalar', <Building2 size={11} className="opacity-60" />, true)}
+                  {showOffers && renderSidebarItem('teklifler', 'Teklifler', <FileText size={11} className="opacity-60" />, true)}
+                  {showCalendar && renderSidebarItem('rezervasyonlar', 'Rezervasyonlar', <Calendar size={11} className="opacity-60" />, true)}
+                  {showContracts && renderSidebarItem('sozlesmeler', 'Sözleşmeler', <FileSignature size={11} className="opacity-60" />, true)}
                 </div>
+              )}
+            </div>
 
-                {/* 5. Özel Alanlar Group */}
-                <div className="space-y-0.5">
-                  {renderAccordionHeader(
-                    'inventory-special', 
-                    'Özel Alanlar', 
-                    <Sparkles size={13} />, 
-                    specialExpanded, 
-                    val => setSpecialExpanded(val),
-                    currentRoute.startsWith('inventory-special'),
-                    counts.special
-                  )}
-                  {specialExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
-                    <div className="space-y-0.5 animate-slide-in duration-200">
-                      {renderSidebarItem('inventory-special-stand', 'Stand Alanları', <Building2 size={11} className="opacity-60" />, true, counts.stand)}
-                      {renderSidebarItem('inventory-special-sponsorship', 'Sponsorluk Alanları', <FileSignature size={11} className="opacity-60" />, true, counts.sponsorship)}
-                    </div>
-                  )}
+            {/* GROUP 4: OPERASYON */}
+            <div className="space-y-0.5">
+              {renderAccordionHeader(
+                'ops-group',
+                'OPERASYON',
+                <Megaphone size={13} />,
+                operasyonExpanded,
+                setOperasyonExpanded,
+                currentRoute === 'kampanyalar' || currentRoute === 'takvim' || currentRoute === 'proof-of-play' || currentRoute === 'maintenance',
+                undefined
+              )}
+              {operasyonExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
+                <div className="space-y-0.5 pl-3 border-l border-white/5 animate-slide-in duration-200">
+                  {showCampaigns && renderSidebarItem('kampanyalar', 'Kampanyalar', <Megaphone size={11} className="opacity-60" />, true)}
+                  {showCalendar && renderSidebarItem('takvim', 'Takvim / Planlama', <Calendar size={11} className="opacity-60" />, true)}
+                  {renderSidebarItem('proof-of-play', 'Proof of Play', <Eye size={11} className="opacity-60" />, true)}
+                  {renderSidebarItem('maintenance', 'Bakım / Servis', <Wrench size={11} className="opacity-60" />, true)}
                 </div>
+              )}
+            </div>
 
-                {/* 6. Dijital Yayın (Digital Signage) */}
-                {renderSidebarItem('digital-signage', 'Dijital Yayın', <Tv size={13} />)}
-              </div>
-            )}
+            {/* GROUP 5: FİNANS */}
+            <div className="space-y-0.5">
+              {(!sidebarCollapsed || mobileSidebarOpen) && (
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-3 block mb-1">
+                  FİNANS
+                </span>
+              )}
+              {showFinance && renderSidebarItem('finans', 'Finans & Tahsilat', <Coins size={13} />)}
+            </div>
 
-            {/* Standard Modules */}
-            {showOffers && renderSidebarItem('teklifler', 'Teklifler', <FileText size={13} />)}
-            {showContracts && renderSidebarItem('sozlesmeler', 'Sözleşmeler', <FileSignature size={13} />)}
-            {showCalendar && renderSidebarItem('rezervasyonlar', 'Rezervasyonlar', <Calendar size={13} />)}
-            {showCampaigns && renderSidebarItem('kampanyalar', 'Kampanyalar', <Megaphone size={13} />)}
-            {showCalendar && renderSidebarItem('takvim', 'Planlama', <Calendar size={13} />)}
-            {showFinance && renderSidebarItem('finans', 'Finans & Tahsilat', <Coins size={13} />)}
-            {showReports && renderSidebarItem('raporlar', 'Raporlar', <BarChart3 size={13} />)}
-            {showCompanies && renderSidebarItem('firmalar-markalar', 'Firmalar & Markalar', <Building2 size={13} />)}
-            {showSettings && renderSidebarItem('ayarlar', 'Ayarlar', <Settings size={13} />)}
+            {/* GROUP 6: SİSTEM */}
+            <div className="space-y-0.5">
+              {renderAccordionHeader(
+                'system-group',
+                'SİSTEM',
+                <Settings size={13} />,
+                sistemExpanded,
+                setSistemExpanded,
+                currentRoute === 'ayarlar' || currentRoute === 'system-roles',
+                undefined
+              )}
+              {sistemExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
+                <div className="space-y-0.5 pl-3 border-l border-white/5 animate-slide-in duration-200">
+                  {showSettings && renderSidebarItem('system-roles', 'Kullanıcılar', <Users size={11} className="opacity-60" />, true)}
+                  {showSettings && renderSidebarItem('ayarlar', 'Ayarlar', <Settings size={11} className="opacity-60" />, true)}
+                </div>
+              )}
+            </div>
           </nav>
         </div>
 

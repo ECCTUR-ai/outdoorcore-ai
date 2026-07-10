@@ -10,23 +10,19 @@ import {
   MapPin, 
   Sparkles, 
   Zap, 
-  CheckSquare, 
-  ShieldAlert, 
-  Flame,
-  ArrowRight,
-  ChevronRight,
-  Maximize2,
-  Layers,
-  Clock,
-  PlusSquare,
-  FilePlus,
-  Bookmark,
-  Users,
-  Search,
-  RefreshCw,
-  FileText,
-  BarChart2,
-  DownloadCloud
+  Layers, 
+  Clock, 
+  FileText, 
+  BarChart2, 
+  DownloadCloud,
+  Megaphone,
+  Tv,
+  Percent,
+  Plus,
+  CheckCircle,
+  FileSignature,
+  Wrench,
+  CheckCheck
 } from 'lucide-react';
 import { 
   spaceRepository, 
@@ -34,7 +30,10 @@ import {
   contractRepository, 
   reservationRepository, 
   campaignRepository, 
-  financeRepository 
+  financeRepository,
+  companyRepository,
+  digitalScreenRepository,
+  maintenanceRepository
 } from '@/repositories';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
 import { DarkDashboardCard } from '@/components/design-system/DarkDashboardCard';
@@ -47,16 +46,12 @@ import {
   ResponsiveContainer, 
   AreaChart, 
   Area, 
-  BarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   Tooltip, 
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell
+  CartesianGrid
 } from 'recharts';
+import { dashboardMetricsService } from '@/services/dashboardMetricsService';
 
 export function Dashboard() {
   const { setCurrentRoute } = useApp();
@@ -65,767 +60,651 @@ export function Dashboard() {
   const [offerModalOpen, setOfferModalOpen] = useState(false);
   const [companyModalOpen, setCompanyModalOpen] = useState(false);
 
-  // Dynamic state loaded instantly using synchronous initializers for < 1s startup
+  // Dynamic state loaded instantly using synchronous initializers
+  const [companies, setCompanies] = useState<any[]>(() => companyRepository.getAllSync());
   const [spaces, setSpaces] = useState<any[]>(() => spaceRepository.getAllSync());
   const [offers, setOffers] = useState<any[]>(() => offerRepository.getAllSync());
   const [contracts, setContracts] = useState<any[]>(() => contractRepository.getAllSync());
   const [reservations, setReservations] = useState<any[]>(() => reservationRepository.getAllSync());
   const [campaigns, setCampaigns] = useState<any[]>(() => campaignRepository.getAllSync());
   const [finance, setFinance] = useState<any>(() => financeRepository.getFinanceDataSync());
+  const [screens, setScreens] = useState<any[]>(() => digitalScreenRepository.listScreens());
+  const [slots, setSlots] = useState<any[]>(() => digitalScreenRepository.listPlaylistSlots());
+  const [pops, setPops] = useState<any[]>(() => JSON.parse(localStorage.getItem('outdoorcore_mock_proofOfPlays') || '[]'));
+  const [maintenance, setMaintenance] = useState<any[]>(() => maintenanceRepository.getAllSync());
+  
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Tab state for deadlines
+  const [activeDeadlineTab, setActiveDeadlineTab] = useState<'options' | 'contracts' | 'collections' | 'campaigns'>('options');
 
   const loadAllData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const [sList, oList, cList, rList, camList, fData] = await Promise.all([
+      const [comList, sList, oList, cList, rList, camList, fData, maintList] = await Promise.all([
+        companyRepository.list(),
         spaceRepository.list(),
         offerRepository.list(),
         contractRepository.getAll(),
         reservationRepository.getAll(),
         campaignRepository.getAll(),
-        financeRepository.getFinanceData()
+        financeRepository.getFinanceData(),
+        maintenanceRepository.getAll()
       ]);
+      setCompanies(comList);
       setSpaces(sList);
       setOffers(oList);
       setContracts(cList);
       setReservations(rList);
       setCampaigns(camList);
       setFinance(fData);
-    } catch (e) {
+      setScreens(digitalScreenRepository.listScreens());
+      setSlots(digitalScreenRepository.listPlaylistSlots());
+      setPops(JSON.parse(localStorage.getItem('outdoorcore_mock_proofOfPlays') || '[]'));
+      setMaintenance(maintList);
+    } catch (e: any) {
       console.error('Error loading CEO dashboard data:', e);
+      setError('Dashboard verileri yüklenemedi. Lütfen bağlantınızı kontrol edip tekrar deneyin.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadAllData();
     window.addEventListener('storage', loadAllData);
-    window.addEventListener('outdoorcore_finance_data_updated', loadAllData);
+    window.addEventListener('outdoorcore_data_updated', loadAllData);
     return () => {
       window.removeEventListener('storage', loadAllData);
-      window.removeEventListener('outdoorcore_finance_data_updated', loadAllData);
+      window.removeEventListener('outdoorcore_data_updated', loadAllData);
     };
   }, []);
 
-  // 1. ÜST KPI Calculations from real state
-  const metrics = useMemo(() => {
-    const totalSpaces = spaces.length;
-    const doluSpaces = spaces.filter(s => s.status === 'rezerve').length;
-    const occupancyRate = totalSpaces > 0 ? ((doluSpaces / totalSpaces) * 100).toFixed(1) : '0';
-
-    // Kesinleşmiş Ciro (Yalnızca CONFIRMED durumundaki rezervasyonların toplam bütçesi)
-    const confirmedRes = reservations.filter(r => r.status === 'CONFIRMED');
-    const thisMonthCiro = confirmedRes.reduce((sum, r) => {
-      const val = parseFloat((r.budget || '').replace(/[^0-9]/g, '')) || 0;
-      return sum + val;
-    }, 0);
-
-    // Opsiyonel / Bekleyen Pipeline Değeri (OPTIONED, CONTRACT_PENDING, SALES_APPROVAL_PENDING)
-    const pipelineRes = reservations.filter(r => 
-      ['OPTIONED', 'CONTRACT_PENDING', 'SALES_APPROVAL_PENDING'].includes(r.status)
+  // Compute metrics using central metrics service
+  const stats = useMemo(() => {
+    return dashboardMetricsService.calculateAll(
+      companies,
+      spaces,
+      offers,
+      contracts,
+      reservations,
+      campaigns,
+      finance,
+      screens,
+      slots,
+      pops,
+      maintenance
     );
-    const optionedPipelineValue = pipelineRes.reduce((sum, r) => {
-      const val = parseFloat((r.budget || '').replace(/[^0-9]/g, '')) || 0;
-      return sum + val;
-    }, 0);
+  }, [companies, spaces, offers, contracts, reservations, campaigns, finance, screens, slots, pops, maintenance]);
 
-    const totalExpectedCiro = spaces.reduce((sum, s) => sum + ((s as any).priceNumeric || 0), 0);
-    const activeContractsCount = contracts.filter(c => c.status === 'signed' || c.status === 'active' || c.status === 'Aktif').length;
+  // Format currencies beautifully
+  const formatCurrency = (val: number) => {
+    if (val === 0) return '₺0';
+    if (val >= 1000000) return `₺${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `₺${(val / 1000).toFixed(0)}K`;
+    return `₺${val.toLocaleString('tr-TR')}`;
+  };
 
-    // Expiring this month
-    const expiringThisMonthCount = contracts.filter(c => 
-      c.status !== 'cancelled' && 
-      c.status !== 'İptal' &&
-      (c.endDate.includes('.06.2026') || (c.daysLeft !== undefined && c.daysLeft <= 30))
-    ).length;
-
-    // Finance Outstanding dues
-    let pendingCollections = 0;
-    if (finance && finance.accounts) {
-      finance.accounts.forEach((acc: any) => {
-        const bal = parseFloat(acc.balance.replace(/[^\d]/g, '')) || 0;
-        pendingCollections += bal;
-      });
-    }
-
-    const activeCampaignsCount = campaigns.filter(c => c.status === 'Aktif' || c.status === 'active').length;
-    
-    // MGA Akış Sayıları
-    const optionedCount = reservations.filter(r => r.status === 'OPTIONED').length;
-    const approvalPendingCount = reservations.filter(r => r.status === 'SALES_APPROVAL_PENDING').length;
-    const confirmedCount = reservations.filter(r => r.status === 'CONFIRMED').length;
-    const expiredCount = reservations.filter(r => r.status === 'OPTION_EXPIRED').length;
-
-    const totalTracked = confirmedCount + optionedCount + approvalPendingCount + expiredCount;
-    const conversionRate = totalTracked > 0 ? ((confirmedCount / totalTracked) * 100).toFixed(1) : '0';
-
-    return {
-      totalSpaces,
-      occupancyRate,
-      thisMonthCiro: `₺${(thisMonthCiro / 1000000).toFixed(2)}M`,
-      totalExpectedCiro: `₺${(totalExpectedCiro / 1000000).toFixed(1)}M`,
-      activeContractsCount,
-      expiringThisMonthCount,
-      pendingCollections: `₺${(pendingCollections / 1000000).toFixed(1)}M`,
-      pendingCollectionsVal: pendingCollections,
-      activeCampaignsCount,
-      optionedCount,
-      approvalPendingCount,
-      confirmedCount,
-      optionedPipelineValue: `₺${(optionedPipelineValue / 1000000).toFixed(2)}M`,
-      conversionRate,
-      rawOccupancy: totalSpaces > 0 ? (doluSpaces / totalSpaces) * 100 : 0
-    };
-  }, [spaces, offers, contracts, reservations, campaigns, finance]);
-
-  // 2. SATIŞ: Funnel and top offers calculations
-  const salesMetrics = useMemo(() => {
-    // Stage counts
-    const stagesList = [
-      { name: 'Teklif Hazırlandı', count: offers.filter(o => o.stage === 'Teklif Hazırlandı').length },
-      { name: 'Onaya Gönderildi', count: offers.filter(o => o.stage === 'Onaya Gönderildi').length },
-      { name: 'Sözleşme Bekliyor', count: offers.filter(o => o.stage === 'Sözleşme Bekliyor').length },
-      { name: 'Sözleşme İmzalandı', count: offers.filter(o => o.stage === 'Sözleşme İmzalandı').length }
-    ];
-
-    // Win Rate: signed / total active offers
-    const signedCount = offers.filter(o => o.stage === 'Sözleşme İmzalandı').length;
-    const totalActive = offers.filter(o => o.stage !== 'İptal').length;
-    const winRate = totalActive > 0 ? Math.round((signedCount / totalActive) * 100) : 0;
-
-    // Top 10 offers
-    const topOffers = [...offers]
-      .filter(o => o.stage !== 'İptal')
-      .sort((a, b) => (b.valueNumeric || 0) - (a.valueNumeric || 0))
-      .slice(0, 10);
-
-    return {
-      stagesList,
-      winRate,
-      topOffers
-    };
-  }, [offers]);
-
-  // 3. OPERASYON: Occupancy map, conflicts and maintenance
-  const operationMetrics = useMemo(() => {
-    const isConflict = (r1: any, r2: any) => {
-      if (r1.id === r2.id || r1.spaceId !== r2.spaceId) return false;
-      return r1.startDate <= r2.endDate && r2.startDate <= r1.endDate;
-    };
-
-    const conflictsList: any[] = [];
-    const activeRes = reservations.filter(r => r.status !== 'İptal');
-    for (let i = 0; i < activeRes.length; i++) {
-      for (let j = i + 1; j < activeRes.length; j++) {
-        if (isConflict(activeRes[i], activeRes[j])) {
-          conflictsList.push({
-            id: `${activeRes[i].id}-${activeRes[j].id}`,
-            spaceCode: activeRes[i].spaceCode,
-            spaceName: activeRes[i].spaceName,
-            clientA: activeRes[i].clientName,
-            datesA: `${activeRes[i].startDate} - ${activeRes[i].endDate}`,
-            clientB: activeRes[j].clientName,
-            datesB: `${activeRes[j].startDate} - ${activeRes[j].endDate}`,
-            reason: 'Tarih çakışması tespit edildi'
-          });
-        }
-      }
-    }
-
-    const mostUsed = [...spaces]
-      .sort((a, b) => (b.traffic || 0) - (a.traffic || 0))
-      .slice(0, 5);
-
-    const premiumFree = spaces
-      .filter(s => s.status === 'bos' && (s.priceNumeric || 0) >= 50000)
-      .slice(0, 5);
-
-    const underMaintenance = spaces.filter(s => s.status === 'bakim');
-
-    return {
-      conflictsList,
-      mostUsed,
-      premiumFree,
-      underMaintenance
-    };
-  }, [spaces, reservations]);
-
-  // 4. FİNANS: Income & most profitable companies
-  const financeMetrics = useMemo(() => {
-    const sortedCompanies = [...(finance?.accounts || [])]
-      .sort((a: any, b: any) => {
-        const valA = parseFloat(a.totalDebt.replace(/[^\d]/g, '')) || 0;
-        const valB = parseFloat(b.totalDebt.replace(/[^\d]/g, '')) || 0;
-        return valB - valA;
-      })
-      .slice(0, 5);
-
-    return {
-      sortedCompanies
-    };
-  }, [finance]);
-
-  // 5. SÖZLEŞMELER: Risk Analysis
-  const contractMetrics = useMemo(() => {
-    const upcomingContracts = contracts
-      .filter(c => c.status !== 'cancelled' && c.status !== 'İptal' && c.daysLeft <= 45)
-      .slice(0, 5);
-
-    const riskyContracts = contracts
-      .filter(c => c.status !== 'cancelled' && c.status !== 'İptal' && (c.aiRiskScore && c.aiRiskScore >= 7))
-      .slice(0, 5);
-
-    return {
-      upcomingContracts,
-      riskyContracts
-    };
-  }, [contracts]);
-
-  // 6. AI CEO INSIGHTS Auto-generator
-  const aiCeoSummary = useMemo(() => {
-    const freePremiumCount = spaces.filter(s => s.status === 'bos' && (s.priceNumeric || 0) >= 50000).length;
-    
-    if (spaces.length === 0) {
-      return [
-        "MGA OutdoorCore ERP sistemine hoş geldiniz.",
-        "Sistem şu anda boş durumdadır. Sol menüdeki **Firma Ekle** veya **Yeni Mecra Ekle** butonlarını kullanarak ilk kayıtlarınızı oluşturabilirsiniz.",
-        "Mecra ve müşteri kayıtları girildikten sonra AI CEO Pilot otomatik analizlere ve ciro tahminlerine başlayacaktır.",
-        "Test veya demo yapmak isterseniz, sağ üstteki **Demo Sıfırla** butonuyla örnek verileri anında yükleyebilirsiniz."
-      ];
-    }
-
-    return [
-      `Bu ay havalimanı reklam ünitelerinde **doluluk oranı %${metrics.occupancyRate}** seviyesindedir.`,
-      `Önümüzdeki dönem için beklenen ciro kapasitesi **${metrics.totalExpectedCiro}** olarak hesaplanmıştır.`,
-      `**${metrics.expiringThisMonthCount} adet sözleşme** bu ay içinde süresini dolduruyor ve yenileme periyoduna giriyor.`,
-      `Şu anda kiralama için uygun durumda **${freePremiumCount} adet premium boş alan** bulunmaktadır.`,
-      `Cari hesaplarda tahsil edilmeyi bekleyen fatura bakiyesi toplamı **${metrics.pendingCollections}** seviyesindedir.`,
-      `**Pegasus** ve **Turkish Airlines** aktif kiralama hacimlerine göre yenileme döneminde fiyat artış potansiyeline sahiptir.`,
-      `Uluslararası yolcu trafiğinin artışı nedeniyle **Duty Free LED ekranlarında** yeni kampanya paketleri önerilmektedir.`,
-      `**Dış Hatlar terminal grubu** doluluk oranları yükselirken, **İç Hatlar arınmış salon** doluluk oranlarında düşüş trendi gözlenmektedir.`
-    ];
-  }, [metrics, spaces]);
-
-  // Recharts cashflow mappings
-  const cashFlowData = useMemo(() => {
-    if (finance && finance.cashFlowTrends && finance.cashFlowTrends.length > 0) {
-      return finance.cashFlowTrends;
-    }
-    return [
-      { month: 'Ocak', incoming: 0, outgoing: 0, net: 0 },
-      { month: 'Şubat', incoming: 0, outgoing: 0, net: 0 },
-      { month: 'Mart', incoming: 0, outgoing: 0, net: 0 },
-      { month: 'Nisan', incoming: 0, outgoing: 0, net: 0 },
-      { month: 'Mayıs', incoming: 0, outgoing: 0, net: 0 }
-    ];
-  }, [finance]);
-
-  const pieChartData = useMemo(() => {
-    if (finance && finance.collectionStatuses && finance.collectionStatuses.length > 0) {
-      return finance.collectionStatuses;
-    }
-    return [
-      { name: 'Tahsil Edilen', value: 0, color: '#10b981' },
-      { name: 'Kalan Bakiye', value: 0, color: '#3b82f6' }
-    ];
-  }, [finance]);
-
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
+  // Remaining days visual tags helper
+  const getDeadlineTagStyle = (days: number) => {
+    if (days <= 0) return 'bg-rose-500/10 text-rose-500 border border-rose-500/25';
+    if (days <= 7) return 'bg-red-500/10 text-red-400 border border-red-500/20';
+    if (days <= 29) return 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+    return 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+  };
 
   return (
-    <div className="space-y-6 text-left select-none pb-12">
-      {/* Bloomberg-style Live Ticker Status Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-[#070b13] border border-white/5 p-4 rounded-3xl relative overflow-hidden select-none shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping shrink-0" />
-          <div className="space-y-0.5 text-left">
-            <h2 className="text-[10px] font-black text-white uppercase tracking-widest leading-none">CEO EXECUTIVE INTELLIGENCE CENTER</h2>
-            <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Yönetim Kurulu Canlı Pazar, Ciro ve SLA Performans Terminali</span>
-          </div>
+    <div className="space-y-6 text-left select-none pb-12 bg-[#0c1325]/40 p-5 rounded-3xl border border-white/5 max-w-[1600px] mx-auto w-full">
+      
+      {/* CEO Executive Intelligence Header */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-white/5 pb-5">
+        <div className="space-y-1 text-left">
+          <h1 className="text-lg font-black text-white uppercase tracking-widest leading-none">CEO Executive Intelligence Center</h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Satış, envanter, sözleşme, kampanya ve tahsilat performansını tek ekrandan yönetin.</p>
         </div>
-        <div className="flex flex-wrap gap-4 text-[9px] font-bold text-slate-400">
-          <div>USD/TRY: <span className="text-white">34.18</span> <span className="text-emerald-450">▲ +0.12%</span></div>
-          <div>BIST Outdoor: <span className="text-white">8.540</span> <span className="text-emerald-450">▲ +0.95%</span></div>
-          <div>Şirket Pazar Payı: <span className="text-white">%38.2</span> <span className="text-blue-400">Sabit</span></div>
-          <div>SLA Başarı Oranı: <span className="text-emerald-450">%98.4</span></div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[9px] font-black text-slate-500 bg-white/3 border border-white/5 px-3 py-1.5 rounded-xl uppercase tracking-wider">
+            Son Güncelleme: {new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+
+          <Button 
+            variant="minimal" 
+            size="sm" 
+            leftIcon={<DownloadCloud size={13} />}
+            onClick={() => alert('Genel Yönetici Yönetim Kurulu PDF Raporu indiriliyor...')}
+          >
+            Rapor İndir
+          </Button>
+
+          <Button 
+            variant="primary" 
+            size="sm" 
+            leftIcon={<Sparkles size={13} className="animate-pulse" />}
+            className="bg-gradient-to-r from-purple-750 to-indigo-750 hover:from-purple-700 hover:to-indigo-700 text-white font-black"
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle_ai_pilot'))}
+          >
+            OutdoorCore AI
+          </Button>
         </div>
       </div>
 
-      {/* ÜST KPI Cards (10 Cards Grid) */}
-      <div className="grid grid-cols-1 md:grid-cols-5 lg:grid-cols-10 gap-3">
-        <DarkKpiCard
-          title="Toplam Envanter"
-          value={loading ? '...' : String(metrics.totalSpaces)}
-          percentage="100%"
-          subtext="Toplam ünite"
-          icon={<MapPin size={13} />}
-          iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
-        />
-        <DarkKpiCard
-          title="Doluluk Oranı"
-          value={loading ? '...' : `%${metrics.occupancyRate}`}
-          percentage={`${metrics.occupancyRate}%`}
-          subtext="Envanter verimliliği"
-          icon={<TrendingUp size={13} />}
-          iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
-          glowColor="purple"
-        />
+      {error && (
+        <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex justify-between items-center text-rose-400">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase">
+            <AlertTriangle size={14} />
+            <span>{error}</span>
+          </div>
+          <Button size="xs" variant="minimal" onClick={loadAllData}>Yeniden Dene</Button>
+        </div>
+      )}
+
+      {/* 6 MAIN KPI CARDS GRID */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <DarkKpiCard
           title="Kesinleşmiş Ciro"
-          value={loading ? '...' : metrics.thisMonthCiro}
-          percentage=""
-          subtext="Konfirme edilen ciro"
-          icon={<Coins size={13} />}
+          value={loading ? '...' : formatCurrency(stats.ciro)}
+          percentage="—"
+          subtext="Konfirme rezervasyon / sözleşmeler"
+          icon={<Coins size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-500/10"
           glowColor="green"
         />
         <DarkKpiCard
-          title="Beklenen Ciro"
-          value={loading ? '...' : metrics.totalExpectedCiro}
-          percentage=""
-          subtext="Aylık kapasite"
-          icon={<Coins size={13} />}
-          iconBgColor="bg-indigo-500/10 text-indigo-400 border-indigo-500/10"
-        />
-        <DarkKpiCard
-          title="Aktif Sözleşme"
-          value={loading ? '...' : String(metrics.activeContractsCount)}
-          percentage=""
-          subtext="İmzalı kontratlar"
-          icon={<FileText size={13} />}
-          iconBgColor="bg-teal-500/10 text-teal-400 border-teal-500/10"
-        />
-        <DarkKpiCard
-          title="Bu Ay Bitecek"
-          value={loading ? '...' : String(metrics.expiringThisMonthCount)}
-          percentage=""
-          subtext="Yenileme potansiyeli"
-          icon={<Clock size={13} />}
-          iconBgColor="bg-orange-500/10 text-orange-400 border-orange-500/10"
-          glowColor="yellow"
+          title="Aktif Pipeline"
+          value={loading ? '...' : formatCurrency(stats.pipeline)}
+          percentage="—"
+          subtext="Sonuçlanmamış teklifler toplamı"
+          icon={<Layers size={15} />}
+          iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
         />
         <DarkKpiCard
           title="Tahsilat Bekleyen"
-          value={loading ? '...' : metrics.pendingCollections}
-          percentage=""
-          subtext="Müşteri bakiyesi"
-          icon={<Coins size={13} />}
+          value={loading ? '...' : formatCurrency(stats.tahsilatBekleyen)}
+          percentage="—"
+          subtext="Açık fatura ve cariler toplamı"
+          icon={<Coins size={15} />}
           iconBgColor="bg-rose-500/10 text-rose-455 border-rose-500/10"
           glowColor="red"
         />
         <DarkKpiCard
+          title="Aktif Sözleşme"
+          value={loading ? '...' : String(stats.activeContractsCount)}
+          percentage="—"
+          subtext="İmzalanmış kontrat adeti"
+          icon={<FileText size={15} />}
+          iconBgColor="bg-teal-500/10 text-teal-400 border-teal-500/10"
+        />
+        <DarkKpiCard
           title="Aktif Kampanya"
-          value={loading ? '...' : String(metrics.activeCampaignsCount)}
-          percentage=""
-          subtext="Şu an yayında"
-          icon={<Activity size={13} />}
-          iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
-        />
-        <DarkKpiCard
-          title="Kesinleşmiş Ciro"
-          value={loading ? '...' : metrics.thisMonthCiro}
-          percentage=""
-          subtext="Kesin satışı onaylanan"
-          icon={<Coins size={13} />}
-          iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-500/10"
-          glowColor="green"
-        />
-        <DarkKpiCard
-          title="Opsiyon Pipeline"
-          value={loading ? '...' : metrics.optionedPipelineValue}
-          percentage=""
-          subtext="Opsiyon & Onay bekleyen"
-          icon={<TrendingUp size={13} />}
+          value={loading ? '...' : String(stats.activeCampaignsCount)}
+          percentage="—"
+          subtext="Şu an havalimanında yayında"
+          icon={<Activity size={15} />}
           iconBgColor="bg-indigo-500/10 text-indigo-400 border-indigo-500/10"
-          glowColor="yellow"
         />
         <DarkKpiCard
-          title="Mecra Konfirmasyon"
-          value={loading ? '...' : `${metrics.confirmedCount} Kesin`}
-          percentage={`${metrics.conversionRate}%`}
-          subtext={`Dönüşüm: %${metrics.conversionRate}`}
-          icon={<Calendar size={13} />}
-          iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
-          glowColor="blue"
-        />
-        <DarkKpiCard
-          title="Süreç Havuzu"
-          value={loading ? '...' : `${metrics.optionedCount} Ops / ${metrics.approvalPendingCount} Onay`}
-          percentage=""
-          subtext="Opsiyonlu & Onay bekleyenler"
-          icon={<Activity size={13} />}
+          title="Envanter Doluluk Oranı"
+          value={loading ? '...' : `%${stats.occupancyRate.toFixed(1)}`}
+          percentage="—"
+          subtext="Kullanılan / Toplam Reklam Alanı"
+          icon={<TrendingUp size={15} />}
           iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
+          glowColor="purple"
         />
       </div>
 
-      {/* Main Sections Splits */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        {/* LEFT COLUMN: AI CEO INSIGHTS & YÖNETİM AKSİYONLARI */}
-        <div className="lg:col-span-4 space-y-6">
-          
-          {/* AI CEO INSIGHTS Auto-summary */}
-          <div className="bg-purple-950/10 border border-purple-500/15 rounded-3xl p-5 space-y-3.5 shadow-xl relative overflow-hidden">
-            <div className="flex items-center justify-between pb-2 border-b border-purple-500/15">
-              <span className="text-xs font-black text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles size={13} className="animate-pulse" />
-                AI CEO INSIGHTS
-              </span>
-              <span className="text-[7px] bg-purple-500/20 text-purple-300 font-extrabold px-1.5 py-0.5 rounded uppercase">Pilot Özet</span>
-            </div>
-            
-            <div className="space-y-2 text-[10px] leading-relaxed text-slate-300 font-semibold">
-              {aiCeoSummary.map((insight, idx) => (
-                <div key={idx} className="flex items-start gap-2 border-b border-white/2 pb-1.5 last:border-0 last:pb-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400 mt-1.5 shrink-0" />
-                  <p className="m-0 text-slate-300">
-                    {insight.split('**').map((part, pIdx) => pIdx % 2 === 1 ? <strong key={pIdx} className="text-white font-extrabold">{part}</strong> : part)}
-                  </p>
-                </div>
-              ))}
-            </div>
+      {/* THREE SCENARIOS CHECK: IF FULLY EMPTY Workspace -> Onboarding State */}
+      {stats.isSystemEmpty ? (
+        <div className="p-8 text-center bg-[#10192e]/60 border border-white/5 rounded-3xl space-y-6 max-w-2xl mx-auto py-12 select-none shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+          <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mx-auto animate-pulse">
+            <Sparkles size={32} />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-base font-black text-white uppercase tracking-widest">OutdoorCore çalışma alanınız hazır</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider max-w-md mx-auto leading-relaxed">
+              İlk firmanızı ve reklam alanınızı ekleyerek satış sürecini anında başlatabilirsiniz.
+            </p>
           </div>
 
-          {/* YÖNETİM AKSİYONLARI Panel */}
-          <DarkDashboardCard className="space-y-4">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-              <Zap size={12} className="text-blue-500 animate-pulse" />
-              YÖNETİM AKSİYONLARI (QUICK LAUNCH)
+          <div className="flex justify-center gap-3.5 pt-2">
+            <Button variant="primary" size="sm" onClick={() => setCompanyModalOpen(true)}>
+              Firma Ekle
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setCurrentRoute('reklam-alanlari')}>
+              Reklam Alanı Ekle
+            </Button>
+          </div>
+
+          <div className="border-t border-white/5 pt-6 text-left max-w-sm mx-auto space-y-3">
+            <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest block text-center mb-1">
+              Üç Aşamalı Başlangıç Rehberi
             </span>
-            
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-              <button 
-                onClick={() => setOfferModalOpen(true)}
-                className="p-3 bg-blue-650 hover:bg-blue-600 rounded-xl text-white font-black uppercase text-center cursor-pointer transition-all border-0 shadow-lg hover:shadow-blue-500/10 flex items-center justify-center gap-1.5"
-              >
-                <PlusSquare size={13} />
-                Yeni Teklif
-              </button>
-              
-              <button 
-                onClick={() => {
-                  alert('Hızlı rezervasyon oluşturucu yüklendi. Reklam alanları listesinden bir alan seçerek rezervasyonu tamamlayabilirsiniz.');
-                  setCurrentRoute('reklam-alanlari');
-                }}
-                className="p-3 bg-slate-900 hover:bg-white/5 border border-white/5 rounded-xl text-slate-200 font-black uppercase text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
-              >
-                <Calendar size={13} />
-                Rezervasyon
-              </button>
-              
-              <button 
-                onClick={() => setCurrentRoute('sales-wizard')}
-                className="p-3 bg-slate-900 hover:bg-white/5 border border-white/5 rounded-xl text-slate-200 font-black uppercase text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
-              >
-                <FilePlus size={13} />
-                Yeni Kampanya
-              </button>
-              
-              <button 
-                onClick={() => setCurrentRoute('sozlesmeler')}
-                className="p-3 bg-slate-900 hover:bg-white/5 border border-white/5 rounded-xl text-slate-200 font-black uppercase text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
-              >
-                <FilePlus size={13} />
-                Sözleşme Oluştur
-              </button>
-              
-              <button 
-                onClick={() => setCompanyModalOpen(true)}
-                className="p-3 bg-slate-900 hover:bg-white/5 border border-white/5 rounded-xl text-slate-200 font-black uppercase text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
-              >
-                <Building2 size={13} />
-                Firma Ekle
-              </button>
-
-              <button 
-                onClick={() => setCurrentRoute('raporlar')}
-                className="p-3 bg-slate-900 hover:bg-white/5 border border-white/5 rounded-xl text-slate-200 font-black uppercase text-center cursor-pointer transition-all flex items-center justify-center gap-1.5"
-              >
-                <BarChart2 size={13} />
-                Raporlar
-              </button>
+            <div className="flex gap-3 text-[9px] font-bold text-slate-400">
+              <span className="w-5 h-5 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center font-black text-white shrink-0">1</span>
+              <span>Firma veya marka ekleyin.</span>
+            </div>
+            <div className="flex gap-3 text-[9px] font-bold text-slate-400">
+              <span className="w-5 h-5 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center font-black text-white shrink-0">2</span>
+              <span>Reklam alanı envanterini oluşturun.</span>
+            </div>
+            <div className="flex gap-3 text-[9px] font-bold text-slate-400">
+              <span className="w-5 h-5 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center font-black text-white shrink-0">3</span>
+              <span>Teklif hazırlayıp rezervasyon akışını başlatın.</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* AI YÖNETİCİ ÖZETİ (AI Executive Summary) */}
+          <div className="bg-purple-950/10 border border-purple-500/15 rounded-3xl p-5 space-y-3.5 shadow-xl relative overflow-hidden text-left">
+            <div className="flex items-center justify-between pb-2 border-b border-purple-500/15">
+              <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Sparkles size={13} className="animate-pulse" />
+                AI YÖNETİCİ ÖZETİ
+              </span>
+              <Badge variant="primary" className="text-[7.5px] bg-purple-500/20 text-purple-300 font-extrabold tracking-wider border border-purple-500/10 uppercase">
+                Yapay Zekâ Analizi
+              </Badge>
             </div>
             
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('toggle_ai_pilot'))}
-              className="w-full p-2.5 bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-650 hover:to-indigo-650 text-white font-black uppercase rounded-xl cursor-pointer border-0 shadow-lg text-center text-[10px] flex items-center justify-center gap-1.5 mt-2"
-            >
-              <Sparkles size={13} className="animate-pulse" />
-              Outdoor AI Pilot Sohbet
-            </button>
-          </DarkDashboardCard>
-
-        </div>
-
-        {/* RIGHT AREA: SATIŞ, FİNANS, OPERASYON, SÖZLEŞMELER */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* SECTION: SATIŞ */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Pipeline and Win rate */}
-            <DarkDashboardCard className="space-y-4">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <BarChart2 size={12} className="text-blue-500" />
-                Satış Pipeline Funnel & Kazanma Oranı
-              </span>
-              <div className="grid grid-cols-12 gap-4 items-center">
-                {/* SVG Progress Gauge */}
-                <div className="col-span-4 text-center space-y-1">
-                  <div className="relative w-16 h-16 mx-auto">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                      <path className="text-slate-900" strokeWidth="2.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      <path className="text-blue-500" strokeDasharray={`${salesMetrics.winRate}, 100`} strokeWidth="2.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center text-xs font-black text-white">
-                      %{salesMetrics.winRate}
-                    </div>
-                  </div>
-                  <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider block">Kazanma Oranı</span>
-                </div>
-
-                <div className="col-span-8 space-y-2 text-[9.5px]">
-                  {salesMetrics.stagesList.map((stage, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between font-bold leading-none">
-                        <span className="text-slate-400">{stage.name}</span>
-                        <span className="text-white font-extrabold">{stage.count} adet</span>
-                      </div>
-                      <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(stage.count * 10, 100)}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </DarkDashboardCard>
-
-            {/* Top 5 biggest offers */}
-            <DarkDashboardCard className="space-y-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">En Büyük Teklifler</span>
-              <div className="space-y-2 text-[9.5px]">
-                {salesMetrics.topOffers.length === 0 ? (
-                  <div className="py-8 text-center text-slate-550 font-bold uppercase tracking-wider text-[8.5px]">
-                    Kayıtlı aktif teklif bulunmamaktadır.
-                  </div>
-                ) : (
-                  salesMetrics.topOffers.slice(0, 5).map(o => (
-                    <div key={o.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
-                      <div className="space-y-0.5">
-                        <span className="text-white font-black">{o.clientName}</span>
-                        <span className="text-[7.5px] text-slate-500 block uppercase">{o.campaignName}</span>
-                      </div>
-                      <span className="text-emerald-450 font-black shrink-0">{o.value}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </DarkDashboardCard>
-
-          </div>
-
-          {/* SECTION: FİNANS */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Revenue Trend chart */}
-            <DarkDashboardCard className="space-y-4">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <Coins size={12} className="text-emerald-450 animate-pulse" />
-                Aylık Nakit Akışı ve Tahsilat Trendi (Recharts)
-              </span>
-              <div className="h-44 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={cashFlowData}>
-                    <defs>
-                      <linearGradient id="colorIncoming" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis dataKey="month" stroke="#64748b" fontSize={9} />
-                    <YAxis stroke="#64748b" fontSize={9} />
-                    <Tooltip contentStyle={{ backgroundColor: '#0b0f19', border: '1px solid rgba(255,255,255,0.1)' }} />
-                    <Area type="monotone" dataKey="incoming" stroke="#10b981" fillOpacity={1} fill="url(#colorIncoming)" name="Gelir" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </DarkDashboardCard>
-
-            {/* Most profitable clients */}
-            <DarkDashboardCard className="space-y-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">En Yüksek Bütçeli Firmalar</span>
-              <div className="space-y-2 text-[9.5px]">
-                {financeMetrics.sortedCompanies.length === 0 ? (
-                  <div className="py-8 text-center text-slate-555 font-bold uppercase tracking-wider text-[8.5px]">
-                    Kayıtlı cari hesap bulunmamaktadır.
-                  </div>
-                ) : (
-                  financeMetrics.sortedCompanies.map(c => (
-                    <div key={c.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
-                      <div className="space-y-0.5">
-                        <span className="text-white font-black">{c.name}</span>
-                        <span className="text-[7.5px] text-slate-500 block uppercase">CRM Seviyesi: {c.crmTier}</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-emerald-450 font-black block">{c.totalDebt}</span>
-                        <span className="text-[7.5px] text-rose-455 block font-bold">Kalan: {c.balance}</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </DarkDashboardCard>
-
-          </div>
-
-          {/* SECTION: OPERASYON */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Terminal Layout Block Haritası */}
-            <DarkDashboardCard className="space-y-4">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
-                <MapPin size={12} className="text-indigo-400" />
-                Terminal Doluluk Isı Haritası (Heatmap)
-              </span>
-              
-              <div className="grid grid-cols-2 gap-3.5">
-                {/* İç Hatlar block */}
-                <div className="bg-white/2 p-3 rounded-2xl border border-white/5 space-y-2">
-                  <span className="text-[8.5px] font-black text-slate-400 uppercase tracking-wider block">İç Hatlar Terminali</span>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {spaces.filter(s => s.location.includes('İç')).slice(0, 12).map((s, idx) => {
-                      const color = s.status === 'dolu' ? 'bg-emerald-500 glow-green' : s.status === 'teklif' ? 'bg-amber-500 glow-yellow' : 'bg-blue-600/30';
-                      return (
-                        <div 
-                          key={s.id} 
-                          className={`h-4.5 rounded-md ${color} transition-all duration-300 hover:scale-110 cursor-pointer`}
-                          title={`${s.code}: ${s.name}`}
-                          onClick={() => {
-                            setCurrentRoute('reklam-alanlari');
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <span className="text-[7.5px] text-slate-550 block font-bold uppercase">12 İzlenen Ünite</span>
-                </div>
-
-                {/* Dış Hatlar block */}
-                <div className="bg-white/2 p-3 rounded-2xl border border-white/5 space-y-2">
-                  <span className="text-[8.5px] font-black text-slate-400 uppercase tracking-wider block">Dış Hatlar Terminali</span>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {spaces.filter(s => s.location.includes('Dış')).slice(0, 12).map((s, idx) => {
-                      const color = s.status === 'dolu' ? 'bg-emerald-500 glow-green' : s.status === 'teklif' ? 'bg-amber-500 glow-yellow' : 'bg-blue-600/30';
-                      return (
-                        <div 
-                          key={s.id} 
-                          className={`h-4.5 rounded-md ${color} transition-all duration-300 hover:scale-110 cursor-pointer`}
-                          title={`${s.code}: ${s.name}`}
-                          onClick={() => {
-                            setCurrentRoute('reklam-alanlari');
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <span className="text-[7.5px] text-slate-550 block font-bold uppercase">12 İzlenen Ünite</span>
-                </div>
-              </div>
-            </DarkDashboardCard>
-
-            {/* Conflicts & Maintenance */}
-            <DarkDashboardCard className="space-y-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Rezervasyon Çakışmaları & Bakım</span>
-              <div className="space-y-2 text-[9.5px]">
-                {operationMetrics.conflictsList.length === 0 ? (
-                  <div className="p-4.5 bg-emerald-600/5 border border-emerald-500/20 text-emerald-450 rounded-xl text-center font-bold">
-                    Mevcut rezervasyon planlamasında çakışma bulunmamaktadır.
-                  </div>
-                ) : (
-                  operationMetrics.conflictsList.slice(0, 2).map(c => (
-                    <div key={c.id} className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-455 space-y-1">
-                      <div className="flex items-center gap-1.5 font-black uppercase text-[8.5px]">
-                        <AlertTriangle size={11} />
-                        ÇAKIŞMA ALARMI: {c.spaceCode}
-                      </div>
-                      <p className="m-0 leading-normal text-[8.5px] font-semibold text-slate-400">
-                        {c.clientA} ({c.datesA}) vs {c.clientB} ({c.datesB})
-                      </p>
-                    </div>
-                  ))
-                )}
-
-                {operationMetrics.underMaintenance.slice(0, 2).map(s => (
-                  <div key={s.id} className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-between">
-                    <div>
-                      <span className="font-black text-[9px] block leading-none uppercase">{s.code} Bakımda</span>
-                      <span className="text-[7.5px] text-slate-500 font-bold block mt-1 uppercase">{s.location}</span>
-                    </div>
-                    <Badge variant="primary" className="text-[7.5px] bg-amber-500/20 text-amber-400">ARIZALI</Badge>
+            {stats.aiInsights.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[9.5px] leading-relaxed text-slate-300 font-bold">
+                {stats.aiInsights.map((insight, idx) => (
+                  <div key={idx} className="flex items-start gap-2.5 bg-white/2 p-2.5 rounded-xl border border-white/3">
+                    <span className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 shrink-0" />
+                    <p className="m-0 text-slate-300">
+                      {insight}
+                    </p>
                   </div>
                 ))}
               </div>
-            </DarkDashboardCard>
-
+            ) : (
+              <div className="space-y-2 text-center py-4">
+                <span className="text-[9.5px] font-bold text-slate-500 block uppercase">Analiz oluşturmak için henüz yeterli gerçek veri bulunmuyor.</span>
+                <Button size="xs" variant="ghost" onClick={() => setOfferModalOpen(true)}>İlk veriyi oluştur</Button>
+              </div>
+            )}
           </div>
 
-          {/* SECTION: SÖZLEŞMELER & YENİLEME */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Risk analysis contracts */}
-            <DarkDashboardCard className="space-y-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">AI Risk Analizi (Kritik Cari Kontratlar)</span>
-              <div className="space-y-2 text-[9.5px]">
-                {contractMetrics.riskyContracts.length === 0 ? (
-                  <div className="p-4 bg-emerald-600/5 border border-emerald-500/20 text-emerald-450 rounded-xl text-center font-bold">
-                    Kritik düzeyde finansal/operasyonel risk taşıyan sözleşme tespit edilmedi.
-                  </div>
-                ) : (
-                  contractMetrics.riskyContracts.map(c => (
-                    <div key={c.id} className="p-2 rounded-xl bg-white/3 border border-white/5 flex justify-between items-center">
-                      <div className="space-y-0.5">
-                        <span className="text-white font-black block leading-none">{c.contractNo} - {c.clientName}</span>
-                        <span className="text-[7.5px] text-slate-500 block uppercase">Fatura Tutarı: {c.value}</span>
-                      </div>
-                      <Badge variant="primary" className="text-[8px] bg-rose-500/15 text-rose-455 font-black border border-rose-500/20 uppercase tracking-wider">
-                        RİSK SKORU: {c.aiRiskScore}/10
-                      </Badge>
-                    </div>
-                  ))
-                )}
-              </div>
-            </DarkDashboardCard>
+          {/* SECTION: SATIŞ VE PIPELINE */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Sol: Sales Pipeline Funnel */}
+            <div className="lg:col-span-6">
+              <DarkDashboardCard className="space-y-4 h-full text-left">
+                <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <BarChart2 size={12} className="text-blue-400" />
+                    SATIŞ PIPELINE & KAZANMA ORANI
+                  </span>
+                  <span className="text-[8px] bg-slate-900 border border-white/5 text-slate-300 font-black px-2 py-0.5 rounded-md uppercase">
+                    Kazanma Oranı: {stats.winRateText}
+                  </span>
+                </div>
 
-            {/* Expiring contracts list */}
-            <DarkDashboardCard className="space-y-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Yaklaşan Bitişler & Yenileme Bekleyenler</span>
-              <div className="space-y-2 text-[9.5px]">
-                {contractMetrics.upcomingContracts.length === 0 ? (
-                  <div className="p-4 bg-emerald-600/5 border border-emerald-500/20 text-emerald-450 rounded-xl text-center font-bold text-[8.5px] uppercase">
-                    Bitişi yaklaşan aktif sözleşme bulunmamaktadır.
-                  </div>
-                ) : (
-                  contractMetrics.upcomingContracts.map(c => (
-                    <div key={c.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
-                      <div className="space-y-0.5">
-                        <span className="text-white font-black block leading-none">{c.contractNo} - {c.clientName}</span>
-                        <span className="text-[7.5px] text-slate-500 block uppercase">Bitiş: {c.endDate}</span>
+                <div className="space-y-3.5 text-[9.5px]">
+                  {stats.funnelStages.map((stage, idx) => {
+                    const maxVal = Math.max(...stats.funnelStages.map(s => s.value), 1);
+                    const widthPct = Math.min((stage.value / maxVal) * 100, 100);
+                    return (
+                      <div key={idx} className="space-y-1">
+                        <div className="flex justify-between font-bold leading-none">
+                          <span className="text-slate-400 uppercase tracking-wide">{stage.name}</span>
+                          <span className="text-white font-extrabold">{stage.count} Teklif ({formatCurrency(stage.value)})</span>
+                        </div>
+                        <div className="w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-650 transition-all duration-500" 
+                            style={{ width: `${Math.max(widthPct, 4)}%` }} 
+                          />
+                        </div>
                       </div>
-                      <Badge variant="primary" className="text-[8px] bg-amber-500/15 text-amber-400 font-black border border-amber-500/20 uppercase tracking-wider">
-                        {c.daysLeft} GÜN KALDI
-                      </Badge>
-                    </div>
-                  ))
-                )}
-              </div>
-            </DarkDashboardCard>
+                    );
+                  })}
+                </div>
+              </DarkDashboardCard>
+            </div>
 
+            {/* Sağ: Upcoming Actions */}
+            <div className="lg:col-span-6">
+              <DarkDashboardCard className="space-y-3 h-full text-left">
+                <div className="pb-2 border-b border-white/5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">YAKLAŞAN SATIŞ AKSİYONLARI</span>
+                </div>
+
+                <div className="space-y-2 text-[9.5px]">
+                  {stats.sortedUpcomingActions.length === 0 ? (
+                    <div className="py-12 text-center text-slate-550 font-bold uppercase tracking-wider text-[8.5px]">
+                      Bekleyen satış aksiyonu bulunmuyor.
+                    </div>
+                  ) : (
+                    stats.sortedUpcomingActions.map((act, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-2.5 rounded-xl bg-white/3 border border-white/5">
+                        <div className="space-y-0.5">
+                          <span className="text-white font-black block">{act.title}</span>
+                          <span className="text-[7.5px] text-slate-500 block uppercase font-black">{act.sub}</span>
+                        </div>
+                        <Badge variant="muted" className={`text-[8.5px] font-black ${act.color}`}>
+                          {act.value}
+                        </Badge>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </DarkDashboardCard>
+            </div>
           </div>
 
+          {/* SECTION: FİNANS VE NAKİT AKIŞI */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Sol: 30 Günlük Nakit Akışı */}
+            <div className="lg:col-span-7">
+              <DarkDashboardCard className="space-y-4 text-left">
+                <div className="pb-2 border-b border-white/5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Coins size={12} className="text-emerald-450" />
+                    30 GÜNLÜK NAKİT AKIŞI
+                  </span>
+                </div>
+
+                {stats.collectedPast30 === 0 && stats.expectedNext30 === 0 && stats.overdueFinance === 0 ? (
+                  <div className="py-12 text-center text-slate-550 font-bold uppercase tracking-wider text-[8.5px]">
+                    Nakit akışı grafiği için henüz finansal veri bulunmuyor.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4 pt-1">
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/15 rounded-2xl space-y-1">
+                      <span className="text-[8px] font-black text-slate-400 uppercase block tracking-wider">Son 30 Gün Tahsil Edilen</span>
+                      <span className="text-xs font-black text-emerald-400 block">{formatCurrency(stats.collectedPast30)}</span>
+                    </div>
+                    <div className="p-3 bg-blue-500/10 border border-blue-500/15 rounded-2xl space-y-1">
+                      <span className="text-[8px] font-black text-slate-400 uppercase block tracking-wider">Gelecek 30 Gün Beklenen</span>
+                      <span className="text-xs font-black text-blue-400 block">{formatCurrency(stats.expectedNext30)}</span>
+                    </div>
+                    <div className="p-3 bg-rose-500/10 border border-rose-500/15 rounded-2xl space-y-1">
+                      <span className="text-[8px] font-black text-slate-400 uppercase block tracking-wider">Geciken Toplam Borç</span>
+                      <span className="text-xs font-black text-rose-455 block">{formatCurrency(stats.overdueFinance)}</span>
+                    </div>
+                  </div>
+                )}
+              </DarkDashboardCard>
+            </div>
+
+            {/* Sağ: Tahsilat Risk Özeti */}
+            <div className="lg:col-span-5">
+              <DarkDashboardCard className="space-y-3 text-left">
+                <div className="pb-2 border-b border-white/5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">TAHSİLAT RİSK ÖZETİ</span>
+                </div>
+
+                {stats.riskiestAccounts.length === 0 ? (
+                  <div className="py-12 text-center text-slate-550 font-bold uppercase tracking-wider text-[8.5px]">
+                    Tahsilat riski bulunmuyor.
+                  </div>
+                ) : (
+                  <div className="space-y-2 text-[9.5px]">
+                    {stats.riskiestAccounts.slice(0, 3).map((acc, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
+                        <span className="text-white font-black">{acc.name}</span>
+                        <div className="text-right">
+                          <span className="text-rose-455 font-black block">{acc.balanceText}</span>
+                          <span className="text-[7px] text-slate-500 block uppercase font-bold">RİSK SKORU: {acc.riskScore}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </DarkDashboardCard>
+            </div>
+          </div>
+
+          {/* SECTION: ENVANTER VE OPERASYON */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-left">
+            {/* 1. Envanter Durumu */}
+            <DarkDashboardCard className="space-y-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pb-1 border-b border-white/5">
+                ENVANTER DURUMU
+              </span>
+              {stats.inventory.total === 0 ? (
+                <div className="py-6 text-center text-slate-500 font-bold uppercase text-[8.5px]">
+                  Henüz reklam alanı eklenmedi.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-slate-400">
+                  <div className="bg-white/2 p-2 rounded-xl border border-white/5">
+                    <span className="block uppercase text-[7.5px] text-slate-500">Toplam Ünite</span>
+                    <span className="text-white text-xs font-black">{stats.inventory.total}</span>
+                  </div>
+                  <div className="bg-emerald-500/5 p-2 rounded-xl border border-emerald-500/10">
+                    <span className="block uppercase text-[7.5px] text-emerald-450">Dolu</span>
+                    <span className="text-emerald-400 text-xs font-black">{stats.inventory.dolu}</span>
+                  </div>
+                  <div className="bg-amber-500/5 p-2 rounded-xl border border-amber-500/10">
+                    <span className="block uppercase text-[7.5px] text-amber-450">Opsiyonlu</span>
+                    <span className="text-amber-400 text-xs font-black">{stats.inventory.opsiyonlu}</span>
+                  </div>
+                  <div className="bg-blue-500/5 p-2 rounded-xl border border-blue-500/10">
+                    <span className="block uppercase text-[7.5px] text-blue-400">Boş</span>
+                    <span className="text-blue-300 text-xs font-black">{stats.inventory.bos}</span>
+                  </div>
+                </div>
+              )}
+            </DarkDashboardCard>
+
+            {/* 2. Kampanya Operasyonu */}
+            <DarkDashboardCard className="space-y-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pb-1 border-b border-white/5">
+                KAMPANYA OPERASYONU
+              </span>
+              {stats.campaignOps.active === 0 && stats.campaignOps.planned === 0 ? (
+                <div className="py-6 text-center text-slate-500 font-bold uppercase text-[8.5px]">
+                  Henüz aktif kampanya bulunmuyor.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-slate-400">
+                  <div className="bg-emerald-500/5 p-2 rounded-xl border border-emerald-500/10">
+                    <span className="block uppercase text-[7.5px] text-emerald-450">Yayında Olan</span>
+                    <span className="text-emerald-400 text-xs font-black">{stats.campaignOps.active}</span>
+                  </div>
+                  <div className="bg-blue-500/5 p-2 rounded-xl border border-blue-500/10">
+                    <span className="block uppercase text-[7.5px] text-blue-400">Planlanan</span>
+                    <span className="text-blue-300 text-xs font-black">{stats.campaignOps.planned}</span>
+                  </div>
+                  <div className="bg-white/2 p-2 rounded-xl border border-white/5">
+                    <span className="block uppercase text-[7.5px] text-slate-500">Bu Hafta Başlayacak</span>
+                    <span className="text-white text-xs font-black">{stats.campaignOps.startsThisWeek}</span>
+                  </div>
+                  <div className="bg-white/2 p-2 rounded-xl border border-white/5">
+                    <span className="block uppercase text-[7.5px] text-slate-500">Bu Hafta Bitecek</span>
+                    <span className="text-white text-xs font-black">{stats.campaignOps.endsThisWeek}</span>
+                  </div>
+                </div>
+              )}
+            </DarkDashboardCard>
+
+            {/* 3. Dijital Yayın */}
+            <DarkDashboardCard className="space-y-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block pb-1 border-b border-white/5">
+                DİJİTAL YAYIN / PLAYLIST
+              </span>
+              {stats.digitalPublish.activeScreens === 0 ? (
+                <div className="py-6 text-center text-slate-500 font-bold uppercase text-[8.5px]">
+                  Dijital ekran kaydı bulunmuyor.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-slate-400">
+                  <div className="bg-white/2 p-2 rounded-xl border border-white/5">
+                    <span className="block uppercase text-[7.5px] text-slate-500">Aktif LED Ekran</span>
+                    <span className="text-white text-xs font-black">{stats.digitalPublish.activeScreens}</span>
+                  </div>
+                  <div className="bg-white/2 p-2 rounded-xl border border-white/5">
+                    <span className="block uppercase text-[7.5px] text-slate-500">Oynatma Slotu</span>
+                    <span className="text-white text-xs font-black">{stats.digitalPublish.playlistCount}</span>
+                  </div>
+                  <div className="bg-emerald-500/5 p-2 rounded-xl border border-emerald-500/10">
+                    <span className="block uppercase text-[7.5px] text-emerald-450">Günlük Oynatma</span>
+                    <span className="text-emerald-400 text-xs font-black">{stats.digitalPublish.todayPlays.toLocaleString()}</span>
+                  </div>
+                  <div className="bg-blue-500/5 p-2 rounded-xl border border-blue-500/10">
+                    <span className="block uppercase text-[7.5px] text-blue-400">PoP Durumu</span>
+                    <span className="text-blue-300 text-xs font-black">{stats.digitalPublish.popOk} OK</span>
+                  </div>
+                </div>
+              )}
+            </DarkDashboardCard>
+          </div>
+
+          {/* SECTION: TABBED DEADLINES / YAKLAŞAN SÜRELER */}
+          <DarkDashboardCard className="space-y-4 text-left">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-2 border-b border-white/5">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                <Clock size={12} className="text-blue-400" />
+                YAKLAŞAN SÜRELER & CRITICAL DEADLINES
+              </span>
+              
+              <div className="flex border border-white/5 bg-slate-900 rounded-xl p-0.5 overflow-hidden">
+                <button 
+                  onClick={() => setActiveDeadlineTab('options')}
+                  className={`px-3 py-1 text-[8.5px] font-black uppercase rounded-lg border-0 cursor-pointer transition-all ${
+                    activeDeadlineTab === 'options' ? 'bg-gradient-to-r from-blue-600 to-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200 bg-transparent'
+                  }`}
+                >
+                  Opsiyonlar
+                </button>
+                <button 
+                  onClick={() => setActiveDeadlineTab('contracts')}
+                  className={`px-3 py-1 text-[8.5px] font-black uppercase rounded-lg border-0 cursor-pointer transition-all ${
+                    activeDeadlineTab === 'contracts' ? 'bg-gradient-to-r from-blue-600 to-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200 bg-transparent'
+                  }`}
+                >
+                  Sözleşmeler
+                </button>
+                <button 
+                  onClick={() => setActiveDeadlineTab('collections')}
+                  className={`px-3 py-1 text-[8.5px] font-black uppercase rounded-lg border-0 cursor-pointer transition-all ${
+                    activeDeadlineTab === 'collections' ? 'bg-gradient-to-r from-blue-600 to-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200 bg-transparent'
+                  }`}
+                >
+                  Tahsilatlar
+                </button>
+                <button 
+                  onClick={() => setActiveDeadlineTab('campaigns')}
+                  className={`px-3 py-1 text-[8.5px] font-black uppercase rounded-lg border-0 cursor-pointer transition-all ${
+                    activeDeadlineTab === 'campaigns' ? 'bg-gradient-to-r from-blue-600 to-indigo-650 text-white' : 'text-slate-450 hover:text-slate-200 bg-transparent'
+                  }`}
+                >
+                  Kampanyalar
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-[9.5px]">
+              {(() => {
+                const filtered = stats.deadlines.filter(d => {
+                  if (activeDeadlineTab === 'options') return d.type === 'Opsiyon';
+                  if (activeDeadlineTab === 'contracts') return d.type === 'Sözleşme';
+                  if (activeDeadlineTab === 'collections') return d.type === 'Tahsilat';
+                  return d.type === 'Kampanya';
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="py-6 text-center text-slate-500 font-bold uppercase text-[8.5px]">
+                      Yaklaşan süre bulunmuyor.
+                    </div>
+                  );
+                }
+
+                return filtered.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center p-2.5 rounded-xl bg-white/3 border border-white/5">
+                    <div className="space-y-0.5">
+                      <span className="text-white font-black block">{item.client}</span>
+                      <span className="text-[7.5px] text-slate-500 block uppercase font-bold">{item.subject}</span>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-emerald-450 font-black">{item.value}</span>
+                      <span className={`text-[8.5px] px-2 py-0.5 rounded-lg font-black uppercase tracking-wider ${getDeadlineTagStyle(item.days)}`}>
+                        {item.days <= 0 ? 'Bugün / Gecikti' : `${item.days} GÜN`}
+                      </span>
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </DarkDashboardCard>
+        </>
+      )}
+
+      {/* QUICK LAUNCH BAR */}
+      <DarkDashboardCard className="space-y-3 text-left">
+        <span className="text-[8.5px] font-black text-slate-500 uppercase tracking-widest block pb-1 border-b border-white/5">
+          HIZLI İŞLEMLER (QUICK LAUNCH)
+        </span>
+        
+        <div className="flex flex-wrap items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            leftIcon={<Plus size={12} />} 
+            onClick={() => setCompanyModalOpen(true)}
+            className="text-[9px] uppercase tracking-wider py-1.5 h-8"
+          >
+            Yeni Firma
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            leftIcon={<Plus size={12} />} 
+            onClick={() => setOfferModalOpen(true)}
+            className="text-[9px] uppercase tracking-wider py-1.5 h-8"
+          >
+            Yeni Teklif
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            leftIcon={<Calendar size={12} />} 
+            onClick={() => {
+              alert('Hızlı rezervasyon planlayıcısı. Lütfen takvim modülünden bir alan seçin.');
+              setCurrentRoute('takvim');
+            }}
+            className="text-[9px] uppercase tracking-wider py-1.5 h-8"
+          >
+            Rezervasyon
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            leftIcon={<Megaphone size={12} />} 
+            onClick={() => setCurrentRoute('sales-wizard')}
+            className="text-[9px] uppercase tracking-wider py-1.5 h-8"
+          >
+            Yeni Kampanya
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            leftIcon={<Coins size={12} />} 
+            onClick={() => setCurrentRoute('finans')}
+            className="text-[9px] uppercase tracking-wider py-1.5 h-8"
+          >
+            Tahsilat Ekle
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            leftIcon={<BarChart2 size={12} />} 
+            onClick={() => setCurrentRoute('raporlar')}
+            className="text-[9px] uppercase tracking-wider py-1.5 h-8"
+          >
+            Raporlar
+          </Button>
         </div>
+      </DarkDashboardCard>
 
-      </div>
-
-      {/* Quick Launch Modals */}
+      {/* QUICK LAUNCH MODALS */}
       <OfferModal
         isOpen={offerModalOpen}
         onClose={() => setOfferModalOpen(false)}
