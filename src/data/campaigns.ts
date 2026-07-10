@@ -36,6 +36,9 @@ export interface Campaign {
   // Global Relations
   companyId?: string;
   spaceIds?: string[];
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
 }
 
 export const campaigns: Campaign[] = [];

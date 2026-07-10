@@ -18,6 +18,9 @@ export interface FinancialAccount {
   // Global Relations
   companyId?: string;
   linkedContractIds?: string[];
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
 }
 
 export interface CashFlowPoint {

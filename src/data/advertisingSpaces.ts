@@ -33,6 +33,9 @@ export interface AdvertisingSpace {
   notes?: string;
   deleted_at?: string;
   deleted_by?: string;
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
 
   // Unified GIS Network properties
   networkId?: string;

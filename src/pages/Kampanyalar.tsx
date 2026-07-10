@@ -175,7 +175,7 @@ export function Kampanyalar() {
         <DarkKpiCard
           title="Toplam Kampanya"
           value={loading ? '...' : String(campaigns.length)}
-          percentage="%100"
+          percentage="—"
           subtext="Toplam tescilli"
           icon={<Megaphone size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"

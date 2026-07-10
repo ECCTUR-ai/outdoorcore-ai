@@ -44,6 +44,9 @@ export interface Reservation {
   confirmedAt?: string;
   confirmedBy?: string;
   inventoryLockedAt?: string;
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
 }
 
 export interface Conflict {

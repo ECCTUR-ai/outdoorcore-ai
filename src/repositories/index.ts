@@ -17,104 +17,112 @@ import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 import resetTimeConfig from '@/data/resetTime.json';
 
 if (typeof window !== 'undefined') {
-  const migrationKey = 'outdoorcore_migration_remove_demo_v3';
+  const isDemoRecord = (r: any): boolean => {
+    if (!r) return false;
+    if (r.isDemo === true) return true;
+    if (r.source === 'demo' || r.source === 'mock' || r.source === 'seed') return true;
+    if (r.environment === 'demo') return true;
+    if (r.seedVersion) return true;
+    if (typeof r.id === 'string') {
+      const id = r.id;
+      if (id.startsWith('demo-') || id.startsWith('mock-') || id.startsWith('seed-') || id.startsWith('DEMO_')) return true;
+      if (/^CMP-\d{4}$/.test(id)) return true;
+      if (/^SG-\d{3}$/.test(id)) return true;
+      if (/^OFF-\d{3}$/.test(id)) return true;
+      if (/^CON-\d{3}$/.test(id)) return true;
+      if (/^RES-\d{3}$/.test(id)) return true;
+      if (/^CAM-\d{3}$/.test(id)) return true;
+      if (/^LED-\d{3}$/.test(id)) return true;
+      if (/^SLT-\d{3}$/.test(id)) return true;
+    }
+    if (Array.isArray(r.notesList) && r.notesList.some((n: any) => typeof n === 'string' && n.toLowerCase().includes('demo verisi'))) return true;
+    if (Array.isArray(r.notes) && r.notes.some((n: any) => typeof n === 'string' && n.toLowerCase().includes('demo verisi'))) return true;
+    return false;
+  };
+
+  const migrationKey = 'outdoorcore_migration_full_demo_cleanup_v4';
   if (!localStorage.getItem(migrationKey)) {
     try {
-      // 1. Clean companies list
-      const storedCos = localStorage.getItem('outdoorcore_mock_companies');
-      if (storedCos) {
-        const parsed = JSON.parse(storedCos);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter((c: any) => {
-            if (!c || !c.name) return false;
-            const nameLower = c.name.toLowerCase();
-            const hasDemoWord = nameLower.includes('demo') || nameLower.includes('mock') || nameLower.includes('seed');
-            const hasBlockedBrand = [
-              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
-              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
-              'aura jet', 'net iletişim'
-            ].some(brand => nameLower.includes(brand));
-            const hasBlockedId = c.id && (c.id.startsWith('demo-') || c.id.startsWith('mock-') || c.id.startsWith('seed-'));
-            return !hasDemoWord && !hasBlockedBrand && !hasBlockedId;
-          });
-          localStorage.setItem('outdoorcore_mock_companies', JSON.stringify(cleaned));
-        }
-      }
+      const removedCounts: Record<string, number> = {};
+      const preservedCounts: Record<string, number> = {};
 
-      // 2. Clean finance accounts
-      const storedFinance = localStorage.getItem('outdoorcore_mock_finance_data');
-      if (storedFinance) {
-        const parsed = JSON.parse(storedFinance);
-        if (parsed && Array.isArray(parsed.accounts)) {
-          parsed.accounts = parsed.accounts.filter((acc: any) => {
-            if (!acc || !acc.name) return false;
-            const nameLower = acc.name.toLowerCase();
-            const hasDemoWord = nameLower.includes('demo') || nameLower.includes('mock') || nameLower.includes('seed');
-            const hasBlockedBrand = [
-              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
-              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
-              'aura jet', 'net iletişim'
-            ].some(brand => nameLower.includes(brand));
-            const hasBlockedId = acc.id && (acc.id.startsWith('demo-') || acc.id.startsWith('mock-') || acc.id.startsWith('seed-'));
-            return !hasDemoWord && !hasBlockedBrand && !hasBlockedId;
-          });
-          localStorage.setItem('outdoorcore_mock_finance_data', JSON.stringify(parsed));
-        }
-      }
+      const cleanStorageKey = (key: string, isFinance = false) => {
+        const storedStr = localStorage.getItem(key);
+        if (!storedStr) return;
+        try {
+          const parsed = JSON.parse(storedStr);
+          if (isFinance) {
+            if (parsed && Array.isArray(parsed.accounts)) {
+              const initialLen = parsed.accounts.length;
+              parsed.accounts = parsed.accounts.filter((a: any) => !isDemoRecord(a));
+              removedCounts[key] = initialLen - parsed.accounts.length;
+              preservedCounts[key] = parsed.accounts.length;
 
-      // 3. Clean calendar events
-      const storedEvents = localStorage.getItem('outdoorcore_calendar_events_custom');
-      if (storedEvents) {
-        const parsed = JSON.parse(storedEvents);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter((e: any) => {
-            if (!e || !e.title) return false;
-            const titleLower = e.title.toLowerCase();
-            const hasDemoWord = titleLower.includes('demo') || titleLower.includes('mock') || titleLower.includes('seed');
-            const hasBlockedBrand = [
-              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
-              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
-              'aura jet', 'net iletişim'
-            ].some(brand => titleLower.includes(brand));
-            return !hasDemoWord && !hasBlockedBrand;
-          });
-          localStorage.setItem('outdoorcore_calendar_events_custom', JSON.stringify(cleaned));
+              if (Array.isArray(parsed.upcomingPayments)) {
+                parsed.upcomingPayments = parsed.upcomingPayments.filter((up: any) => !isDemoRecord(up));
+              }
+              if (Array.isArray(parsed.activities)) {
+                parsed.activities = parsed.activities.filter((act: any) => !isDemoRecord(act));
+              }
+              localStorage.setItem(key, JSON.stringify(parsed));
+            }
+          } else if (Array.isArray(parsed)) {
+            const initialLen = parsed.length;
+            const cleaned = parsed.filter((item: any) => !isDemoRecord(item));
+            removedCounts[key] = initialLen - cleaned.length;
+            preservedCounts[key] = cleaned.length;
+            localStorage.setItem(key, JSON.stringify(cleaned));
+          }
+        } catch (e) {
+          console.warn(`Failed to clean key ${key}:`, e);
         }
-      }
+      };
 
-      // 4. Clean reservations
-      const storedReservationsStr = localStorage.getItem('outdoorcore_mock_reservations');
-      if (storedReservationsStr) {
-        const parsed = JSON.parse(storedReservationsStr);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter((r: any) => {
-            if (!r || !r.clientName) return false;
-            const nameLower = r.clientName.toLowerCase();
-            const hasDemoWord = nameLower.includes('demo') || nameLower.includes('mock') || nameLower.includes('seed');
-            const hasBlockedBrand = [
-              'samsung', 'mercedes', 'mercedes-benz', 'turkish airlines', 'thy', 
-              'pegasus', 'turkcell', 'volvo cars', 'xiaomi türkiye', 'global air', 
-              'aura jet', 'net iletişim'
-            ].some(brand => nameLower.includes(brand));
-            return !hasDemoWord && !hasBlockedBrand;
-          });
-          localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(cleaned));
-        }
-      }
+      const keysToClean = [
+        'outdoorcore_mock_companies',
+        'outdoorcore_mock_advertisingSpaces',
+        'outdoorcore_mock_offers',
+        'outdoorcore_mock_reservations',
+        'outdoorcore_mock_contracts',
+        'outdoorcore_mock_campaigns',
+        'outdoorcore_digital_screens',
+        'outdoorcore_playlist_slots',
+        'outdoorcore_mock_proofOfPlays',
+        'outdoorcore_mock_tasks',
+        'outdoorcore_mock_notifications',
+        'outdoorcore_mock_maintenance',
+        'outdoorcore_mock_competitors',
+        'outdoorcore_calendar_events_custom'
+      ];
+      keysToClean.forEach(key => cleanStorageKey(key));
+      cleanStorageKey('outdoorcore_mock_finance_data', true);
 
-      // 5. Clear other demo lists and cache values
-      const keysToClear = [
+      const cachesToClear = [
         'outdoorcore_planning_suggestions_cache',
         'outdoorcore_critical_jobs_cache',
         'outdoorcore_dashboard_cache',
-        'outdoorcore_kpi_cache'
+        'outdoorcore_kpi_cache',
+        'outdoorcore_financeCache',
+        'outdoorcore_calendarCache',
+        'outdoorcore_campaignCache',
+        'outdoorcore_planningSuggestions',
+        'outdoorcore_criticalJobs',
+        'outdoorcore_riskAlerts',
+        'outdoorcore_aiInsights',
+        'outdoorcore_reports'
       ];
-      keysToClear.forEach(k => localStorage.removeItem(k));
+      cachesToClear.forEach(key => localStorage.removeItem(key));
 
-      // Mark migration as successful
-      localStorage.setItem(migrationKey, 'true');
-    } catch (e) {
-      console.error('Migration failed:', e);
+      const migrationLog = {
+        completed: true,
+        completedAt: new Date().toISOString(),
+        removedCounts,
+        preservedCounts
+      };
+      localStorage.setItem(migrationKey, JSON.stringify(migrationLog));
+      console.log('MIGRATION v4 LOG:', migrationLog);
+    } catch (err) {
+      console.error('Migration v4 failed:', err);
     }
   }
 

@@ -150,21 +150,23 @@ export function Header() {
         </button>
 
         {/* Demo Reset Button */}
-        <button
-          onClick={() => {
-            if (confirm('Tüm veritabanı demo verileriyle sıfırlanacaktır. Emin misiniz?')) {
-              import('@/services/demoSeedingService').then(({ demoSeedingService }) => {
-                demoSeedingService.resetDemoData();
-                alert('Demo verisi başarıyla yüklendi ve tüm modüller senkronize edildi.');
-                window.location.reload();
-              });
-            }
-          }}
-          className="flex items-center gap-1.5 px-3 h-9 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/25 rounded-xl text-emerald-450 font-black text-[9.5px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
-          title="Demo Veriyi Sıfırla"
-        >
-          <span>Demo Sıfırla</span>
-        </button>
+        {currentUser?.role === 'Super Admin' && (
+          <button
+            onClick={() => {
+              if (confirm('Tüm veritabanı demo verileriyle sıfırlanacaktır. Emin misiniz?')) {
+                import('@/services/demoSeedingService').then(({ demoSeedingService }) => {
+                  demoSeedingService.resetDemoData();
+                  alert('Demo verisi başarıyla yüklendi ve tüm modüller senkronize edildi.');
+                  window.location.reload();
+                });
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 h-9 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/25 rounded-xl text-emerald-450 font-black text-[9.5px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
+            title="Demo Veriyi Sıfırla"
+          >
+            <span>Demo Sıfırla</span>
+          </button>
+        )}
 
         {/* Date Selector range */}
         <div className="relative hidden md:block">

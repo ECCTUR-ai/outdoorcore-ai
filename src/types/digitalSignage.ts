@@ -13,6 +13,9 @@ export interface DigitalScreen {
   dailyTraffic: number;
   visibility: 'Çok Yüksek' | 'Yüksek' | 'Orta';
   notes?: string;
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
 }
 
 export interface PlaylistSlot {
@@ -31,6 +34,9 @@ export interface PlaylistSlot {
   status: 'active' | 'pending' | 'cancelled';
   creativeFileUrl?: string;
   order?: number;
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
 }
 
 export interface DigitalScreenAvailability {

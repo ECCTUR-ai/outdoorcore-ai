@@ -31,20 +31,31 @@ export const demoSeedingService = {
   resetDemoData() {
     console.log('RESETTING DEMO DATA STATE...');
 
-    // Clear local storage keys
-    const keysToClear = [
-      'outdoorcore_mock_companies',
-      'outdoorcore_mock_advertisingSpaces',
-      'outdoorcore_mock_offers',
-      'outdoorcore_mock_reservations',
-      'outdoorcore_mock_contracts',
-      'outdoorcore_mock_campaigns',
-      'outdoorcore_digital_screens',
-      'outdoorcore_playlist_slots',
-      'outdoorcore_mock_proofOfPlays',
-      'outdoorcore_mock_finance_data'
-    ];
-    keysToClear.forEach(k => localStorage.removeItem(k));
+    // Load existing items and filter out any demo items
+    const existingCompanies = JSON.parse(localStorage.getItem('outdoorcore_mock_companies') || '[]').filter((c: any) => !c.isDemo && c.source !== 'demo');
+    const existingSpaces = JSON.parse(localStorage.getItem('outdoorcore_mock_advertisingSpaces') || '[]').filter((s: any) => !s.isDemo && s.source !== 'demo');
+    const existingOffers = JSON.parse(localStorage.getItem('outdoorcore_mock_offers') || '[]').filter((o: any) => !o.isDemo && o.source !== 'demo');
+    const existingReservations = JSON.parse(localStorage.getItem('outdoorcore_mock_reservations') || '[]').filter((r: any) => !r.isDemo && r.source !== 'demo');
+    const existingContracts = JSON.parse(localStorage.getItem('outdoorcore_mock_contracts') || '[]').filter((c: any) => !c.isDemo && c.source !== 'demo');
+    const existingCampaigns = JSON.parse(localStorage.getItem('outdoorcore_mock_campaigns') || '[]').filter((c: any) => !c.isDemo && c.source !== 'demo');
+    const existingScreens = JSON.parse(localStorage.getItem('outdoorcore_digital_screens') || '[]').filter((s: any) => !s.isDemo && s.source !== 'demo');
+    const existingSlots = JSON.parse(localStorage.getItem('outdoorcore_playlist_slots') || '[]').filter((s: any) => !s.isDemo && s.source !== 'demo');
+    const existingPoPs = JSON.parse(localStorage.getItem('outdoorcore_mock_proofOfPlays') || '[]').filter((p: any) => !p.isDemo && p.source !== 'demo');
+    
+    let existingFinance = { accounts: [] as any[], cashFlowTrends: [] as any[], collectionStatuses: [] as any[], upcomingPayments: [] as any[], activities: [] as any[] };
+    try {
+      const storedFin = localStorage.getItem('outdoorcore_mock_finance_data');
+      if (storedFin) {
+        const parsed = JSON.parse(storedFin);
+        existingFinance.accounts = (parsed.accounts || []).filter((a: any) => !a.isDemo && a.source !== 'demo');
+        existingFinance.cashFlowTrends = parsed.cashFlowTrends || [];
+        existingFinance.collectionStatuses = parsed.collectionStatuses || [];
+        existingFinance.upcomingPayments = (parsed.upcomingPayments || []).filter((up: any) => !up.isDemo && up.source !== 'demo');
+        existingFinance.activities = (parsed.activities || []).filter((act: any) => !act.isDemo && act.source !== 'demo');
+      }
+    } catch (e) {
+      console.warn('Error reading existing finance data:', e);
+    }
 
     // 1. Generate 35 Companies
     const generatedCompanies: Company[] = COMPANY_NAMES.map((name, index) => {
@@ -92,7 +103,10 @@ export const demoSeedingService = {
         linkedContractIds: [],
         linkedReservationIds: [],
         linkedCampaignIds: [],
-        linkedInvoiceIds: []
+        linkedInvoiceIds: [],
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -126,7 +140,7 @@ export const demoSeedingService = {
         type,
         size,
         price,
-        status: 'bos', // default
+        status: 'bos',
         client: '-',
         endDate: '-',
         latitude: 41.0082 + (Math.random() - 0.5) * 0.1,
@@ -135,8 +149,6 @@ export const demoSeedingService = {
         gazeTime: 3 + (idx % 8),
         traffic: 20000 + (idx % 12) * 8500,
         visibilityIndex: 80 + (idx % 20),
-        
-        // Required properties
         visibility: `${80 + (idx % 20)}%`,
         resolution: '3840x2160',
         pitch: '1.8mm',
@@ -150,7 +162,10 @@ export const demoSeedingService = {
         viewTime: `${3 + (idx % 8)}s`,
         reach: '90K',
         frequency: 2.4,
-        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop&q=80'
+        image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&auto=format&fit=crop&q=80',
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -199,7 +214,10 @@ export const demoSeedingService = {
         details: `${company.name} için terminal içi premium lansman yayını teklifi.`,
         priority: idx % 3 === 0 ? 'Yüksek' : 'Orta',
         companyId: company.id,
-        spaceIds: selectedSpaces.map(s => s.id)
+        spaceIds: selectedSpaces.map(s => s.id),
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -246,7 +264,10 @@ export const demoSeedingService = {
           filesList: ['contract.pdf'],
           installments: [],
           history: [],
-          aiRiskAnalysis: ['Ödeme gecikme olasılığı düşük.']
+          aiRiskAnalysis: ['Ödeme gecikme olasılığı düşük.'],
+          isDemo: true,
+          source: 'demo',
+          seedVersion: 'v4'
         };
 
         generatedContracts.push(newContract);
@@ -284,7 +305,10 @@ export const demoSeedingService = {
           companyId: company.id,
           spaceId: associatedSpaces[0]?.id || 'SG-001',
           offerId: offer.id,
-          contractId
+          contractId,
+          isDemo: true,
+          source: 'demo',
+          seedVersion: 'v4'
         };
         generatedReservations.push(newRes);
         offer.reservationId = resId;
@@ -323,7 +347,10 @@ export const demoSeedingService = {
             aiRecommendation: 'Sözleşme onayından sonra yayına hazır hale gelecektir.',
             companyId: company.id,
             spaceId: associatedSpaces[0]?.id || 'SG-001',
-            offerId: offer.id
+            offerId: offer.id,
+            isDemo: true,
+            source: 'demo',
+            seedVersion: 'v4'
           };
           generatedReservations.push(newRes);
           offer.reservationId = resId;
@@ -356,7 +383,10 @@ export const demoSeedingService = {
         creativeFiles: ['banner-design.jpg'],
         aiRecommendation: 'Mevcut konum hedeflemesi uygundur.',
         companyId: comp.id,
-        spaceId: space.id
+        spaceId: space.id,
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       });
     }
 
@@ -400,7 +430,10 @@ export const demoSeedingService = {
         bestSpace: contract.spacesList[0] || 'SG-001',
         riskySpace: '-',
         companyId: company.id,
-        spaceIds: contract.spaceIds
+        spaceIds: contract.spaceIds,
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -421,7 +454,10 @@ export const demoSeedingService = {
         dailyTraffic: 45000 + idx * 2500,
         visibility: idx % 3 === 0 ? 'Çok Yüksek' : 'Yüksek',
         status: 'active',
-        notes: 'Proof of Play doğrulaması aktif.'
+        notes: 'Proof of Play doğrulaması aktif.',
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -443,7 +479,10 @@ export const demoSeedingService = {
         price: Math.round(screen.monthlyBasePrice * 0.125),
         status: 'active',
         creativeFileUrl: 'lansman-kreatif.mp4',
-        order: idx + 1
+        order: idx + 1,
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -458,7 +497,10 @@ export const demoSeedingService = {
         impressions: 12000 + (idx % 25) * 800,
         successRate: `${(99.4 + (idx % 7) * 0.1).toFixed(1)}%`,
         lastPlay: `21:${String(idx % 60).padStart(2, '0')}:15`,
-        status: idx % 2 === 0 ? 'Yayınlanıyor' : 'Tamamlandı'
+        status: idx % 2 === 0 ? 'Yayınlanıyor' : 'Tamamlandı',
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -520,7 +562,10 @@ export const demoSeedingService = {
         receipts: [],
         notes: ['Ödeme ve mutabakat süreci planlandı.'],
         companyId: comp.id,
-        linkedContractIds: compContracts.map(c => c.id)
+        linkedContractIds: compContracts.map(c => c.id),
+        isDemo: true,
+        source: 'demo',
+        seedVersion: 'v4'
       };
     });
 
@@ -528,20 +573,21 @@ export const demoSeedingService = {
     const totalCollected = Math.round(totalRevenue * 0.6);
     const outstanding = totalRevenue - totalCollected;
 
-    // Set storage
-    localStorage.setItem('outdoorcore_mock_companies', JSON.stringify(generatedCompanies));
-    localStorage.setItem('outdoorcore_mock_advertisingSpaces', JSON.stringify(generatedSpaces));
-    localStorage.setItem('outdoorcore_mock_offers', JSON.stringify(generatedOffers));
-    localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(generatedReservations));
-    localStorage.setItem('outdoorcore_mock_contracts', JSON.stringify(generatedContracts));
-    localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify(generatedCampaigns));
-    localStorage.setItem('outdoorcore_digital_screens', JSON.stringify(generatedScreens));
-    localStorage.setItem('outdoorcore_playlist_slots', JSON.stringify(generatedSlots));
-    localStorage.setItem('outdoorcore_mock_proofOfPlays', JSON.stringify(generatedPoPs));
+    // Set storage and merge safely
+    localStorage.setItem('outdoorcore_mock_companies', JSON.stringify([...existingCompanies, ...generatedCompanies]));
+    localStorage.setItem('outdoorcore_mock_advertisingSpaces', JSON.stringify([...existingSpaces, ...generatedSpaces]));
+    localStorage.setItem('outdoorcore_mock_offers', JSON.stringify([...existingOffers, ...generatedOffers]));
+    localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify([...existingReservations, ...generatedReservations]));
+    localStorage.setItem('outdoorcore_mock_contracts', JSON.stringify([...existingContracts, ...generatedContracts]));
+    localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify([...existingCampaigns, ...generatedCampaigns]));
+    localStorage.setItem('outdoorcore_digital_screens', JSON.stringify([...existingScreens, ...generatedScreens]));
+    localStorage.setItem('outdoorcore_playlist_slots', JSON.stringify([...existingSlots, ...generatedSlots]));
+    localStorage.setItem('outdoorcore_mock_proofOfPlays', JSON.stringify([...existingPoPs, ...generatedPoPs]));
 
     const completeFinanceData = {
-      accounts: generatedFinanceAccounts,
+      accounts: [...existingFinance.accounts, ...generatedFinanceAccounts],
       cashFlowTrends: [
+        ...existingFinance.cashFlowTrends,
         { month: 'Ocak', incoming: 12000000, outgoing: 8000000, net: 4000000 },
         { month: 'Şubat', incoming: 15000000, outgoing: 8500000, net: 6500000 },
         { month: 'Mart', incoming: 18000000, outgoing: 9000000, net: 9000000 },
@@ -552,18 +598,25 @@ export const demoSeedingService = {
         { name: 'Tahsil Edilen', value: totalCollected, color: '#10b981' },
         { name: 'Kalan Denge', value: outstanding, color: '#3b82f6' }
       ],
-      upcomingPayments: generatedFinanceAccounts.filter(a => a.linkedContractIds && a.linkedContractIds.length > 0).slice(0, 5).map(a => {
-        return {
-          clientName: a.name,
-          logo: a.logo,
-          dueDate: '25.06.2026',
-          daysLeft: 17,
-          amount: a.balance,
-          riskLevel: a.riskScore > 3 ? 'Kritik' as const : 'Düşük' as const
-        };
-      }),
+      upcomingPayments: [
+        ...existingFinance.upcomingPayments,
+        ...generatedFinanceAccounts.filter(a => a.linkedContractIds && a.linkedContractIds.length > 0).slice(0, 5).map(a => {
+          return {
+            clientName: a.name,
+            logo: a.logo,
+            dueDate: '25.06.2026',
+            daysLeft: 17,
+            amount: a.balance,
+            riskLevel: a.riskScore > 3 ? 'Kritik' as const : 'Düşük' as const,
+            isDemo: true,
+            source: 'demo',
+            seedVersion: 'v4'
+          };
+        })
+      ],
       activities: [
-        { id: 'ACT-01', type: 'collection', message: 'AJet ₺12.000.000 tahsilat gerçekleştirildi.', time: '1 saat önce' }
+        ...existingFinance.activities,
+        { id: 'ACT-01', type: 'collection', message: 'AJet ₺12.000.000 tahsilat gerçekleştirildi.', time: '1 saat önce', isDemo: true, source: 'demo', seedVersion: 'v4' }
       ]
     };
 
@@ -573,5 +626,6 @@ export const demoSeedingService = {
     
     // Dispatch window storage event to notify other contexts / pages immediately!
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('outdoorcore_data_updated', { detail: { domain: 'company' } }));
   }
 };

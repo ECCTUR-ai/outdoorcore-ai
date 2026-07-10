@@ -13,6 +13,9 @@ export interface Company {
   deleted_by?: string;
   created_at?: string;
   createdAt?: string;
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
   campaignsCount: number;
   totalSpend: string;
   activeSpacesCount: number;

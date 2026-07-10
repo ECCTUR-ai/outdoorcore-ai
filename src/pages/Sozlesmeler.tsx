@@ -365,9 +365,9 @@ export function Sozlesmeler() {
 
       {/* Bottom widgets row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <PaymentSchedule />
-        <RenewalTimeline />
-        <RiskAnalysisCard />
+        <PaymentSchedule contracts={contracts} />
+        <RenewalTimeline contracts={contracts} />
+        <RiskAnalysisCard contracts={contracts} />
       </div>
 
       {/* Sliding AI Panel Drawer */}

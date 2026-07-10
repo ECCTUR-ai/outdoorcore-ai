@@ -187,7 +187,7 @@ export function FirmalarMarkalar() {
         <DarkKpiCard
           title="Toplam Firma"
           value={loading ? '...' : String(companies.length)}
-          percentage="%100"
+          percentage="—"
           subtext="Kayıtlı portföy"
           icon={<Building2 size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"

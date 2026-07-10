@@ -41,6 +41,9 @@ export interface Contract {
   offerId?: string;
   campaignId?: string;
   spaceIds?: string[];
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
 }
 
 export const contracts: Contract[] = [];

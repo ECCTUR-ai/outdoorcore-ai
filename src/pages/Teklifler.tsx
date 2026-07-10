@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Offer } from '@/data/offers';
 import { offerRepository, activityLogRepository, contractRepository, reservationRepository, campaignRepository, financeRepository, spaceRepository } from '@/repositories';
+import { parseAnyDate } from '@/utils/dateHelper';
 import { createWorkflowEvent } from '@/automation/workflowEvents';
 import { workflowEngine } from '@/automation/workflowEngine';
 import { DarkKpiCard } from '@/components/design-system/DarkKpiCard';
@@ -392,9 +393,24 @@ export function Teklifler() {
 
   // Pipeline total value calculation
   const totalValue = offers.reduce((acc, curr) => acc + curr.valueNumeric, 0);
-  const formattedTotalValue = totalValue >= 1000000 
-    ? `₺${(totalValue / 1000000).toFixed(1)}M` 
-    : `₺${(totalValue / 1000).toFixed(0)}K`;
+  const formattedTotalValue = totalValue === 0 
+    ? '₺0' 
+    : totalValue >= 1000000 
+      ? `₺${(totalValue / 1000000).toFixed(1)}M` 
+      : `₺${(totalValue / 1000).toFixed(0)}K`;
+
+  const todayDate = new Date();
+  const currentMonthOffersCount = offers.filter(o => {
+    const dStr = o.campaignStartDate || o.closingDate;
+    if (!dStr) return false;
+    const d = parseAnyDate(dStr);
+    return d && d.getFullYear() === todayDate.getFullYear() && d.getMonth() === todayDate.getMonth();
+  }).length;
+
+  const wonOffersCount = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı').length;
+  const closedOffersCount = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı' || o.stage === 'İptal').length;
+  const winRate = closedOffersCount > 0 ? (wonOffersCount / closedOffersCount * 100).toFixed(1) : null;
+  const winRateText = winRate !== null ? `%${winRate}` : 'Veri yok';
 
   return (
     <div className="space-y-6 select-none pb-12">
@@ -471,7 +487,7 @@ export function Teklifler() {
         <DarkKpiCard
           title="Toplam Fırsat"
           value={loading ? '...' : String(offers.length)}
-          percentage="%100"
+          percentage="—"
           subtext="Aktif satış takibi"
           icon={<Layers size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
@@ -479,7 +495,7 @@ export function Teklifler() {
         <DarkKpiCard
           title="Pipeline Değeri"
           value={loading ? '...' : formattedTotalValue}
-          percentage="₺15.6M bu ay"
+          percentage="—"
           subtext="Toplam fırsat hacmi"
           icon={<Coins size={15} />}
           iconBgColor="bg-emerald-500/10 text-emerald-400 border-emerald-500/10"
@@ -487,8 +503,8 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Bu Ay Teklif"
-          value="32"
-          percentage="+6 artış"
+          value={loading ? '...' : String(currentMonthOffersCount)}
+          percentage="—"
           subtext="Gönderilen teklifler"
           icon={<Clock size={15} />}
           iconBgColor="bg-amber-500/10 text-amber-400 border-amber-500/10"
@@ -497,7 +513,7 @@ export function Teklifler() {
         <DarkKpiCard
           title="Onay Bekleyen"
           value={loading ? '...' : String(offers.filter(o => o.stage === 'Onaya Gönderildi').length)}
-          percentage="KRİTİK"
+          percentage="—"
           subtext="Müşteri onayında"
           icon={<CheckCircle size={15} />}
           iconBgColor="bg-purple-500/10 text-purple-400 border-purple-500/10"
@@ -506,7 +522,7 @@ export function Teklifler() {
         <DarkKpiCard
           title="Kazanılan"
           value={loading ? '...' : String(offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı').length)}
-          percentage="+4 yeni"
+          percentage="—"
           subtext="Sözleşmeye dönen"
           icon={<CheckCheck size={15} />}
           iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
@@ -514,8 +530,8 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Kapanma Oranı"
-          value="%42.6"
-          percentage="+%2.4 artış"
+          value={loading ? '...' : winRateText}
+          percentage="—"
           subtext="Satış verimliliği"
           icon={<Percent size={15} />}
           iconBgColor="bg-rose-500/10 text-rose-400 border-rose-500/10"

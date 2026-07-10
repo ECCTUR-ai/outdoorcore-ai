@@ -23,6 +23,9 @@ export interface Offer {
   notes?: string;
   deleted_at?: string;
   deleted_by?: string;
+  isDemo?: boolean;
+  source?: string;
+  seedVersion?: string;
   discount_rate?: number;
   discount_amount?: number;
   net_amount?: number;

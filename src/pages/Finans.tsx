@@ -228,7 +228,7 @@ export function Finans() {
         <DarkKpiCard
           title="Toplam Ciro"
           value={loading ? '...' : formatCurrency(totalCiro)}
-          percentage="%100"
+          percentage="—"
           subtext="Toplam kiralama hacmi"
           icon={<Coins size={15} />}
           iconBgColor="bg-blue-500/10 text-blue-400 border-blue-500/10"
@@ -239,13 +239,13 @@ export function Finans() {
           percentage={successRateText}
           subtext="Banka hesaplarına geçen"
           icon={<CheckCircle size={15} />}
-          iconBgColor="bg-emerald-500/10 text-emerald-450 border-emerald-450/10"
+          iconBgColor="bg-emerald-500/10 text-emerald-455 border-emerald-455/10"
           glowColor="green"
         />
         <DarkKpiCard
           title="Tahsilat Bekleyen"
           value={loading ? '...' : formatCurrency(totalPending)}
-          percentage="VADEDE"
+          percentage="—"
           subtext="Faturalandırılmış tutar"
           icon={<Clock size={15} />}
           iconBgColor="bg-sky-500/10 text-sky-400 border-sky-500/10"
@@ -254,7 +254,7 @@ export function Finans() {
         <DarkKpiCard
           title="Vadesi Geçen"
           value={loading ? '...' : formatCurrency(totalOverdue)}
-          percentage="ALARM"
+          percentage="—"
           subtext="Gecikmeli ödemeler"
           icon={<SlidersHorizontal size={15} />}
           iconBgColor="bg-rose-500/10 text-rose-450 border-rose-500/10"
@@ -263,7 +263,7 @@ export function Finans() {
         <DarkKpiCard
           title="Toplam Fatura"
           value={loading ? '...' : String(totalInvoicesCount)}
-          percentage="ADET"
+          percentage="—"
           subtext="Kesilen fatura adeti"
           icon={<FileSignature size={15} />}
           iconBgColor="bg-purple-500/10 text-purple-400 border-purple-400/10"
@@ -272,7 +272,7 @@ export function Finans() {
         <DarkKpiCard
           title="Nakit Akışı (Net)"
           value={loading ? '...' : formatCurrency(totalCollected - totalOverdue)}
-          percentage="+%12.4"
+          percentage="—"
           subtext="Cari net girdi"
           icon={<TrendingUp size={15} />}
           iconBgColor="bg-sky-500/10 text-sky-455 border-sky-550/10"
