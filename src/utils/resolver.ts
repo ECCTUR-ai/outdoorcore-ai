@@ -3,7 +3,7 @@ export const zodResolver = (schema: any) => async (values: any) => {
   if (result.success) {
     return { values: result.data, errors: {} };
   }
-  const errors = result.error.formErrors.fieldErrors;
+  const errors = result.error.flatten().fieldErrors;
   const formattedErrors = Object.keys(errors).reduce((acc: any, key) => {
     acc[key] = { type: 'validation', message: errors[key]?.[0] };
     return acc;
