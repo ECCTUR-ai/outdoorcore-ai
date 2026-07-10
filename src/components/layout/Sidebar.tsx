@@ -125,8 +125,8 @@ export function Sidebar() {
           }
           setMobileSidebarOpen(false);
         }}
-        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none border border-transparent ${
-          isSubItem ? 'pl-8 text-[9px] py-1.5' : 'text-[10px]'
+        className={`w-full flex items-center gap-3 px-3 rounded-xl transition-all duration-200 cursor-pointer text-left select-none border border-transparent ${
+          isSubItem ? 'pl-6 text-[9px] py-1' : 'text-[10px] py-1.5'
         } ${
           isActive
             ? 'bg-gradient-to-r from-blue-600 to-indigo-650 border-blue-550/20 text-white shadow-md shadow-blue-600/10 font-black'
@@ -161,9 +161,9 @@ export function Sidebar() {
     );
   };
 
-  // Render collapsible accordion group header
+  // Render collapsible accordion group header with dual actions
   const renderAccordionHeader = (
-    key: string, 
+    routeKey: any, 
     label: string, 
     icon: React.ReactNode, 
     expanded: boolean, 
@@ -171,43 +171,60 @@ export function Sidebar() {
     subActive: boolean,
     badgeCount?: number
   ) => {
+    const isActive = currentRoute === routeKey;
     return (
-      <button
-        onClick={() => {
-          if (sidebarCollapsed && !mobileSidebarOpen) {
-            // Expand first, or navigate
-            setSidebarCollapsed(false);
-            setExpanded(true);
-          } else {
-            setExpanded(!expanded);
-          }
-        }}
-        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none text-[10px] border border-transparent ${
-          subActive && !expanded
+      <div
+        className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 select-none text-[10px] border border-transparent ${
+          isActive
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-650 border-blue-550/20 text-white shadow-md shadow-blue-600/10 font-black'
+            : subActive && !expanded
             ? 'bg-gradient-to-r from-blue-600/20 to-indigo-650/10 border-blue-550/10 text-white font-extrabold'
             : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-semibold'
         }`}
-        title={sidebarCollapsed && !mobileSidebarOpen ? label : undefined}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-slate-500 flex items-center justify-center">{icon}</span>
+        {/* Navigation Button */}
+        <button
+          onClick={() => {
+            setCurrentRoute(routeKey);
+            setMobileSidebarOpen(false);
+            if (sidebarCollapsed && !mobileSidebarOpen) {
+              setSidebarCollapsed(false);
+              setExpanded(true);
+            }
+          }}
+          className="flex-1 flex items-center gap-3 px-3 py-1.5 text-left cursor-pointer truncate"
+          title={sidebarCollapsed && !mobileSidebarOpen ? label : undefined}
+        >
+          <span className={`shrink-0 flex items-center justify-center ${isActive ? 'scale-[1.08] text-[inherit]' : 'text-slate-500'}`}>
+            {icon}
+          </span>
           {(!sidebarCollapsed || mobileSidebarOpen) && (
-            <span className="text-[10px] uppercase tracking-wider flex items-center justify-between w-full truncate">
-              <span className="flex items-center gap-2">
-                {label}
-                {badgeCount !== undefined && (
-                  <span className="text-[8px] font-black bg-blue-550/15 text-blue-400 px-1.5 py-0.2 rounded-full leading-none">
-                    {countsLoading ? '...' : badgeCount}
-                  </span>
-                )}
-              </span>
+            <span className="text-[10px] uppercase tracking-wider flex items-center gap-1.5 truncate">
+              <span className="truncate">{label}</span>
+              {badgeCount !== undefined && (
+                <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full shrink-0 leading-none ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-blue-550/15 text-blue-400'
+                }`}>
+                  {countsLoading ? '...' : badgeCount}
+                </span>
+              )}
             </span>
           )}
-        </div>
+        </button>
+
+        {/* Chevron Expand/Collapse Trigger */}
         {(!sidebarCollapsed || mobileSidebarOpen) && (
-          <ChevronDown size={11} className={`text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            className="p-1.5 hover:bg-white/5 rounded-lg cursor-pointer text-slate-500 hover:text-slate-250 transition-colors flex items-center justify-center shrink-0 mr-1"
+          >
+            <ChevronDown size={11} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+          </button>
         )}
-      </button>
+      </div>
     );
   };
 
@@ -272,13 +289,10 @@ export function Sidebar() {
                 {/* 1. Tüm Alanlar */}
                 {renderSidebarItem('inventory', 'Tüm Alanlar', <MapPin size={13} />, false, counts.all)}
 
-                {/* 2. Harita Görünümü */}
-                {renderSidebarItem('map-dashboard', 'Harita Görünümü', <Map size={13} />)}
-
                 {/* 3. Dijital Ekranlar Group */}
                 <div className="space-y-0.5">
                   {renderAccordionHeader(
-                    'digital', 
+                    'inventory-digital', 
                     'Dijital Ekranlar', 
                     <Tv size={13} />, 
                     digitalExpanded, 
@@ -288,7 +302,6 @@ export function Sidebar() {
                   )}
                   {digitalExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
                     <div className="space-y-0.5 animate-slide-in duration-200">
-                      {renderSidebarItem('inventory-digital', 'Genel Liste', <Tv size={11} className="opacity-60" />, true, counts.digital)}
                       {renderSidebarItem('inventory-digital-led', 'LED Ekranlar', <Tv size={11} className="opacity-60" />, true, counts.led)}
                     </div>
                   )}
@@ -297,7 +310,7 @@ export function Sidebar() {
                 {/* 4. Statik Alanlar Group */}
                 <div className="space-y-0.5">
                   {renderAccordionHeader(
-                    'static', 
+                    'inventory-static', 
                     'Statik Alanlar', 
                     <Image size={13} />, 
                     staticExpanded, 
@@ -307,7 +320,6 @@ export function Sidebar() {
                   )}
                   {staticExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
                     <div className="space-y-0.5 animate-slide-in duration-200">
-                      {renderSidebarItem('inventory-static', 'Genel Liste', <Image size={11} className="opacity-60" />, true, counts.static)}
                       {renderSidebarItem('inventory-static-lightbox', 'Lightbox', <Image size={11} className="opacity-60" />, true, counts.lightbox)}
                       {renderSidebarItem('inventory-static-duratrans', 'Duratrans', <Image size={11} className="opacity-60" />, true, counts.duratrans)}
                       {renderSidebarItem('inventory-static-megalight', 'Megalight', <Image size={11} className="opacity-60" />, true, counts.megalight)}
@@ -320,7 +332,7 @@ export function Sidebar() {
                 {/* 5. Özel Alanlar Group */}
                 <div className="space-y-0.5">
                   {renderAccordionHeader(
-                    'special', 
+                    'inventory-special', 
                     'Özel Alanlar', 
                     <Sparkles size={13} />, 
                     specialExpanded, 
@@ -330,7 +342,6 @@ export function Sidebar() {
                   )}
                   {specialExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
                     <div className="space-y-0.5 animate-slide-in duration-200">
-                      {renderSidebarItem('inventory-special', 'Genel Liste', <Sparkles size={11} className="opacity-60" />, true, counts.special)}
                       {renderSidebarItem('inventory-special-stand', 'Stand Alanları', <Building2 size={11} className="opacity-60" />, true, counts.stand)}
                       {renderSidebarItem('inventory-special-sponsorship', 'Sponsorluk Alanları', <FileSignature size={11} className="opacity-60" />, true, counts.sponsorship)}
                     </div>
