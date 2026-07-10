@@ -26,19 +26,61 @@ import {
 import { usePermission } from '@/permissions/permissionHooks';
 import { PermissionKey } from '@/permissions/accessControl';
 import { notificationRepository as newNotifRepo } from '@/notifications/notificationRepository';
+import { spaceRepository } from '@/repositories';
+import { isSpaceInFilter } from '@/utils/mediaTypeHelper';
 
 export function Sidebar() {
   const [unreadCount, setUnreadCount] = useState(0);
-  const [reklamExpanded, setReklamExpanded] = useState(true);
+  const [digitalExpanded, setDigitalExpanded] = useState(true);
+  const [staticExpanded, setStaticExpanded] = useState(true);
+  const [specialExpanded, setSpecialExpanded] = useState(true);
+
+  // Dynamic counts for each category
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [countsLoading, setCountsLoading] = useState(true);
+
+  const calculateCounts = async () => {
+    try {
+      const spaces = await spaceRepository.list();
+      
+      const countsMap: Record<string, number> = {
+        'all': spaces.length,
+        'digital': spaces.filter(s => isSpaceInFilter(s, ["LED", "DIGITAL", "DIGITAL_SCREEN", "LED_SCREEN", "DIGITAL_NETWORK"])).length,
+        'led': spaces.filter(s => isSpaceInFilter(s, ["LED", "LED_SCREEN", "DIGITAL_LED"])).length,
+        'static': spaces.filter(s => isSpaceInFilter(s, ["LIGHTBOX", "DURATRANS", "MEGALIGHT", "FOIL", "STATIC_PANEL", "STATIC"])).length,
+        'lightbox': spaces.filter(s => isSpaceInFilter(s, ["LIGHTBOX"])).length,
+        'duratrans': spaces.filter(s => isSpaceInFilter(s, ["DURATRANS"])).length,
+        'megalight': spaces.filter(s => isSpaceInFilter(s, ["MEGALIGHT"])).length,
+        'foil': spaces.filter(s => isSpaceInFilter(s, ["FOIL", "FOLYO", "VINYL"])).length,
+        'panel': spaces.filter(s => isSpaceInFilter(s, ["STATIC_PANEL", "STATIC", "PANEL"])).length,
+        'special': spaces.filter(s => isSpaceInFilter(s, ["STAND", "POPUP", "EXPERIENCE_AREA", "SPONSORSHIP", "AREA_SPONSORSHIP"])).length,
+        'stand': spaces.filter(s => isSpaceInFilter(s, ["STAND", "POPUP", "EXPERIENCE_AREA"])).length,
+        'sponsorship': spaces.filter(s => isSpaceInFilter(s, ["SPONSORSHIP", "AREA_SPONSORSHIP"])).length,
+      };
+      
+      setCounts(countsMap);
+    } catch (err) {
+      console.error("Error calculating sidebar counts", err);
+    } finally {
+      setCountsLoading(false);
+    }
+  };
 
   useEffect(() => {
     const updateCount = () => {
       setUnreadCount(newNotifRepo.listUnread().length);
     };
     updateCount();
+    calculateCounts();
+
     window.addEventListener('notifications_updated', updateCount);
+    window.addEventListener('spaces_updated', calculateCounts);
+    window.addEventListener('storage', calculateCounts);
+    
     return () => {
       window.removeEventListener('notifications_updated', updateCount);
+      window.removeEventListener('spaces_updated', calculateCounts);
+      window.removeEventListener('storage', calculateCounts);
     };
   }, []);
 
@@ -51,31 +93,123 @@ export function Sidebar() {
     setMobileSidebarOpen
   } = useApp();
 
-  const menuItems: { key: string; label: string; icon: React.ReactNode; route?: string; permission: PermissionKey; isSubItem?: boolean; parentKey?: string }[] = [
-    { key: 'dashboard', label: 'Genel Bakış', icon: <Home size={13} />, permission: 'dashboard.view' },
-    
-    // Reklam Alanları Parent
-    { key: 'reklam-alanlari-parent', label: 'Reklam Alanları', icon: <MapPin size={13} />, permission: 'spaces.view' },
-    { key: 'map-dashboard', label: 'Harita Görünümü', icon: <Map size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
-    { key: 'reklam-alanlari', label: 'Liste Görünümü', icon: <MapPin size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
-    { key: 'digital-signage', label: 'Dijital Yayın', icon: <Tv size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
-    { key: 'alan-yonetimi', label: 'Alan Yönetimi', icon: <Settings size={13} />, permission: 'spaces.view', isSubItem: true, parentKey: 'reklam-alanlari-parent' },
-    
-    { key: 'teklifler', label: 'Teklifler', icon: <FileText size={13} />, permission: 'offers.view' },
-    { key: 'sozlesmeler', label: 'Sözleşmeler', icon: <FileSignature size={13} />, permission: 'contracts.view' },
-    { key: 'rezervasyonlar', label: 'Rezervasyonlar', icon: <Calendar size={13} />, permission: 'calendar.view' },
-    { key: 'kampanyalar', label: 'Kampanyalar', icon: <Megaphone size={13} />, permission: 'campaigns.view' },
-    { key: 'takvim', label: 'Planlama', icon: <Calendar size={13} />, permission: 'calendar.view' },
-    { key: 'finans', label: 'Finans & Tahsilat', icon: <Coins size={13} />, permission: 'finance.view' },
-    { key: 'raporlar', label: 'Raporlar', icon: <BarChart3 size={13} />, permission: 'reports.view' },
-    { key: 'firmalar-markalar', label: 'Firmalar & Markalar', icon: <Building2 size={13} />, permission: 'companies.view' },
-    { key: 'ayarlar', label: 'Ayarlar', icon: <Settings size={13} />, permission: 'roles.manage' }
-  ];
+  // Permissions checks
+  const showDashboard = usePermission('dashboard.view');
+  const showSpaces = usePermission('spaces.view');
+  const showOffers = usePermission('offers.view');
+  const showContracts = usePermission('contracts.view');
+  const showCalendar = usePermission('calendar.view');
+  const showCampaigns = usePermission('campaigns.view');
+  const showFinance = usePermission('finance.view');
+  const showReports = usePermission('reports.view');
+  const showCompanies = usePermission('companies.view');
+  const showSettings = usePermission('roles.manage');
 
-  // Dynamic filter based on user permissions
-  const filteredMenuItems = menuItems.filter(item => {
-    return usePermission(item.permission);
-  });
+  // Render a standard menu item button
+  const renderSidebarItem = (
+    routeKey: any, 
+    label: string, 
+    icon: React.ReactNode, 
+    isSubItem: boolean = false, 
+    badgeCount?: number
+  ) => {
+    const isActive = currentRoute === routeKey;
+    return (
+      <button
+        key={routeKey}
+        onClick={() => {
+          if (routeKey === 'rezervasyonlar') {
+            setCurrentRoute('takvim');
+          } else {
+            setCurrentRoute(routeKey);
+          }
+          setMobileSidebarOpen(false);
+        }}
+        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none border border-transparent ${
+          isSubItem ? 'pl-8 text-[9px] py-1.5' : 'text-[10px]'
+        } ${
+          isActive
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-650 border-blue-550/20 text-white shadow-md shadow-blue-600/10 font-black'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-semibold'
+        }`}
+        title={sidebarCollapsed && !mobileSidebarOpen ? label : undefined}
+      >
+        <span className={`shrink-0 relative ${isActive ? 'scale-[1.08] text-[inherit]' : 'text-slate-500'} flex items-center justify-center`}>
+          {icon}
+          {routeKey === 'bildirimler' && unreadCount > 0 && sidebarCollapsed && !mobileSidebarOpen && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+          )}
+        </span>
+        {(!sidebarCollapsed || mobileSidebarOpen) && (
+          <span className="text-[10px] uppercase tracking-wider flex items-center justify-between w-full truncate">
+            <span>{label}</span>
+            {badgeCount !== undefined && (
+              <span className={`text-[8px] font-black px-1.5 py-0.2 rounded-full shrink-0 leading-none ${
+                isActive ? 'bg-white/20 text-white' : 'bg-blue-550/15 text-blue-400'
+              }`}>
+                {countsLoading ? '...' : badgeCount}
+              </span>
+            )}
+            {routeKey === 'bildirimler' && unreadCount > 0 && (
+              <span className="text-[8px] font-black bg-blue-500 text-white px-1.5 py-0.2 rounded-full shrink-0 leading-none">
+                {unreadCount}
+              </span>
+            )}
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  // Render collapsible accordion group header
+  const renderAccordionHeader = (
+    key: string, 
+    label: string, 
+    icon: React.ReactNode, 
+    expanded: boolean, 
+    setExpanded: (val: boolean) => void,
+    subActive: boolean,
+    badgeCount?: number
+  ) => {
+    return (
+      <button
+        onClick={() => {
+          if (sidebarCollapsed && !mobileSidebarOpen) {
+            // Expand first, or navigate
+            setSidebarCollapsed(false);
+            setExpanded(true);
+          } else {
+            setExpanded(!expanded);
+          }
+        }}
+        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none text-[10px] border border-transparent ${
+          subActive && !expanded
+            ? 'bg-gradient-to-r from-blue-600/20 to-indigo-650/10 border-blue-550/10 text-white font-extrabold'
+            : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-semibold'
+        }`}
+        title={sidebarCollapsed && !mobileSidebarOpen ? label : undefined}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-slate-500 flex items-center justify-center">{icon}</span>
+          {(!sidebarCollapsed || mobileSidebarOpen) && (
+            <span className="text-[10px] uppercase tracking-wider flex items-center justify-between w-full truncate">
+              <span className="flex items-center gap-2">
+                {label}
+                {badgeCount !== undefined && (
+                  <span className="text-[8px] font-black bg-blue-550/15 text-blue-400 px-1.5 py-0.2 rounded-full leading-none">
+                    {countsLoading ? '...' : badgeCount}
+                  </span>
+                )}
+              </span>
+            </span>
+          )}
+        </div>
+        {(!sidebarCollapsed || mobileSidebarOpen) && (
+          <ChevronDown size={11} className={`text-slate-500 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -124,83 +258,100 @@ export function Sidebar() {
 
           {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-0.5 no-scrollbar">
-            {filteredMenuItems.map(item => {
-              // Hide sub-items if parent group is collapsed
-              if (item.isSubItem && item.parentKey === 'reklam-alanlari-parent' && !reklamExpanded && !sidebarCollapsed) {
-                return null;
-              }
+            {showDashboard && renderSidebarItem('dashboard', 'Genel Bakış', <Home size={13} />)}
 
-              // Hide sub-items entirely in collapsed sidebar view to prevent layout clutter
-              if (item.isSubItem && sidebarCollapsed && !mobileSidebarOpen) {
-                return null;
-              }
-
-              const mappedRoute = item.key;
-              const isActive = currentRoute === mappedRoute;
-              
-              if (item.key === 'reklam-alanlari-parent') {
-                return (
-                  <div key={item.key} className="space-y-0.5">
-                    <button
-                      onClick={() => setReklamExpanded(!reklamExpanded)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none text-slate-400 hover:text-slate-200 hover:bg-white/5 font-semibold"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-500">{item.icon}</span>
-                        {(!sidebarCollapsed || mobileSidebarOpen) && (
-                          <span className="text-[10px] uppercase tracking-wider">{item.label}</span>
-                        )}
-                      </div>
-                      {(!sidebarCollapsed || mobileSidebarOpen) && (
-                        <ChevronDown size={11} className={`text-slate-500 transition-transform ${reklamExpanded ? 'rotate-180' : ''}`} />
-                      )}
-                    </button>
-                  </div>
-                );
-              }
-
-              return (
-                <button
-                  key={item.key}
-                  onClick={() => {
-                    // Redirect alias routes
-                    if (item.key === 'alan-yonetimi') {
-                      setCurrentRoute('reklam-alanlari' as any);
-                    } else if (item.key === 'rezervasyonlar') {
-                      setCurrentRoute('takvim' as any);
-                    } else {
-                      setCurrentRoute(mappedRoute as any);
-                    }
-                    setMobileSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 cursor-pointer text-left select-none border border-transparent ${
-                    item.isSubItem ? 'pl-8 text-[9px] py-1.5' : 'text-[10px]'
-                  } ${
-                    isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-650 border-blue-550/20 text-white shadow-md shadow-blue-600/10 font-black'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5 font-semibold'
-                  }`}
-                  title={sidebarCollapsed ? item.label : undefined}
-                >
-                  <span className={`shrink-0 relative ${isActive ? 'scale-[1.08] text-[inherit]' : 'text-slate-500'}`}>
-                    {item.icon}
-                    {item.key === 'bildirimler' && unreadCount > 0 && sidebarCollapsed && !mobileSidebarOpen && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                    )}
+            {/* Reklam Envanteri Categorized Accordion Section */}
+            {showSpaces && (
+              <div className="space-y-0.5 border-t border-b border-white/5 py-2 my-2">
+                {(!sidebarCollapsed || mobileSidebarOpen) && (
+                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-3 block mb-1">
+                    REKLAM ENVANTERİ
                   </span>
-                  {(!sidebarCollapsed || mobileSidebarOpen) && (
-                    <span className="text-[10px] uppercase tracking-wider flex items-center justify-between w-full truncate">
-                      <span>{item.label}</span>
-                      {item.key === 'bildirimler' && unreadCount > 0 && (
-                        <span className="text-[8px] font-black bg-blue-500 text-white px-1.5 py-0.2 rounded-full shrink-0 leading-none">
-                          {unreadCount}
-                        </span>
-                      )}
-                    </span>
+                )}
+                
+                {/* 1. Tüm Alanlar */}
+                {renderSidebarItem('inventory', 'Tüm Alanlar', <MapPin size={13} />, false, counts.all)}
+
+                {/* 2. Harita Görünümü */}
+                {renderSidebarItem('map-dashboard', 'Harita Görünümü', <Map size={13} />)}
+
+                {/* 3. Dijital Ekranlar Group */}
+                <div className="space-y-0.5">
+                  {renderAccordionHeader(
+                    'digital', 
+                    'Dijital Ekranlar', 
+                    <Tv size={13} />, 
+                    digitalExpanded, 
+                    setDigitalExpanded,
+                    currentRoute === 'inventory-digital' || currentRoute === 'inventory-digital-led',
+                    counts.digital
                   )}
-                </button>
-              );
-            })}
+                  {digitalExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
+                    <div className="space-y-0.5 animate-slide-in duration-200">
+                      {renderSidebarItem('inventory-digital', 'Genel Liste', <Tv size={11} className="opacity-60" />, true, counts.digital)}
+                      {renderSidebarItem('inventory-digital-led', 'LED Ekranlar', <Tv size={11} className="opacity-60" />, true, counts.led)}
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Statik Alanlar Group */}
+                <div className="space-y-0.5">
+                  {renderAccordionHeader(
+                    'static', 
+                    'Statik Alanlar', 
+                    <Image size={13} />, 
+                    staticExpanded, 
+                    setStaticExpanded,
+                    currentRoute.startsWith('inventory-static'),
+                    counts.static
+                  )}
+                  {staticExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
+                    <div className="space-y-0.5 animate-slide-in duration-200">
+                      {renderSidebarItem('inventory-static', 'Genel Liste', <Image size={11} className="opacity-60" />, true, counts.static)}
+                      {renderSidebarItem('inventory-static-lightbox', 'Lightbox', <Image size={11} className="opacity-60" />, true, counts.lightbox)}
+                      {renderSidebarItem('inventory-static-duratrans', 'Duratrans', <Image size={11} className="opacity-60" />, true, counts.duratrans)}
+                      {renderSidebarItem('inventory-static-megalight', 'Megalight', <Image size={11} className="opacity-60" />, true, counts.megalight)}
+                      {renderSidebarItem('inventory-static-foil', 'Folyo Alanları', <Image size={11} className="opacity-60" />, true, counts.foil)}
+                      {renderSidebarItem('inventory-static-panel', 'Statik Panolar', <FileText size={11} className="opacity-60" />, true, counts.panel)}
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Özel Alanlar Group */}
+                <div className="space-y-0.5">
+                  {renderAccordionHeader(
+                    'special', 
+                    'Özel Alanlar', 
+                    <Sparkles size={13} />, 
+                    specialExpanded, 
+                    val => setSpecialExpanded(val),
+                    currentRoute.startsWith('inventory-special'),
+                    counts.special
+                  )}
+                  {specialExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
+                    <div className="space-y-0.5 animate-slide-in duration-200">
+                      {renderSidebarItem('inventory-special', 'Genel Liste', <Sparkles size={11} className="opacity-60" />, true, counts.special)}
+                      {renderSidebarItem('inventory-special-stand', 'Stand Alanları', <Building2 size={11} className="opacity-60" />, true, counts.stand)}
+                      {renderSidebarItem('inventory-special-sponsorship', 'Sponsorluk Alanları', <FileSignature size={11} className="opacity-60" />, true, counts.sponsorship)}
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. Dijital Yayın (Digital Signage) */}
+                {renderSidebarItem('digital-signage', 'Dijital Yayın', <Tv size={13} />)}
+              </div>
+            )}
+
+            {/* Standard Modules */}
+            {showOffers && renderSidebarItem('teklifler', 'Teklifler', <FileText size={13} />)}
+            {showContracts && renderSidebarItem('sozlesmeler', 'Sözleşmeler', <FileSignature size={13} />)}
+            {showCalendar && renderSidebarItem('rezervasyonlar', 'Rezervasyonlar', <Calendar size={13} />)}
+            {showCampaigns && renderSidebarItem('kampanyalar', 'Kampanyalar', <Megaphone size={13} />)}
+            {showCalendar && renderSidebarItem('takvim', 'Planlama', <Calendar size={13} />)}
+            {showFinance && renderSidebarItem('finans', 'Finans & Tahsilat', <Coins size={13} />)}
+            {showReports && renderSidebarItem('raporlar', 'Raporlar', <BarChart3 size={13} />)}
+            {showCompanies && renderSidebarItem('firmalar-markalar', 'Firmalar & Markalar', <Building2 size={13} />)}
+            {showSettings && renderSidebarItem('ayarlar', 'Ayarlar', <Settings size={13} />)}
           </nav>
         </div>
 

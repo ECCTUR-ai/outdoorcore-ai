@@ -14,9 +14,10 @@ interface AdvertisingSpaceModalProps {
   onClose: () => void;
   onSuccess: (space: AdvertisingSpace) => void;
   space?: AdvertisingSpace; // If passed, we are editing
+  defaultType?: string;
 }
 
-export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: AdvertisingSpaceModalProps) {
+export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space, defaultType }: AdvertisingSpaceModalProps) {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -89,7 +90,7 @@ export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: Adv
           location: '',
           terminal: '',
           floor: '',
-          type: 'LED',
+          type: defaultType || 'LED',
           size: '',
           traffic: 0,
           status: 'bos',
@@ -266,9 +267,16 @@ export function AdvertisingSpaceModal({ isOpen, onClose, onSuccess, space }: Adv
             <Select id="type" error={errors.type?.message} {...register('type')}>
               <option value="LED">LED Ekran</option>
               <option value="Lightbox">Lightbox</option>
+              <option value="Duratrans">Duratrans</option>
+              <option value="Megalight">Megalight</option>
+              <option value="Foil">Folyo Alanı</option>
+              <option value="Static Panel">Statik Pano</option>
+              <option value="Stand">Stand Alanı</option>
+              <option value="Sponsorship">Sponsorluk Alanı</option>
               <option value="Billboard">Billboard</option>
               <option value="Megaboard">Megaboard</option>
               <option value="CLP">CLP Raket</option>
+              <option value="Other">Diğer</option>
             </Select>
           </FormGroup>
 

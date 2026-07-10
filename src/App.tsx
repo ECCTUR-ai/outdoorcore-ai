@@ -9,7 +9,8 @@ import { AuthProvider } from '@/auth/AuthProvider';
 import { useAuth } from '@/auth/useAuth';
 import { Login } from '@/pages/Login';
 import { PermissionGate } from '@/components/design-system/PermissionGate';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Tv, Image, Sparkles } from 'lucide-react';
+import { InventoryListPage } from '@/pages/InventoryListPage';
 
 function AccessDenied() {
   return (
@@ -73,7 +74,148 @@ function AppContent() {
       case 'dashboard':
         return <Dashboard />;
       case 'reklam-alanlari':
+      case 'inventory':
         return <ReklamAlanlari />;
+      case 'inventory-digital':
+        return (
+          <InventoryListPage
+            title="Dijital Ekranlar"
+            subtitle="LED ve dijital yayın yapılan reklam alanlarını yönetin."
+            mediaTypeFilter={["LED", "DIGITAL", "DIGITAL_SCREEN", "LED_SCREEN", "DIGITAL_NETWORK"]}
+            categoryType="digital"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'network', 'status', 'actions']}
+            icon={<Tv size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı dijital reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-digital-led':
+        return (
+          <InventoryListPage
+            title="LED Ekranlar"
+            subtitle="LED reklam alanlarının fiziksel envanterini yönetin."
+            mediaTypeFilter={["LED", "LED_SCREEN", "DIGITAL_LED"]}
+            categoryType="led"
+            defaultType="LED"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'network', 'status', 'actions']}
+            icon={<Tv size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı LED reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-static':
+        return (
+          <InventoryListPage
+            title="Statik Reklam Alanları"
+            subtitle="Lightbox, Duratrans, Megalight, Folyo ve statik pano envanterini yönetin."
+            mediaTypeFilter={["LIGHTBOX", "DURATRANS", "MEGALIGHT", "FOIL", "STATIC_PANEL", "STATIC"]}
+            categoryType="static"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'type', 'status', 'actions']}
+            icon={<Image size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı statik reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-static-lightbox':
+        return (
+          <InventoryListPage
+            title="Lightbox"
+            subtitle="Lightbox reklam alanları envanteri."
+            mediaTypeFilter={["LIGHTBOX"]}
+            categoryType="lightbox"
+            defaultType="Lightbox"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'status', 'actions']}
+            icon={<Image size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı Lightbox reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-static-duratrans':
+        return (
+          <InventoryListPage
+            title="Duratrans"
+            subtitle="Duratrans reklam alanları envanteri."
+            mediaTypeFilter={["DURATRANS"]}
+            categoryType="duratrans"
+            defaultType="Duratrans"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'status', 'actions']}
+            icon={<Image size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı Duratrans reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-static-megalight':
+        return (
+          <InventoryListPage
+            title="Megalight"
+            subtitle="Megalight reklam alanları envanteri."
+            mediaTypeFilter={["MEGALIGHT"]}
+            categoryType="megalight"
+            defaultType="Megalight"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'status', 'actions']}
+            icon={<Image size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı Megalight reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-static-foil':
+        return (
+          <InventoryListPage
+            title="Folyo Alanları"
+            subtitle="Folyo ve vinyl reklam alanları envanteri."
+            mediaTypeFilter={["FOIL", "FOLYO", "VINYL"]}
+            categoryType="foil"
+            defaultType="Foil"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'status', 'actions']}
+            icon={<Image size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı folyo reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-static-panel':
+        return (
+          <InventoryListPage
+            title="Statik Panolar"
+            subtitle="Statik pano reklam alanları envanteri."
+            mediaTypeFilter={["STATIC_PANEL", "STATIC", "PANEL"]}
+            categoryType="panel"
+            defaultType="Static Panel"
+            columns={['code', 'name', 'terminal', 'size', 'adet', 'face', 'status', 'actions']}
+            icon={<Image size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı statik pano reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-special':
+        return (
+          <InventoryListPage
+            title="Özel Reklam Alanları"
+            subtitle="Stand, deneyim ve sponsorluk alanlarını yönetin."
+            mediaTypeFilter={["STAND", "POPUP", "EXPERIENCE_AREA", "SPONSORSHIP", "AREA_SPONSORSHIP"]}
+            categoryType="special"
+            columns={['code', 'name', 'terminal', 'size', 'type', 'client', 'status', 'actions']}
+            icon={<Sparkles size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı özel reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-special-stand':
+        return (
+          <InventoryListPage
+            title="Stand Alanları"
+            subtitle="Stand ve deneyim alanları envanteri."
+            mediaTypeFilter={["STAND", "POPUP", "EXPERIENCE_AREA"]}
+            categoryType="stand"
+            defaultType="Stand"
+            columns={['code', 'name', 'terminal', 'size', 'client', 'status', 'actions']}
+            icon={<Sparkles size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı stand reklam alanı bulunmamaktadır."
+          />
+        );
+      case 'inventory-special-sponsorship':
+        return (
+          <InventoryListPage
+            title="Sponsorluk Alanları"
+            subtitle="Sponsorluk alanları envanteri."
+            mediaTypeFilter={["SPONSORSHIP", "AREA_SPONSORSHIP"]}
+            categoryType="sponsorship"
+            defaultType="Sponsorship"
+            columns={['code', 'name', 'terminal', 'size', 'client', 'status', 'actions']}
+            icon={<Sparkles size={16} className="text-blue-500" />}
+            emptyState="Kayıtlı sponsorluk reklam alanı bulunmamaktadır."
+          />
+        );
       case 'alan-haritasi':
         return <AlanHaritasi />;
       case 'map-dashboard':

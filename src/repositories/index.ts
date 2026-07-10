@@ -725,6 +725,9 @@ export const spaceRepository = {
           const created = mapDbSpaceToUi(data);
           await auditLogRepository.log('space.created', 'space', created.id);
           await activityLogRepository.log(`Yeni reklam alanı oluşturuldu: ${created.name} (${created.code})`, 'spaces');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('spaces_updated'));
+          }
           return created;
         }
       } catch (e) {
@@ -744,6 +747,10 @@ export const spaceRepository = {
 
     await auditLogRepository.log('space.created', 'space', newId);
     await activityLogRepository.log(`Yeni reklam alanı oluşturuldu (Demo): ${mockSpace.name} (${mockSpace.code})`, 'spaces');
+    
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('spaces_updated'));
+    }
     return mockSpace;
   },
   async update(id: string, input: any) {
@@ -778,6 +785,9 @@ export const spaceRepository = {
             await auditLogRepository.log('space.status_changed', 'space', id);
           }
           await activityLogRepository.log(`Reklam alanı güncellendi: ${updated.name}`, 'spaces');
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('spaces_updated'));
+          }
           return updated;
         }
       } catch (e) {
@@ -801,6 +811,10 @@ export const spaceRepository = {
         await auditLogRepository.log('space.status_changed', 'space', id);
       }
       await activityLogRepository.log(`Reklam alanı güncellendi (Demo): ${local[idx].name}`, 'spaces');
+      
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('spaces_updated'));
+      }
       return local[idx];
     }
     throw new Error('Reklam alanı bulunamadı.');
@@ -821,6 +835,9 @@ export const spaceRepository = {
           .eq('organization_id', organizationId);
         if (error) throw error;
         await auditLogRepository.log('space.deleted', 'space', id);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('spaces_updated'));
+        }
         return true;
       } catch (e) {
         console.warn('Supabase space soft delete failed, using mock fallback:', e);
@@ -834,6 +851,10 @@ export const spaceRepository = {
       local[idx].deleted_by = email;
       setLocalData('advertisingSpaces', local);
       await auditLogRepository.log('space.deleted', 'space', id);
+      
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('spaces_updated'));
+      }
       return true;
     }
     return false;

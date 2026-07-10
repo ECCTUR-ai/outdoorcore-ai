@@ -11,6 +11,18 @@ export interface DateRangeState {
 type RouteType = 
   | 'dashboard' 
   | 'reklam-alanlari' 
+  | 'inventory'
+  | 'inventory-digital'
+  | 'inventory-digital-led'
+  | 'inventory-static'
+  | 'inventory-static-lightbox'
+  | 'inventory-static-duratrans'
+  | 'inventory-static-megalight'
+  | 'inventory-static-foil'
+  | 'inventory-static-panel'
+  | 'inventory-special'
+  | 'inventory-special-stand'
+  | 'inventory-special-sponsorship'
   | 'alan-haritasi' 
   | 'map-dashboard'
   | 'firmalar-markalar' 
@@ -32,6 +44,53 @@ type RouteType =
   | 'sales-wizard'
   | 'digital-signage';
 
+const routeToPath: Record<RouteType, string> = {
+  'dashboard': '/dashboard',
+  'reklam-alanlari': '/inventory',
+  'inventory': '/inventory',
+  'inventory-digital': '/inventory/digital',
+  'inventory-digital-led': '/inventory/digital/led',
+  'inventory-static': '/inventory/static',
+  'inventory-static-lightbox': '/inventory/static/lightbox',
+  'inventory-static-duratrans': '/inventory/static/duratrans',
+  'inventory-static-megalight': '/inventory/static/megalight',
+  'inventory-static-foil': '/inventory/static/foil',
+  'inventory-static-panel': '/inventory/static/panel',
+  'inventory-special': '/inventory/special',
+  'inventory-special-stand': '/inventory/special/stand',
+  'inventory-special-sponsorship': '/inventory/special/sponsorship',
+  'alan-haritasi': '/alan-haritasi',
+  'map-dashboard': '/map-dashboard',
+  'firmalar-markalar': '/firmalar-markalar',
+  'takvim': '/takvim',
+  'kampanyalar': '/kampanyalar',
+  'teklifler': '/teklifler',
+  'sozlesmeler': '/sozlesmeler',
+  'medya-kutuphanesi': '/medya-kutuphanesi',
+  'raporlar': '/raporlar',
+  'finans': '/finans',
+  'bildirimler': '/bildirimler',
+  'ai-assistant': '/ai-assistant',
+  'ayarlar': '/ayarlar',
+  'design-system': '/design-system',
+  'maintenance': '/maintenance',
+  'competitor-analysis': '/competitor-analysis',
+  'executive-dashboard': '/executive-dashboard',
+  'system-roles': '/system-roles',
+  'sales-wizard': '/sales-wizard',
+  'digital-signage': '/digital-signage',
+};
+
+const getRouteFromPath = (path: string): RouteType => {
+  if (path === '/' || path === '' || path === '/index.html') return 'dashboard';
+  if (path === '/advertising-spaces' || path === '/reklam-alanlari') return 'inventory';
+  
+  for (const [route, p] of Object.entries(routeToPath)) {
+    if (p === path) return route as RouteType;
+  }
+  return 'dashboard';
+};
+
 interface AppContextProps {
   currentRoute: RouteType;
   setCurrentRoute: (route: RouteType) => void;
@@ -52,11 +111,39 @@ interface AppContextProps {
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [currentRoute, setCurrentRoute] = useState<RouteType>('dashboard');
+  const [currentRoute, setCurrentRouteState] = useState<RouteType>(() => {
+    if (typeof window !== 'undefined') {
+      return getRouteFromPath(window.location.pathname);
+    }
+    return 'dashboard';
+  });
+  
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
+
+  const setCurrentRoute = (route: RouteType) => {
+    setCurrentRouteState(route);
+    if (typeof window !== 'undefined') {
+      const targetPath = routeToPath[route] || '/';
+      if (window.location.pathname !== targetPath) {
+        const search = window.location.search;
+        window.history.pushState(null, '', `${targetPath}${search}`);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handlePopState = () => {
+      setCurrentRouteState(getRouteFromPath(window.location.pathname));
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const [notifications, setNotifications] = useState<Array<{ id: string; title: string; desc: string; time: string; type: 'info' | 'alert' | 'success' }>>([
     { id: '1', title: 'Yeni Rezervasyon Teklifi', desc: 'Acun Medya, Levent Billboard 4 için teklif gönderdi.', time: '5 dk önce', type: 'info' },
