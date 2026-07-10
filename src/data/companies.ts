@@ -46,46 +46,5 @@ export interface Company {
   contacts: ContactPerson[];
 }
 
-export const companies: Company[] = [
-  {
-    id: 'CMP-0001',
-    name: 'ECCTUR',
-    sector: 'Turizm & Havacılık',
-    city: 'İstanbul',
-    status: 'Aktif',
-    campaignsCount: 0,
-    totalSpend: '₺0',
-    activeSpacesCount: 0,
-    lastCampaign: '-',
-    upcomingCampaign: '-',
-    aiScore: 10.0,
-    logo: 'E',
-    logoUrl: '/logos/ecctur.svg',
-    linkedOfferIds: [],
-    linkedContractIds: [],
-    linkedReservationIds: [],
-    linkedCampaignIds: [],
-    linkedInvoiceIds: [],
-    headquarters: 'İstanbul (Merkez)',
-    website: 'www.ecctur.com',
-    phone: '+90 212 111 2233',
-    email: 'info@ecctur.com',
-    taxNo: '1234567890',
-    taxOffice: 'Büyük Mükellefler',
-    crmStatus: 'VIP',
-    mediaAgency: 'ECCTUR Medya',
-    creativeAgency: 'ECCTUR Kreatif',
-    budget: '₺0',
-    brands: ['ECCTUR Turizm', 'ECCTUR Havacılık'],
-    campaignList: [],
-    spacesList: [],
-    offersList: [],
-    contractsList: [],
-    filesList: [],
-    notesList: ['ECCTUR ana firması.'],
-    contacts: [
-      { name: 'ECCTUR Temsilcisi', role: 'Genel Müdür' }
-    ]
-  }
-];
+export const companies: Company[] = [];
 export const companiesList = companies; // alias

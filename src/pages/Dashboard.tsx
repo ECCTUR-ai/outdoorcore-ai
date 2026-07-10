@@ -264,6 +264,15 @@ export function Dashboard() {
   const aiCeoSummary = useMemo(() => {
     const freePremiumCount = spaces.filter(s => s.status === 'bos' && (s.priceNumeric || 0) >= 50000).length;
     
+    if (spaces.length === 0) {
+      return [
+        "MGA OutdoorCore ERP sistemine hoş geldiniz.",
+        "Sistem şu anda boş durumdadır. Sol menüdeki **Firma Ekle** veya **Yeni Mecra Ekle** butonlarını kullanarak ilk kayıtlarınızı oluşturabilirsiniz.",
+        "Mecra ve müşteri kayıtları girildikten sonra AI CEO Pilot otomatik analizlere ve ciro tahminlerine başlayacaktır.",
+        "Test veya demo yapmak isterseniz, sağ üstteki **Demo Sıfırla** butonuyla örnek verileri anında yükleyebilirsiniz."
+      ];
+    }
+
     return [
       `Bu ay havalimanı reklam ünitelerinde **doluluk oranı %${metrics.occupancyRate}** seviyesindedir.`,
       `Önümüzdeki dönem için beklenen ciro kapasitesi **${metrics.totalExpectedCiro}** olarak hesaplanmıştır.`,
@@ -282,11 +291,11 @@ export function Dashboard() {
       return finance.cashFlowTrends;
     }
     return [
-      { month: 'Ocak', incoming: 12000000, outgoing: 8000000, net: 4000000 },
-      { month: 'Şubat', incoming: 15000000, outgoing: 8500000, net: 6500000 },
-      { month: 'Mart', incoming: 18000000, outgoing: 9000000, net: 9000000 },
-      { month: 'Nisan', incoming: 22000000, outgoing: 10000000, net: 12000000 },
-      { month: 'Mayıs', incoming: 28000000, outgoing: 12000000, net: 16000000 }
+      { month: 'Ocak', incoming: 0, outgoing: 0, net: 0 },
+      { month: 'Şubat', incoming: 0, outgoing: 0, net: 0 },
+      { month: 'Mart', incoming: 0, outgoing: 0, net: 0 },
+      { month: 'Nisan', incoming: 0, outgoing: 0, net: 0 },
+      { month: 'Mayıs', incoming: 0, outgoing: 0, net: 0 }
     ];
   }, [finance]);
 
@@ -295,8 +304,8 @@ export function Dashboard() {
       return finance.collectionStatuses;
     }
     return [
-      { name: 'Tahsil Edilen', value: 80000000, color: '#10b981' },
-      { name: 'Kalan Bakiye', value: 40000000, color: '#3b82f6' }
+      { name: 'Tahsil Edilen', value: 0, color: '#10b981' },
+      { name: 'Kalan Bakiye', value: 0, color: '#3b82f6' }
     ];
   }, [finance]);
 
@@ -555,15 +564,21 @@ export function Dashboard() {
             <DarkDashboardCard className="space-y-3">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">En Büyük Teklifler</span>
               <div className="space-y-2 text-[9.5px]">
-                {salesMetrics.topOffers.slice(0, 5).map(o => (
-                  <div key={o.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
-                    <div className="space-y-0.5">
-                      <span className="text-white font-black">{o.clientName}</span>
-                      <span className="text-[7.5px] text-slate-500 block uppercase">{o.campaignName}</span>
-                    </div>
-                    <span className="text-emerald-450 font-black shrink-0">{o.value}</span>
+                {salesMetrics.topOffers.length === 0 ? (
+                  <div className="py-8 text-center text-slate-550 font-bold uppercase tracking-wider text-[8.5px]">
+                    Kayıtlı aktif teklif bulunmamaktadır.
                   </div>
-                ))}
+                ) : (
+                  salesMetrics.topOffers.slice(0, 5).map(o => (
+                    <div key={o.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
+                      <div className="space-y-0.5">
+                        <span className="text-white font-black">{o.clientName}</span>
+                        <span className="text-[7.5px] text-slate-500 block uppercase">{o.campaignName}</span>
+                      </div>
+                      <span className="text-emerald-450 font-black shrink-0">{o.value}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </DarkDashboardCard>
 
@@ -601,18 +616,24 @@ export function Dashboard() {
             <DarkDashboardCard className="space-y-3">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">En Yüksek Bütçeli Firmalar</span>
               <div className="space-y-2 text-[9.5px]">
-                {financeMetrics.sortedCompanies.map(c => (
-                  <div key={c.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
-                    <div className="space-y-0.5">
-                      <span className="text-white font-black">{c.name}</span>
-                      <span className="text-[7.5px] text-slate-500 block uppercase">CRM Seviyesi: {c.crmTier}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-emerald-450 font-black block">{c.totalDebt}</span>
-                      <span className="text-[7.5px] text-rose-455 block font-bold">Kalan: {c.balance}</span>
-                    </div>
+                {financeMetrics.sortedCompanies.length === 0 ? (
+                  <div className="py-8 text-center text-slate-555 font-bold uppercase tracking-wider text-[8.5px]">
+                    Kayıtlı cari hesap bulunmamaktadır.
                   </div>
-                ))}
+                ) : (
+                  financeMetrics.sortedCompanies.map(c => (
+                    <div key={c.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
+                      <div className="space-y-0.5">
+                        <span className="text-white font-black">{c.name}</span>
+                        <span className="text-[7.5px] text-slate-500 block uppercase">CRM Seviyesi: {c.crmTier}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-emerald-450 font-black block">{c.totalDebt}</span>
+                        <span className="text-[7.5px] text-rose-455 block font-bold">Kalan: {c.balance}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </DarkDashboardCard>
 
@@ -740,17 +761,23 @@ export function Dashboard() {
             <DarkDashboardCard className="space-y-3">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Yaklaşan Bitişler & Yenileme Bekleyenler</span>
               <div className="space-y-2 text-[9.5px]">
-                {contractMetrics.upcomingContracts.map(c => (
-                  <div key={c.id} className="p-2 rounded-xl bg-white/3 border border-white/5 flex justify-between items-center">
-                    <div className="space-y-0.5">
-                      <span className="text-white font-black block leading-none">{c.contractNo} - {c.clientName}</span>
-                      <span className="text-[7.5px] text-slate-500 block uppercase">Bitiş: {c.endDate}</span>
-                    </div>
-                    <Badge variant="primary" className="text-[8px] bg-amber-500/15 text-amber-400 font-black border border-amber-500/20 uppercase tracking-wider">
-                      {c.daysLeft} GÜN KALDI
-                    </Badge>
+                {contractMetrics.upcomingContracts.length === 0 ? (
+                  <div className="p-4 bg-emerald-600/5 border border-emerald-500/20 text-emerald-450 rounded-xl text-center font-bold text-[8.5px] uppercase">
+                    Bitişi yaklaşan aktif sözleşme bulunmamaktadır.
                   </div>
-                ))}
+                ) : (
+                  contractMetrics.upcomingContracts.map(c => (
+                    <div key={c.id} className="flex justify-between items-center p-2 rounded-xl bg-white/3 border border-white/5">
+                      <div className="space-y-0.5">
+                        <span className="text-white font-black block leading-none">{c.contractNo} - {c.clientName}</span>
+                        <span className="text-[7.5px] text-slate-500 block uppercase">Bitiş: {c.endDate}</span>
+                      </div>
+                      <Badge variant="primary" className="text-[8px] bg-amber-500/15 text-amber-400 font-black border border-amber-500/20 uppercase tracking-wider">
+                        {c.daysLeft} GÜN KALDI
+                      </Badge>
+                    </div>
+                  ))
+                )}
               </div>
             </DarkDashboardCard>
 

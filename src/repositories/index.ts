@@ -17,22 +17,61 @@ import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 import resetTimeConfig from '@/data/resetTime.json';
 
 if (typeof window !== 'undefined') {
-  const lastResetTime = localStorage.getItem('outdoorcore_demo_last_reset_time');
-  const currentResetTime = String(resetTimeConfig.resetTime);
-  if (lastResetTime !== currentResetTime) {
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('outdoorcore_mock_') || key === 'finance_data') {
+  // Idempotent Production Reset: Clear only mock keys once
+  const resetDone = localStorage.getItem('outdoorcore_production_reset_done_v1');
+  if (!resetDone) {
+    const keysToClear = [
+      'outdoorcore_mock_companies',
+      'outdoorcore_mock_advertisingSpaces',
+      'outdoorcore_mock_offers',
+      'outdoorcore_mock_reservations',
+      'outdoorcore_mock_contracts',
+      'outdoorcore_mock_campaigns',
+      'outdoorcore_digital_screens',
+      'outdoorcore_playlist_slots',
+      'outdoorcore_mock_proofOfPlays',
+      'outdoorcore_mock_finance_data',
+      'outdoorcore_mock_mediaAssets',
+      'outdoorcore_mock_tasks',
+      'outdoorcore_mock_notifications',
+      'outdoorcore_mock_maintenance',
+      'outdoorcore_mock_competitors',
+      'outdoorcore_demo_last_reset_time',
+      'outdoorcore_calendar_events_custom',
+      'outdoorcore_calendar_deleted_ids'
+    ];
+    keysToClear.forEach(key => {
+      // Safely preserve user configurations, theme, auth, settings
+      if (key !== 'outdoorcore_theme' && key !== 'outdoorcore_mock_session') {
         localStorage.removeItem(key);
       }
     });
-    localStorage.setItem('outdoorcore_demo_last_reset_time', currentResetTime);
+    localStorage.setItem('outdoorcore_production_reset_done_v1', 'true');
   }
   
   if (!localStorage.getItem('outdoorcore_mock_companies')) {
-    // Dynamic import to prevent circular dependency lock
-    import('@/services/demoSeedingService').then(({ demoSeedingService }) => {
-      demoSeedingService.resetDemoData();
-    });
+    // Production initialization with empty tables
+    localStorage.setItem('outdoorcore_mock_companies', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_advertisingSpaces', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_offers', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_contracts', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_digital_screens', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_playlist_slots', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_proofOfPlays', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_finance_data', JSON.stringify({
+      accounts: [],
+      cashFlowTrends: [],
+      collectionStatuses: [],
+      upcomingPayments: [],
+      activities: []
+    }));
+    localStorage.setItem('outdoorcore_mock_mediaAssets', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_tasks', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_notifications', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_maintenance', JSON.stringify([]));
+    localStorage.setItem('outdoorcore_mock_competitors', JSON.stringify([]));
   }
 }
 

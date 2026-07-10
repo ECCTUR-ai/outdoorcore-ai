@@ -282,7 +282,7 @@ export function Sidebar() {
               <div className="space-y-0.5 border-t border-b border-white/5 py-2 my-2">
                 {(!sidebarCollapsed || mobileSidebarOpen) && (
                   <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-3 block mb-1">
-                    REKLAM ENVANTERİ
+                    REKLAM MECRALARI
                   </span>
                 )}
                 
