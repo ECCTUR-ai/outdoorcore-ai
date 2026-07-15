@@ -942,6 +942,41 @@ export const spaceRepository = {
     }
     return this.getByIdSync(id);
   },
+  async resolveAdvertisingSpace(ref: any) {
+    if (!ref) {
+      throw new Error('Reklam alanı kaydı bulunamadı: (boş referans)');
+    }
+
+    let space = null;
+
+    if (typeof ref === 'string') {
+      space = await this.getById(ref);
+      if (!space) {
+        space = await this.getByInventoryCode(ref);
+      }
+      if (!space) {
+        throw new Error(`Reklam alanı kaydı bulunamadı: ${ref}`);
+      }
+      return space;
+    }
+
+    if (ref.advertisingSpaceId) {
+      space = await this.getById(ref.advertisingSpaceId);
+    }
+    if (!space && ref.inventoryCode) {
+      space = await this.getByInventoryCode(ref.inventoryCode);
+    }
+    if (!space && ref.screenCode) {
+      space = await this.getByInventoryCode(ref.screenCode);
+    }
+
+    if (!space) {
+      const errStr = ref.advertisingSpaceId || ref.inventoryCode || ref.screenCode || JSON.stringify(ref);
+      throw new Error(`Reklam alanı kaydı bulunamadı: ${errStr}`);
+    }
+
+    return space;
+  },
   async create(input: any) {
     const { organizationId, email } = getSessionInfo();
     
@@ -1036,7 +1071,15 @@ export const spaceRepository = {
     }
 
     const local = getLocalData('advertisingSpaces', advertisingSpaces);
-    const idx = local.findIndex((s: any) => s.id === id);
+    let idx = local.findIndex((s: any) => s.id === id);
+    if (idx === -1) {
+      const staticSpace = mgaSpaces.find((s: any) => s.id === id);
+      if (staticSpace) {
+        local.push(staticSpace as any);
+        idx = local.length - 1;
+      }
+    }
+
     if (idx !== -1) {
       const oldStatus = local[idx].status;
       local[idx] = {
@@ -1057,7 +1100,7 @@ export const spaceRepository = {
       }
       return local[idx];
     }
-    throw new Error('Reklam alanı bulunamadı.');
+    throw new Error(`Reklam alanı kaydı bulunamadı: ${id}`);
   },
   async softDelete(id: string) {
     const { organizationId, email } = getSessionInfo();
@@ -1085,7 +1128,15 @@ export const spaceRepository = {
     }
 
     const local = getLocalData('advertisingSpaces', advertisingSpaces);
-    const idx = local.findIndex((s: any) => s.id === id);
+    let idx = local.findIndex((s: any) => s.id === id);
+    if (idx === -1) {
+      const staticSpace = mgaSpaces.find((s: any) => s.id === id);
+      if (staticSpace) {
+        local.push(staticSpace as any);
+        idx = local.length - 1;
+      }
+    }
+
     if (idx !== -1) {
       local[idx].deleted_at = timestamp;
       local[idx].deleted_by = email;

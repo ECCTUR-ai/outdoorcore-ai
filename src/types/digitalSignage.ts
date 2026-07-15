@@ -16,6 +16,9 @@ export interface DigitalScreen {
   isDemo?: boolean;
   source?: string;
   seedVersion?: string;
+  id?: string;
+  advertisingSpaceId?: string;
+  inventoryCode?: string;
 }
 
 export interface PlaylistSlot {

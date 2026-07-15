@@ -80,6 +80,9 @@ export const digitalScreenRepository = {
       }
 
       return {
+        id: stored?.screenId || ('SCR-' + s.code),
+        advertisingSpaceId: s.id,
+        inventoryCode: s.code,
         screenId: s.id,
         screenCode: s.code,
         name: s.name,

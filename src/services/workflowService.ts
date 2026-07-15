@@ -319,11 +319,23 @@ export const workflowService = {
       return { success: false, error: 'Rezervasyon oluşturmak için satış bedelini girin.' };
     }
 
-    const allSpaces = spaceRepository.getAllSync();
+    const resolvedSpaces: any[] = [];
+    const resolvedSpaceIds: string[] = [];
+    for (const ref of payload.spaceIds) {
+      try {
+        const space = await spaceRepository.resolveAdvertisingSpace(ref);
+        resolvedSpaces.push(space);
+        resolvedSpaceIds.push(space.id);
+      } catch (e: any) {
+        return { success: false, error: `Reklam alanı kaydı bulunamadı: ${ref}` };
+      }
+    }
+    payload.spaceIds = resolvedSpaceIds;
+
     for (const spaceId of payload.spaceIds) {
-      const space = allSpaces.find(s => s.id === spaceId);
+      const space = resolvedSpaces.find(s => s.id === spaceId);
       if (!space) {
-        return { success: false, error: `Seçilen reklam alanı (${spaceId}) bulunamadı.` };
+        return { success: false, error: `Reklam alanı kaydı bulunamadı: ${spaceId}` };
       }
       const isAvailable = reservationRepository.isSpaceAvailableSync(spaceId, space.code, payload.startDate, payload.endDate);
       if (payload.productType === 'dijital') {
@@ -396,7 +408,7 @@ export const workflowService = {
       const resList = storedReservations ? JSON.parse(storedReservations) : [];
 
       for (const spaceId of payload.spaceIds) {
-        const space = allSpaces.find(s => s.id === spaceId)!;
+        const space = resolvedSpaces.find(s => s.id === spaceId)!;
         const mockResId = 'RES-' + Math.random().toString(36).substring(2, 6).toUpperCase();
         
         const newRes = {
@@ -503,7 +515,7 @@ export const workflowService = {
         installments: [
           { id: 'INST-1', installment: '1. Taksit', dueDate: payload.startDate, amount: grandTotal, status: 'Bekliyor' }
         ],
-        spacesList: payload.spaceIds.map(sid => allSpaces.find(s => s.id === sid)?.code || ''),
+        spacesList: payload.spaceIds.map(sid => resolvedSpaces.find(s => s.id === sid)?.code || ''),
         filesList: [],
         history: [],
         aiRiskAnalysis: []
