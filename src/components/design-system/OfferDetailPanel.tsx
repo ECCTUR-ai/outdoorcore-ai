@@ -81,22 +81,37 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actio
       <div className="space-y-2 pt-1 border-b border-white/5 pb-4">
         <Label>Teklif Durum Yönetimi</Label>
         <div className="flex flex-wrap gap-2">
-          {offer.stage === 'Teklif Hazırlandı' && (
+          {offer.stage === 'Rezerve' && (
             <PermissionGate permission="offers.update">
               <Button 
                 variant="minimal" 
                 size="xs" 
                 leftIcon={<Send size={10} />}
-                onClick={() => onStageChange(offer.id, 'Onaya Gönderildi')}
+                onClick={() => onStageChange(offer.id, 'Teklif Gönderildi')}
                 loading={actionLoading === 'sendApproval'}
                 disabled={actionLoading !== null}
               >
-                Onaya Gönder
+                Teklife Çevir
               </Button>
             </PermissionGate>
           )}
 
-          {['Onaya Gönderildi', 'Sözleşme Bekliyor'].includes(offer.stage) && (
+          {offer.stage === 'Teklif Gönderildi' && (
+            <PermissionGate permission="offers.update">
+              <Button 
+                variant="minimal" 
+                size="xs" 
+                leftIcon={<Send size={10} />}
+                onClick={() => onStageChange(offer.id, 'Müşteri Onayı')}
+                loading={actionLoading === 'sendApproval'}
+                disabled={actionLoading !== null}
+              >
+                Müşteri Onayına Sun
+              </Button>
+            </PermissionGate>
+          )}
+
+          {['Müşteri Onayı', 'Sözleşme Bekliyor'].includes(offer.stage) && (
             <PermissionGate permission="offers.approve">
               <Button 
                 variant="success" 
@@ -111,7 +126,37 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actio
             </PermissionGate>
           )}
 
-          {['Teklif Hazırlandı', 'Onaya Gönderildi', 'Sözleşme Bekliyor'].includes(offer.stage) && (
+          {offer.stage === 'Sözleşme İmzalandı' && (
+            <PermissionGate permission="offers.update">
+              <Button 
+                variant="success" 
+                size="xs" 
+                leftIcon={<Check size={10} />}
+                onClick={() => onStageChange(offer.id, 'Yayında')}
+                loading={actionLoading === 'approve'}
+                disabled={actionLoading !== null}
+              >
+                Yayına Al
+              </Button>
+            </PermissionGate>
+          )}
+
+          {offer.stage === 'Yayında' && (
+            <PermissionGate permission="offers.update">
+              <Button 
+                variant="minimal" 
+                size="xs" 
+                leftIcon={<Check size={10} />}
+                onClick={() => onStageChange(offer.id, 'Tamamlandı')}
+                loading={actionLoading === 'approve'}
+                disabled={actionLoading !== null}
+              >
+                Yayın Tamamla
+              </Button>
+            </PermissionGate>
+          )}
+
+          {!['İptal', 'Tamamlandı'].includes(offer.stage) && (
             <PermissionGate permission="offers.update">
               <Button 
                 variant="danger" 
@@ -126,13 +171,13 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actio
             </PermissionGate>
           )}
 
-          {['Onaya Gönderildi', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) && (
+          {['Teklif Gönderildi', 'Müşteri Onayı', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Yayında'].includes(offer.stage) && (
             <PermissionGate permission="offers.update">
               <Button 
                 variant="minimal" 
                 size="xs" 
                 leftIcon={<RotateCcw size={10} />}
-                onClick={() => onStageChange(offer.id, 'Teklif Hazırlandı')}
+                onClick={() => onStageChange(offer.id, 'Rezerve')}
                 loading={actionLoading === 'revise'}
                 disabled={actionLoading !== null}
               >
@@ -255,11 +300,11 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actio
       <div className="p-4 bg-[#12192B]/60 border border-white/5 rounded-2xl text-left select-none space-y-3.5">
         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5 leading-none">
           <Layers size={11} className="text-blue-500" />
-          Sonraki İşlemler ve Yol Haritası
+          Satış Süreci Aşamaları
         </span>
         
         <div className="relative pl-4 border-l border-white/5 space-y-4 text-[10px]">
-          {/* Step 1: Teklif Hazırlandı */}
+          {/* Step 1: Rezerve */}
           <div className="relative">
             <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
               offer.stage !== 'İptal' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-white/5 text-slate-500'
@@ -267,98 +312,85 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actio
               ✓
             </div>
             <div className="space-y-0.5">
-              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Teklif Hazırlandı' ? 'text-blue-400' : 'text-slate-300'}`}>Teklif Hazırlandı</span>
-              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Teklif taslağı ve alan seçimi tamamlandı.</span>
+              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Rezerve' ? 'text-blue-400' : 'text-slate-300'}`}>Rezerve</span>
+              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Envanter tarih aralığında kilitlendi.</span>
             </div>
           </div>
 
-          {/* Step 2: Onaya Gönderildi */}
+          {/* Step 2: Teklif Gönderildi */}
           <div className="relative">
             <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
-              ['Onaya Gönderildi', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage)
+              ['Teklif Gönderildi', 'Müşteri Onayı', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Yayında', 'Tamamlandı'].includes(offer.stage)
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : offer.stage === 'Teklif Hazırlandı'
+                : offer.stage === 'Rezerve'
                   ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 ring-2 ring-blue-500/20'
                   : 'bg-slate-800 border-white/5 text-slate-500'
             }`}>
-              {['Onaya Gönderildi', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? '✓' : '2'}
+              {['Teklif Gönderildi', 'Müşteri Onayı', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Yayında', 'Tamamlandı'].includes(offer.stage) ? '✓' : '2'}
             </div>
             <div className="space-y-0.5">
-              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Onaya Gönderildi' ? 'text-blue-400' : 'text-slate-400'}`}>Onaya Gönderildi</span>
-              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Müşteri ve yönetici onayı bekleniyor.</span>
+              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Teklif Gönderildi' ? 'text-blue-400' : 'text-slate-400'}`}>Teklif Gönderildi</span>
+              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Teklif detayları müşteriye sunuldu.</span>
             </div>
           </div>
 
-          {/* Step 3: Sözleşme İmzalandı */}
+          {/* Step 3: Müşteri Onayı */}
           <div className="relative">
             <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
-              ['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage)
+              ['Müşteri Onayı', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Yayında', 'Tamamlandı'].includes(offer.stage)
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                : offer.stage === 'Teklif Gönderildi'
+                  ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 ring-2 ring-blue-500/20'
+                  : 'bg-slate-800 border-white/5 text-slate-500'
+            }`}>
+              {['Müşteri Onayı', 'Sözleşme Bekliyor', 'Sözleşme İmzalandı', 'Yayında', 'Tamamlandı'].includes(offer.stage) ? '✓' : '3'}
+            </div>
+            <div className="space-y-0.5">
+              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Müşteri Onayı' ? 'text-blue-400' : 'text-slate-400'}`}>Müşteri Onayı</span>
+              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Müşterinin sözel veya yazılı onayı alındı.</span>
+            </div>
+          </div>
+
+          {/* Step 4: Sözleşme İmzalandı */}
+          <div className="relative">
+            <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
+              ['Sözleşme İmzalandı', 'Yayında', 'Tamamlandı'].includes(offer.stage)
                 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                 : offer.stage === 'Sözleşme Bekliyor'
                   ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 ring-2 ring-blue-500/20'
                   : 'bg-slate-800 border-white/5 text-slate-500'
             }`}>
-              {['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? '✓' : '3'}
+              {['Sözleşme İmzalandı', 'Yayında', 'Tamamlandı'].includes(offer.stage) ? '✓' : '4'}
             </div>
             <div className="space-y-0.5">
-              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Sözleşme Bekliyor' ? 'text-blue-400' : 'text-slate-400'}`}>Sözleşme İmzalandı</span>
-              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Tarih aralığı için kesin anlaşma yapıldı.</span>
+              <span className={`font-black uppercase tracking-wide block ${['Sözleşme İmzalandı', 'Sözleşme Bekliyor'].includes(offer.stage) ? 'text-blue-400' : 'text-slate-400'}`}>Sözleşme İmzalandı</span>
+              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Islak veya dijital imza süreci tamamlandı.</span>
             </div>
           </div>
 
-          {/* Step 4: Rezervasyon Oluşturuldu */}
+          {/* Step 5: Yayında */}
           <div className="relative">
             <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
-              ['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-white/5 text-slate-500'
+              ['Yayında', 'Tamamlandı'].includes(offer.stage) ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-white/5 text-slate-500'
             }`}>
-              {['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? '✓' : '4'}
+              {['Yayında', 'Tamamlandı'].includes(offer.stage) ? '✓' : '5'}
             </div>
             <div className="space-y-0.5">
-              <span className="font-black uppercase tracking-wide text-slate-400 block">Rezervasyon Oluşturuldu</span>
-              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Otomatik kesin rezervasyon kaydı oluşturuldu.</span>
+              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Yayında' ? 'text-blue-400' : 'text-slate-400'}`}>Yayında</span>
+              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Reklam mecraları aktif olarak yayına başladı.</span>
             </div>
           </div>
 
-          {/* Step 5: Reklam Alanları Kapatıldı */}
+          {/* Step 6: Tamamlandı */}
           <div className="relative">
             <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
-              ['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-white/5 text-slate-500'
+              offer.stage === 'Tamamlandı' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-white/5 text-slate-500'
             }`}>
-              {['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? '✓' : '5'}
+              {offer.stage === 'Tamamlandı' ? '✓' : '6'}
             </div>
             <div className="space-y-0.5">
-              <span className="font-black uppercase tracking-wide text-slate-400 block">Reklam Alanları Kapatıldı</span>
-              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Seçilen space üniteleri diğer firmalara kilitlendi.</span>
-            </div>
-          </div>
-
-          {/* Step 6: Finans Planı Oluşturuldu */}
-          <div className="relative">
-            <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
-              ['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-800 border-white/5 text-slate-500'
-            }`}>
-              {['Sözleşme İmzalandı', 'Operasyona Aktarıldı'].includes(offer.stage) ? '✓' : '6'}
-            </div>
-            <div className="space-y-0.5">
-              <span className="font-black uppercase tracking-wide text-slate-400 block">Finans Planı Oluşturuldu</span>
-              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Fatura ödeme planı ve vadeler oluşturuldu.</span>
-            </div>
-          </div>
-
-          {/* Step 7: Kampanya Kurulumu Başladı */}
-          <div className="relative">
-            <div className={`absolute -left-[21px] top-0.5 w-3.5 h-3.5 rounded-full flex items-center justify-center border text-[8px] font-black ${
-              offer.stage === 'Operasyona Aktarıldı'
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                : offer.stage === 'Sözleşme İmzalandı'
-                  ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 ring-2 ring-blue-500/20'
-                  : 'bg-slate-800 border-white/5 text-slate-500'
-            }`}>
-              {offer.stage === 'Operasyona Aktarıldı' ? '✓' : '7'}
-            </div>
-            <div className="space-y-0.5">
-              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Operasyona Aktarıldı' ? 'text-blue-400' : 'text-slate-400'}`}>Kampanya Kurulumu Başladı</span>
-              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Görsel yüklemeler ve saha operasyonu başladı.</span>
+              <span className={`font-black uppercase tracking-wide block ${offer.stage === 'Tamamlandı' ? 'text-blue-400' : 'text-slate-400'}`}>Tamamlandı</span>
+              <span className="text-[8.5px] text-slate-500 font-bold block uppercase tracking-wider">Yayın süresi bitti ve kampanya sonlandı.</span>
             </div>
           </div>
         </div>

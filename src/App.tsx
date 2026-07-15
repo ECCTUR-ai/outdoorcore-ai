@@ -34,6 +34,8 @@ import { MapDashboard } from '@/pages/MapDashboard';
 import { FirmalarMarkalar } from '@/pages/FirmalarMarkalar';
 import { Kampanyalar } from '@/pages/Kampanyalar';
 import { Teklifler } from '@/pages/Teklifler';
+import { PipelinePage } from '@/pages/Pipeline';
+import { Rezervasyonlar } from '@/pages/Rezervasyonlar';
 import { Sozlesmeler } from '@/pages/Sozlesmeler';
 import { MedyaKutuphanesi } from '@/pages/MedyaKutuphanesi';
 import { Raporlar } from '@/pages/Raporlar';
@@ -228,6 +230,10 @@ function AppContent() {
         return <CampaignsPageWrapper />;
       case 'teklifler':
         return <Teklifler />;
+      case 'pipeline':
+        return <PipelinePage />;
+      case 'rezervasyonlar':
+        return <Rezervasyonlar />;
       case 'sozlesmeler':
         return <Sozlesmeler />;
       case 'medya-kutuphanesi':

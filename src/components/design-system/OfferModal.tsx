@@ -21,11 +21,13 @@ interface OfferModalProps {
 }
 
 const STAGE_CONFIGS: Record<Offer['stage'], { label: string; bg: string; border: string; text: string }> = {
-  'Teklif Hazırlandı': { label: 'Teklif Hazırlandı', bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400' },
-  'Onaya Gönderildi': { label: 'Onaya Gönderildi', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400' },
+  'Rezerve': { label: 'Rezerve', bg: 'bg-slate-500/10', border: 'border-slate-500/20', text: 'text-slate-400' },
+  'Teklif Gönderildi': { label: 'Teklif Gönderildi', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20', text: 'text-yellow-400' },
+  'Müşteri Onayı': { label: 'Müşteri Onayı', bg: 'bg-orange-500/10', border: 'border-orange-500/20', text: 'text-orange-400' },
   'Sözleşme Bekliyor': { label: 'Sözleşme Bekliyor', bg: 'bg-blue-500/10', border: 'border-blue-500/20', text: 'text-blue-400' },
   'Sözleşme İmzalandı': { label: 'Sözleşme İmzalandı', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400' },
-  'Operasyona Aktarıldı': { label: 'Operasyona Aktarıldı', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-400' },
+  'Yayında': { label: 'Yayında', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', text: 'text-indigo-400' },
+  'Tamamlandı': { label: 'Tamamlandı', bg: 'bg-sky-500/10', border: 'border-sky-500/20', text: 'text-sky-400' },
   'İptal': { label: 'İptal', bg: 'bg-red-500/10', border: 'border-red-500/20', text: 'text-red-400' }
 };
 
@@ -146,7 +148,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
       campaignName: '',
       value: '',
       valueNumeric: 0,
-      stage: 'Teklif Hazırlandı',
+      stage: 'Rezerve',
       closeProbability: 50,
       campaignStartDate: '',
       campaignEndDate: '',
@@ -219,7 +221,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
           campaignName: '',
           value: '',
           valueNumeric: 0,
-          stage: 'Teklif Hazırlandı',
+          stage: 'Rezerve',
           closeProbability: 50,
           campaignStartDate: new Date().toISOString().split('T')[0],
           campaignEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -295,7 +297,7 @@ export function OfferModal({ isOpen, onClose, onSuccess, offer, preselectedSpace
   };
 
   const handleSaveDraft = () => {
-    setValue('stage', 'Teklif Hazırlandı');
+    setValue('stage', 'Rezerve');
     handleSubmit(onSubmit, onInvalid)();
   };
 

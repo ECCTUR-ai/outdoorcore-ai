@@ -190,9 +190,9 @@ export function Teklifler() {
     if (!original) return;
 
     let loadingKey: typeof actionLoading = null;
-    if (newStage === 'Onaya Gönderildi') loadingKey = 'sendApproval';
+    if (newStage === 'Teklif Gönderildi') loadingKey = 'sendApproval';
     else if (newStage === 'Sözleşme İmzalandı') loadingKey = 'approve';
-    else if (newStage === 'Teklif Hazırlandı') loadingKey = 'revise';
+    else if (newStage === 'Rezerve') loadingKey = 'revise';
     else if (newStage === 'İptal') loadingKey = 'cancel';
 
     setActionLoading(loadingKey);
@@ -227,7 +227,7 @@ export function Teklifler() {
     let toastMsg = `Teklif aşaması başarıyla "${newStage}" olarak güncellendi.`;
     let logMsg = `Teklif aşaması değişti: ${original.clientName} - ${newStage}`;
 
-    if (newStage === 'Onaya Gönderildi') {
+    if (newStage === 'Teklif Gönderildi') {
       toastTitle = "Onaya Gönderildi";
       toastMsg = "Teklif onaya gönderildi.";
       logMsg = `Teklif onaya gönderildi: ${original.clientName} - ${original.campaignName}`;
@@ -235,7 +235,7 @@ export function Teklifler() {
       toastTitle = "Sözleşme İmzalandı";
       toastMsg = "Sözleşme imzalandı. Rezervasyon oluşturuldu.";
       logMsg = `Sözleşme imzalandı ve rezervasyon oluşturuldu: ${original.clientName} - ${original.campaignName}`;
-    } else if (newStage === 'Teklif Hazırlandı') {
+    } else if (newStage === 'Rezerve') {
       toastTitle = "Revizyona Alındı";
       toastMsg = "Teklif revizyon aşamasına alındı.";
       logMsg = `Teklif revizyona çekildi: ${original.clientName} - ${original.campaignName}`;
@@ -407,8 +407,8 @@ export function Teklifler() {
     return d && d.getFullYear() === todayDate.getFullYear() && d.getMonth() === todayDate.getMonth();
   }).length;
 
-  const wonOffersCount = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı').length;
-  const closedOffersCount = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı' || o.stage === 'İptal').length;
+  const wonOffersCount = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Yayında').length;
+  const closedOffersCount = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Yayında' || o.stage === 'İptal').length;
   const winRate = closedOffersCount > 0 ? (wonOffersCount / closedOffersCount * 100).toFixed(1) : null;
   const winRateText = winRate !== null ? `%${winRate}` : 'Veri yok';
 
@@ -512,7 +512,7 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Onay Bekleyen"
-          value={loading ? '...' : String(offers.filter(o => o.stage === 'Onaya Gönderildi').length)}
+          value={loading ? '...' : String(offers.filter(o => o.stage === 'Teklif Gönderildi' || o.stage === 'Müşteri Onayı').length)}
           percentage="—"
           subtext="Müşteri onayında"
           icon={<CheckCircle size={15} />}
@@ -521,7 +521,7 @@ export function Teklifler() {
         />
         <DarkKpiCard
           title="Kazanılan"
-          value={loading ? '...' : String(offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı').length)}
+          value={loading ? '...' : String(offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Yayında').length)}
           percentage="—"
           subtext="Sözleşmeye dönen"
           icon={<CheckCheck size={15} />}
@@ -552,11 +552,49 @@ export function Teklifler() {
               </div>
             ) : (
               <>
-                <OfferPipeline 
-                  offers={offers}
-                  selectedId={selectedOfferId}
-                  onSelect={(id) => setSelectedOfferId(id)}
-                />
+                <div className="bg-[#0b0f19]/30 border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="border-b border-white/5 text-[9.5px] font-black text-slate-500 uppercase tracking-widest bg-white/1">
+                          <th className="py-4.5 px-6">Teklif No</th>
+                          <th className="py-4.5 px-6">Müşteri</th>
+                          <th className="py-4.5 px-6">Kampanya</th>
+                          <th className="py-4.5 px-6 text-center">Alanlar</th>
+                          <th className="py-4.5 px-6 text-center">Aşama</th>
+                          <th className="py-4.5 px-6 text-center">Kapanma İhtimali</th>
+                          <th className="py-4.5 px-6 text-right">Net Tutar</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/3 text-[11px] font-semibold text-slate-350">
+                        {offers.map((o) => {
+                          const isSelected = o.id === selectedOfferId;
+                          return (
+                            <tr 
+                              key={o.id}
+                              onClick={() => setSelectedOfferId(o.id)}
+                              className={`hover:bg-white/2 cursor-pointer transition-colors ${isSelected ? 'bg-blue-650/5 border-l-2 border-blue-500' : ''}`}
+                            >
+                              <td className="py-4.5 px-6 text-white font-extrabold text-[10px]">#{o.id}</td>
+                              <td className="py-4.5 px-6 text-white font-extrabold">{o.clientName}</td>
+                              <td className="py-4.5 px-6 text-slate-400">{o.campaignName}</td>
+                              <td className="py-4.5 px-6 text-center text-white">{o.spacesList?.length || 0} Alan</td>
+                              <td className="py-4.5 px-6 text-center">
+                                <span className={`px-2.5 py-1 rounded-xl text-[9px] font-extrabold uppercase tracking-wide bg-blue-500/10 border border-blue-500/15 text-blue-400`}>
+                                  {o.stage}
+                                </span>
+                              </td>
+                              <td className="py-4.5 px-6 text-center font-mono text-indigo-400 font-bold">%{o.closeProbability}</td>
+                              <td className="py-4.5 px-6 text-right text-emerald-450 font-extrabold">
+                                ₺{(o.valueNumeric || 0).toLocaleString('tr-TR')}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
                 {offers.length === 0 && (
                   <div className="text-center text-slate-500 text-xs font-bold uppercase tracking-wider py-12 border border-dashed border-white/5 rounded-3xl bg-slate-900/10">
                     Hiç Teklif Bulunmamaktadır

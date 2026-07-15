@@ -58,11 +58,13 @@ export const offerSchema = z.object({
   value: z.string().optional(),
   valueNumeric: z.coerce.number().optional(),
   stage: z.enum([
-    'Teklif Hazırlandı',
-    'Onaya Gönderildi',
+    'Rezerve',
+    'Teklif Gönderildi',
+    'Müşteri Onayı',
     'Sözleşme Bekliyor',
     'Sözleşme İmzalandı',
-    'Operasyona Aktarıldı',
+    'Yayında',
+    'Tamamlandı',
     'İptal'
   ]),
   closeProbability: z.coerce.number().min(0, 'İhtimal %0 ile %100 arasında olmalıdır').max(100, 'İhtimal %0 ile %100 arasında olmalıdır'),

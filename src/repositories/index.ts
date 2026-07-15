@@ -1412,7 +1412,7 @@ export const offerRepository = {
       if (oldStage !== local[idx].stage) {
         await auditLogRepository.log('offer.stage_changed', 'offer', id);
         await activityLogRepository.log(`Teklif aşaması değişti (Demo): ${local[idx].clientName} - ${local[idx].stage}`, 'offers');
-        if (local[idx].stage === 'Onaya Gönderildi') {
+        if (local[idx].stage === 'Teklif Gönderildi') {
           await activityLogRepository.log(`Teklif onaya gönderildi (Demo): ${local[idx].clientName}`, 'offers');
         }
       }
@@ -1734,7 +1734,16 @@ export const reservationAuditRepository = {
 
 export const normalizeReservationStatus = (status: string): string => {
   const s = (status || '').toUpperCase();
-  if (s === 'AKTİF' || s === 'ACTIVE' || s === 'CONFIRMED' || s === 'KESİNLEŞTİ' || s === 'REZERVE') {
+  if (s === 'REZERVE') {
+    return 'REZERVE';
+  }
+  if (s === 'YAYINDA') {
+    return 'YAYINDA';
+  }
+  if (s === 'TAMAMLANDI') {
+    return 'TAMAMLANDI';
+  }
+  if (s === 'AKTİF' || s === 'ACTIVE' || s === 'CONFIRMED' || s === 'KESİNLEŞTİ') {
     return 'CONFIRMED';
   }
   if (s === 'YAKLAŞAN' || s === 'OPTIONED' || s === 'OPSİYONLU') {
@@ -1889,11 +1898,13 @@ export const reservationRepository = {
       if (excludeReservationId && r.id === excludeReservationId) continue;
       
       const normalizedStatus = normalizeReservationStatus(r.status);
-      // Müsaitliği engelleyen statüler: OPTIONED, CONTRACT_PENDING, SALES_APPROVAL_PENDING, CONFIRMED
+      // Müsaitliği engelleyen statüler: OPTIONED, CONTRACT_PENDING, SALES_APPROVAL_PENDING, CONFIRMED, REZERVE, YAYINDA
       const consumesCapacity = normalizedStatus === 'OPTIONED' || 
                                normalizedStatus === 'CONTRACT_PENDING' || 
                                normalizedStatus === 'SALES_APPROVAL_PENDING' || 
-                               normalizedStatus === 'CONFIRMED';
+                               normalizedStatus === 'CONFIRMED' ||
+                               normalizedStatus === 'REZERVE' ||
+                               normalizedStatus === 'YAYINDA';
       if (!consumesCapacity) continue;
 
       const matchSpace = (r.spaceId && r.spaceId === spaceId) || (r.spaceCode && r.spaceCode === spaceCode);
@@ -1908,6 +1919,41 @@ export const reservationRepository = {
       }
     }
     return true;
+  },
+  getAvailableNetworkCapacity(spaceId: string, spaceCode: string, startDateStr: string, endDateStr: string, excludeReservationId?: string): number {
+    const space = spaceRepository.getByIdSync(spaceId);
+    if (!space) return 0;
+    
+    const capacity = space.networkCapacity || space.network_capacity || 0;
+    if (capacity <= 0) return 0;
+    
+    const startA = parseDDMMYYYY(startDateStr);
+    const endA = parseDDMMYYYY(endDateStr);
+    if (!startA || !endA) return capacity;
+    
+    const list = getLocalData('reservations', reservations);
+    let reservedCount = 0;
+    
+    for (const r of list) {
+      if (excludeReservationId && r.id === excludeReservationId) continue;
+      
+      const normalizedStatus = normalizeReservationStatus(r.status);
+      const isReserved = normalizedStatus === 'REZERVE' || normalizedStatus === 'YAYINDA' || normalizedStatus === 'CONFIRMED';
+      if (!isReserved) continue;
+      
+      const matchSpace = (r.spaceId && r.spaceId === spaceId) || (r.spaceCode && r.spaceCode === spaceCode);
+      if (matchSpace) {
+        const startB = parseDDMMYYYY(r.startDate);
+        const endB = parseDDMMYYYY(r.endDate);
+        if (startB && endB) {
+          if (startA <= endB && endA >= startB) {
+            reservedCount += r.reservedNetworkCount || 0;
+          }
+        }
+      }
+    }
+    
+    return Math.max(0, capacity - reservedCount);
   },
   async update(id: string, input: any) {
     const { email } = getSessionInfo();

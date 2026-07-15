@@ -10,11 +10,13 @@ interface OfferPipelineProps {
 
 export function OfferPipeline({ offers, selectedId, onSelect }: OfferPipelineProps) {
   const stages: Offer['stage'][] = [
-    'Teklif Hazırlandı',
-    'Onaya Gönderildi',
+    'Rezerve',
+    'Teklif Gönderildi',
+    'Müşteri Onayı',
     'Sözleşme Bekliyor',
     'Sözleşme İmzalandı',
-    'Operasyona Aktarıldı',
+    'Yayında',
+    'Tamamlandı',
     'İptal'
   ];
 

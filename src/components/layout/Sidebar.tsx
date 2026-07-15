@@ -21,7 +21,9 @@ import {
   Bell,
   ChevronDown,
   Tv,
-  Users
+  Users,
+  CalendarPlus,
+  Layers
 } from 'lucide-react';
 
 import { usePermission } from '@/permissions/permissionHooks';
@@ -329,14 +331,15 @@ export function Sidebar() {
                 <Coins size={13} />,
                 satisExpanded,
                 setSatisExpanded,
-                currentRoute === 'firmalar-markalar' || currentRoute === 'teklifler' || currentRoute === 'rezervasyonlar' || currentRoute === 'sozlesmeler',
+                currentRoute === 'sales-wizard' || currentRoute === 'rezervasyonlar' || currentRoute === 'teklifler' || currentRoute === 'pipeline' || currentRoute === 'sozlesmeler',
                 undefined
               )}
               {satisExpanded && (!sidebarCollapsed || mobileSidebarOpen) && (
                 <div className="space-y-0.5 pl-3 border-l border-white/5 animate-slide-in duration-200">
-                  {showCompanies && renderSidebarItem('firmalar-markalar', 'Firmalar & Markalar', <Building2 size={11} className="opacity-60" />, true)}
+                  {renderSidebarItem('sales-wizard', 'Rezervasyon Yap', <CalendarPlus size={11} className="opacity-60" />, true)}
+                  {renderSidebarItem('rezervasyonlar', 'Rezervasyonlar', <Calendar size={11} className="opacity-60" />, true)}
                   {showOffers && renderSidebarItem('teklifler', 'Teklifler', <FileText size={11} className="opacity-60" />, true)}
-                  {showCalendar && renderSidebarItem('rezervasyonlar', 'Rezervasyonlar', <Calendar size={11} className="opacity-60" />, true)}
+                  {renderSidebarItem('pipeline', 'Pipeline', <Layers size={11} className="opacity-60" />, true)}
                   {showContracts && renderSidebarItem('sozlesmeler', 'Sözleşmeler', <FileSignature size={11} className="opacity-60" />, true)}
                 </div>
               )}

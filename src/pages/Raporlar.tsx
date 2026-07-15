@@ -85,7 +85,7 @@ export function Raporlar() {
   const pendingCollection = accounts.reduce((sum: number, acc: any) => sum + (parseFloat((acc.balance || '0').replace(/[^0-9]/g, '')) || 0), 0);
   
   const pipelineValue = data.offers
-    .filter((o: any) => ['Teklif Hazırlandı', 'Onaya Gönderildi', 'Sözleşme Bekliyor'].includes(o.stage))
+    .filter((o: any) => ['Rezerve', 'Teklif Gönderildi', 'Müşteri Onayı', 'Sözleşme Bekliyor'].includes(o.stage))
     .reduce((sum: number, o: any) => sum + (o.valueNumeric || 0), 0);
 
   const totalSpaces = data.spaces.length;

@@ -7,8 +7,11 @@ import {
   activityLogRepository,
   reservationRepository,
   reservationAuditRepository,
-  digitalScreenRepository
+  digitalScreenRepository,
+  campaignRepository
 } from '@/repositories';
+
+import { parseDDMMYYYY } from '@/utils/dateHelper';
 
 function safeBackgroundTask(name: string, fn: () => Promise<any>) {
   setTimeout(() => {
@@ -264,6 +267,294 @@ export const workflowService = {
     } catch (e: any) {
       console.error('Error committing sales workflow:', e);
       return { success: false, error: e.message || 'Satış süreci kaydedilerken bir hata oluştu.' };
+    }
+  },
+
+  async commitReservationWorkflow(payload: {
+    workflowId: string;
+    companyId: string;
+    campaignName: string;
+    startDate: string;
+    endDate: string;
+    productType: 'dijital' | 'statik' | 'ozel';
+    spaceIds: string[];
+    reservedNetworkCount?: number;
+    durationSeconds?: number;
+    unitPrice: number;
+    discountRate: number;
+    notes?: string;
+  }): Promise<{ success: boolean; data?: any; error?: string }> {
+    const idpKey = 'outdoorcore_idp_' + payload.workflowId;
+    const cachedResult = localStorage.getItem(idpKey);
+    if (cachedResult) {
+      console.log('Workflow bypassed due to idempotency hit:', payload.workflowId);
+      return JSON.parse(cachedResult);
+    }
+
+    const company = companyRepository.getByIdSync(payload.companyId);
+    if (!company) {
+      return { success: false, error: 'Belirtilen firma sistemde bulunamadı.' };
+    }
+    if (!payload.campaignName || payload.campaignName.trim().length < 2) {
+      return { success: false, error: 'Lütfen geçerli bir kampanya adı girin.' };
+    }
+    if (!payload.startDate || !payload.endDate) {
+      return { success: false, error: 'Lütfen kampanya tarih aralığını seçin.' };
+    }
+    const startD = new Date(payload.startDate);
+    const endD = new Date(payload.endDate);
+    if (endD < startD) {
+      return { success: false, error: 'Kampanya bitiş tarihi başlangıç tarihinden önce olamaz.' };
+    }
+    if (payload.spaceIds.length === 0) {
+      return { success: false, error: 'Lütfen en az bir reklam alanı seçin.' };
+    }
+    if (payload.unitPrice <= 0) {
+      return { success: false, error: 'Birim fiyat 0 veya daha küçük olamaz. Lütfen geçerli bir fiyat girin.' };
+    }
+
+    const allSpaces = spaceRepository.getAllSync();
+    for (const spaceId of payload.spaceIds) {
+      const space = allSpaces.find(s => s.id === spaceId);
+      if (!space) {
+        return { success: false, error: `Seçilen reklam alanı (${spaceId}) bulunamadı.` };
+      }
+      const isAvailable = reservationRepository.isSpaceAvailableSync(spaceId, space.code, payload.startDate, payload.endDate);
+      if (payload.productType === 'dijital') {
+        const reqNetwork = payload.reservedNetworkCount || 1;
+        const availableNet = (reservationRepository as any).getAvailableNetworkCapacity(spaceId, space.code, payload.startDate, payload.endDate);
+        if (reqNetwork > availableNet) {
+          return { success: false, error: `${space.code} LED ekranında seçilen tarihlerde yeterli network kapasitesi yok. Mevcut Müsait Kapasite: ${availableNet}` };
+        }
+      } else {
+        if (!isAvailable) {
+          return { success: false, error: `${space.code} reklam alanı seçilen tarihlerde başka bir rezervasyon tarafından doludur.` };
+        }
+      }
+    }
+
+    const keysToBackup = [
+      'outdoorcore_mock_companies',
+      'outdoorcore_mock_advertisingSpaces',
+      'outdoorcore_mock_offers',
+      'outdoorcore_mock_reservations',
+      'outdoorcore_mock_contracts',
+      'outdoorcore_mock_campaigns',
+      'outdoorcore_playlist_slots',
+      'outdoorcore_mock_finance_data'
+    ];
+    const snapshot: Record<string, string | null> = {};
+    for (const key of keysToBackup) {
+      snapshot[key] = localStorage.getItem(key);
+    }
+
+    try {
+      const diffTime = Math.abs(endD.getTime() - startD.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+
+      const discountAmount = Math.round(payload.unitPrice * (payload.discountRate / 100));
+      const netAmount = Math.round(payload.unitPrice - discountAmount);
+      const vatAmount = Math.round(netAmount * 0.20);
+      const grandTotal = Math.round(netAmount + vatAmount);
+
+      const mockOfferId = 'OFF-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const mockContractId = 'CON-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      const mockCampaignId = 'CAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+      const newCampaign = {
+        id: mockCampaignId,
+        companyId: company.id,
+        campaignName: payload.campaignName,
+        clientName: company.name,
+        budget: `₺${grandTotal.toLocaleString('tr-TR')}`,
+        objective: 'Genel Tanıtım',
+        targetAudience: 'Havalimanı Yolcuları',
+        status: 'Hazırlık' as const,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        spacesCount: payload.spaceIds.length,
+        creativeCount: 0,
+        aiScore: 85,
+        offerId: mockOfferId,
+        contractId: mockContractId
+      };
+      const storedCampaigns = localStorage.getItem('outdoorcore_mock_campaigns');
+      const campaignsList = storedCampaigns ? JSON.parse(storedCampaigns) : [];
+      campaignsList.push(newCampaign);
+      localStorage.setItem('outdoorcore_mock_campaigns', JSON.stringify(campaignsList));
+
+      const reservationIds: string[] = [];
+      const storedReservations = localStorage.getItem('outdoorcore_mock_reservations');
+      const resList = storedReservations ? JSON.parse(storedReservations) : [];
+
+      for (const spaceId of payload.spaceIds) {
+        const space = allSpaces.find(s => s.id === spaceId)!;
+        const mockResId = 'RES-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+        
+        const newRes = {
+          id: mockResId,
+          contractId: mockContractId,
+          offerId: mockOfferId,
+          campaignId: mockCampaignId,
+          companyId: company.id,
+          spaceId: space.id,
+          spaceCode: space.code,
+          spaceName: space.name,
+          location: space.location || 'İstanbul',
+          clientName: company.name,
+          startDate: payload.startDate,
+          endDate: payload.endDate,
+          durationDays: diffDays,
+          status: 'REZERVE',
+          contractStatus: 'DRAFT',
+          salesApprovalStatus: 'APPROVED',
+          budget: `₺${grandTotal.toLocaleString('tr-TR')}`,
+          reservedNetworkCount: payload.productType === 'dijital' ? (payload.reservedNetworkCount || 1) : undefined,
+          durationSeconds: payload.productType === 'dijital' ? (payload.durationSeconds || 15) : undefined,
+          notes: payload.notes || ''
+        };
+        resList.push(newRes);
+        reservationIds.push(mockResId);
+
+        if (payload.productType === 'dijital') {
+          await digitalScreenRepository.createPlaylistSlot({
+            screenId: space.id,
+            companyId: company.id,
+            companyName: company.name,
+            campaignId: mockCampaignId,
+            startDate: payload.startDate,
+            endDate: payload.endDate,
+            durationSeconds: payload.durationSeconds || 15,
+            notes: 'Rezervasyon ile oluşturuldu.'
+          });
+        }
+
+        await spaceRepository.update(space.id, { status: 'rezerve' });
+      }
+      localStorage.setItem('outdoorcore_mock_reservations', JSON.stringify(resList));
+
+      const createdOffer = await offerRepository.create({
+        companyId: company.id,
+        campaignName: payload.campaignName,
+        value: `₺${grandTotal.toLocaleString('tr-TR')}`,
+        valueNumeric: grandTotal,
+        stage: 'Rezerve',
+        closeProbability: 90,
+        closingDate: payload.startDate,
+        campaignStartDate: payload.startDate,
+        campaignEndDate: payload.endDate,
+        owner: 'Cemil Sezgin',
+        spaceIds: payload.spaceIds,
+        discountRate: payload.discountRate,
+        discountAmount,
+        netAmount,
+        vatAmount,
+        grandTotal,
+        details: payload.notes || 'Operasyonel rezervasyon teklifi.',
+        notes: 'Sistem tarafından otomatik oluşturuldu.',
+        contractId: mockContractId,
+        reservationId: reservationIds[0],
+        campaignId: mockCampaignId
+      });
+
+      const newContract = {
+        id: mockContractId,
+        contractNo: 'CTR-2026-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+        companyId: company.id,
+        clientName: company.name,
+        campaignId: mockCampaignId,
+        campaignName: payload.campaignName,
+        status: 'draft',
+        crmTier: company.crmStatus || 'Gold',
+        value: `₺${grandTotal.toLocaleString('tr-TR')}`,
+        valueNumeric: grandTotal,
+        daysLeft: 30,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+        mediaAgency: company.mediaAgency || '-',
+        proposalId: createdOffer.id,
+        offerId: createdOffer.id,
+        reservationId: reservationIds[0],
+        notes: [payload.notes].filter(Boolean),
+        installments: [
+          { id: 'INST-1', installment: '1. Taksit', dueDate: payload.startDate, amount: grandTotal, status: 'Bekliyor' }
+        ],
+        spacesList: payload.spaceIds.map(sid => allSpaces.find(s => s.id === sid)?.code || ''),
+        filesList: [],
+        history: [],
+        aiRiskAnalysis: []
+      };
+      const storedContracts = localStorage.getItem('outdoorcore_mock_contracts');
+      const contractsList = storedContracts ? JSON.parse(storedContracts) : [];
+      contractsList.push(newContract);
+      localStorage.setItem('outdoorcore_mock_contracts', JSON.stringify(contractsList));
+
+      const financeData = financeRepository.getFinanceDataSync();
+      let account = financeData.accounts.find((a: any) => a.companyId === company.id);
+      const newInvoice = {
+        id: 'INV-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+        invoiceNo: 'FTR-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+        date: new Date().toLocaleDateString('tr-TR'),
+        amount: `₺${grandTotal.toLocaleString('tr-TR')}`,
+        status: 'Bekliyor' as const
+      };
+      if (!account) {
+        account = {
+          id: 'ACC-' + Math.random().toString(36).substring(2, 6).toUpperCase(),
+          name: company.name,
+          logo: company.name.charAt(0).toUpperCase(),
+          totalDebt: `₺${grandTotal.toLocaleString('tr-TR')}`,
+          totalCollected: '₺0',
+          balance: `₺${grandTotal.toLocaleString('tr-TR')}`,
+          riskScore: 20,
+          crmTier: company.crmStatus === 'VIP' ? 'VIP' : 'Gold',
+          totalContracts: '1',
+          totalInvoicesCount: 1,
+          invoices: [newInvoice],
+          collections: [],
+          paymentPlan: [],
+          receipts: [],
+          notes: ['Rezervasyon ile fatura hesabı otomatik açıldı.'],
+          companyId: company.id
+        };
+        financeData.accounts.push(account);
+      } else {
+        account.invoices.push(newInvoice);
+        account.totalInvoicesCount += 1;
+      }
+      localStorage.setItem('outdoorcore_mock_finance_data', JSON.stringify(financeData));
+
+      await activityLogRepository.log(`Kesin Rezervasyon oluşturuldu: ${company.name} - ${payload.campaignName}`, 'reservations');
+
+      window.dispatchEvent(new Event('companies_updated'));
+      window.dispatchEvent(new Event('spaces_updated'));
+      window.dispatchEvent(new Event('offers_updated'));
+      window.dispatchEvent(new Event('reservations_updated'));
+      window.dispatchEvent(new Event('contracts_updated'));
+      window.dispatchEvent(new Event('campaigns_updated'));
+
+      const response = {
+        success: true,
+        data: {
+          offerId: createdOffer.id,
+          reservationIds
+        }
+      };
+
+      localStorage.setItem(idpKey, JSON.stringify(response));
+      return response;
+
+    } catch (e: any) {
+      console.error('Workflow commit failed! Executing compensating rollback...', e);
+      for (const key of keysToBackup) {
+        const val = snapshot[key];
+        if (val === null) {
+          localStorage.removeItem(key);
+        } else {
+          localStorage.setItem(key, val);
+        }
+      }
+      return { success: false, error: e.message || 'Sözleşme/Rezervasyon işlemi kaydedilirken bir hata oluştu.' };
     }
   }
 };

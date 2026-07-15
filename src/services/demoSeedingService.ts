@@ -171,16 +171,18 @@ export const demoSeedingService = {
 
     // 3. Generate 45 Offers
     const stages: Offer['stage'][] = [];
-    for (let i = 0; i < 18; i++) stages.push('Sözleşme İmzalandı');
+    for (let i = 0; i < 10; i++) stages.push('Sözleşme İmzalandı');
+    for (let i = 0; i < 8; i++) stages.push('Yayında');
     for (let i = 0; i < 7; i++) stages.push('Sözleşme Bekliyor');
-    for (let i = 0; i < 10; i++) stages.push('Onaya Gönderildi');
-    for (let i = 0; i < 5; i++) stages.push('Teklif Hazırlandı');
+    for (let i = 0; i < 5; i++) stages.push('Müşteri Onayı');
+    for (let i = 0; i < 5; i++) stages.push('Teklif Gönderildi');
+    for (let i = 0; i < 5; i++) stages.push('Rezerve');
     for (let i = 0; i < 5; i++) stages.push('İptal');
 
     const generatedOffers: Offer[] = Array.from({ length: 45 }).map((_, idx) => {
       const id = `OFF-${String(idx + 1).padStart(3, '0')}`;
       const company = generatedCompanies[idx % generatedCompanies.length];
-      const stage = stages[idx] || 'Teklif Hazırlandı';
+      const stage = stages[idx] || 'Rezerve';
       
       const spaceIdx1 = (idx * 3) % generatedSpaces.length;
       const spaceIdx2 = (idx * 3 + 1) % generatedSpaces.length;
@@ -317,7 +319,7 @@ export const demoSeedingService = {
         company.linkedReservationIds.push(resId);
       }
 
-      else if (offer.stage === 'Sözleşme Bekliyor' || offer.stage === 'Onaya Gönderildi') {
+      else if (offer.stage === 'Sözleşme Bekliyor' || offer.stage === 'Teklif Gönderildi' || offer.stage === 'Müşteri Onayı') {
         // Mark associated spaces status as teklif
         associatedSpaces.forEach(s => {
           if (s.status !== 'dolu') {

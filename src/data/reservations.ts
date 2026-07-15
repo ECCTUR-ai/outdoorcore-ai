@@ -47,6 +47,8 @@ export interface Reservation {
   isDemo?: boolean;
   source?: string;
   seedVersion?: string;
+  reservedNetworkCount?: number;
+  durationSeconds?: number;
 }
 
 export interface Conflict {

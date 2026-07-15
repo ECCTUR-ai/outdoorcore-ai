@@ -43,7 +43,8 @@ type RouteType =
   | 'sales-wizard'
   | 'digital-signage'
   | 'proof-of-play'
-  | 'rezervasyonlar';
+  | 'rezervasyonlar'
+  | 'pipeline';
 
 const routeToPath: Record<RouteType, string> = {
   'dashboard': '/dashboard',
@@ -81,6 +82,7 @@ const routeToPath: Record<RouteType, string> = {
   'digital-signage': '/digital-signage',
   'proof-of-play': '/proof-of-play',
   'rezervasyonlar': '/rezervasyonlar',
+  'pipeline': '/pipeline',
 };
 
 const getRouteFromPath = (path: string): RouteType => {

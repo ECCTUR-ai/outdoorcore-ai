@@ -17,7 +17,7 @@ export const dashboardMetricsService = {
     const isSystemEmpty = companies.length === 0 && spaces.length === 0 && offers.length === 0;
 
     // 1. Kesinleşmiş Ciro
-    const confirmedRes = reservations.filter(r => r.status === 'CONFIRMED');
+    const confirmedRes = reservations.filter(r => r.status === 'REZERVE' || r.status === 'YAYINDA' || r.status === 'CONFIRMED');
     const ciro = confirmedRes.reduce((sum, r) => {
       const val = parseFloat((r.budget || '').replace(/[^0-9]/g, '')) || 0;
       return sum + val;
@@ -25,7 +25,7 @@ export const dashboardMetricsService = {
 
     // 2. Aktif Pipeline
     const pipeline = offers
-      .filter(o => !['Sözleşme İmzalandı', 'Operasyona Aktarıldı', 'İptal'].includes(o.stage))
+      .filter(o => !['Sözleşme İmzalandı', 'Yayında', 'Tamamlandı', 'İptal'].includes(o.stage))
       .reduce((sum, o) => sum + (o.valueNumeric || 0), 0);
 
     // 3. Tahsilat Bekleyen
@@ -52,15 +52,15 @@ export const dashboardMetricsService = {
     const aiInsights: string[] = [];
     if (!isSystemEmpty) {
       // 1. En önemli satış gelişmesi
-      const pendingOffers = offers.filter(o => o.stage === 'Onaya Gönderildi');
+      const pendingOffers = offers.filter(o => o.stage === 'Teklif Gönderildi' || o.stage === 'Müşteri Onayı');
       if (pendingOffers.length > 0) {
         const sumVal = pendingOffers.reduce((sum, o) => sum + (o.valueNumeric || 0), 0);
         const formattedVal = sumVal >= 1000000 ? `₺${(sumVal / 1000000).toFixed(1)}M` : `₺${(sumVal / 1000).toFixed(0)}K`;
-        aiInsights.push(`${pendingOffers.length} teklif müşteri onayı bekliyor (Toplam ${formattedVal}).`);
+        aiInsights.push(`${pendingOffers.length} teklif onay ve imza sürecinde bekliyor (Toplam ${formattedVal}).`);
       } else {
-        const draftOffers = offers.filter(o => o.stage === 'Teklif Hazırlandı');
+        const draftOffers = offers.filter(o => o.stage === 'Rezerve');
         if (draftOffers.length > 0) {
-          aiInsights.push(`${draftOffers.length} adet yeni teklif hazırlık aşamasında takip ediliyor.`);
+          aiInsights.push(`${draftOffers.length} adet yeni teklif rezerve aşamasında takip ediliyor.`);
         }
       }
 
@@ -107,22 +107,22 @@ export const dashboardMetricsService = {
 
     // Pipeline stages mapper
     const funnelStages = [
-      { name: 'Teklif Hazırlandı', count: offers.filter(o => o.stage === 'Teklif Hazırlandı').length, value: offers.filter(o => o.stage === 'Teklif Hazırlandı').reduce((s, o) => s + (o.valueNumeric || 0), 0) },
-      { name: 'Onaya Gönderildi', count: offers.filter(o => o.stage === 'Onaya Gönderildi').length, value: offers.filter(o => o.stage === 'Onaya Gönderildi').reduce((s, o) => s + (o.valueNumeric || 0), 0) },
-      { name: 'Sözleşme Bekliyor', count: offers.filter(o => o.stage === 'Sözleşme Bekliyor').length, value: offers.filter(o => o.stage === 'Sözleşme Bekliyor').reduce((s, o) => s + (o.valueNumeric || 0), 0) },
+      { name: 'Rezerve', count: offers.filter(o => o.stage === 'Rezerve').length, value: offers.filter(o => o.stage === 'Rezerve').reduce((s, o) => s + (o.valueNumeric || 0), 0) },
+      { name: 'Teklif Gönderildi', count: offers.filter(o => o.stage === 'Teklif Gönderildi').length, value: offers.filter(o => o.stage === 'Teklif Gönderildi').reduce((s, o) => s + (o.valueNumeric || 0), 0) },
+      { name: 'Müşteri Onayı / Sözleşme Bekliyor', count: offers.filter(o => o.stage === 'Müşteri Onayı' || o.stage === 'Sözleşme Bekliyor').length, value: offers.filter(o => o.stage === 'Müşteri Onayı' || o.stage === 'Sözleşme Bekliyor').reduce((s, o) => s + (o.valueNumeric || 0), 0) },
       { name: 'Sözleşme İmzalandı', count: offers.filter(o => o.stage === 'Sözleşme İmzalandı').length, value: offers.filter(o => o.stage === 'Sözleşme İmzalandı').reduce((s, o) => s + (o.valueNumeric || 0), 0) }
     ];
 
     const totalActiveOffers = offers.filter(o => o.stage !== 'İptal').length;
-    const signedOffers = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Operasyona Aktarıldı').length;
+    const signedOffers = offers.filter(o => o.stage === 'Sözleşme İmzalandı' || o.stage === 'Yayında').length;
     const winRateText = totalActiveOffers > 0 ? `%${Math.round((signedOffers / totalActiveOffers) * 100)}` : '—';
 
     // Upcoming Actions list (Offers needing action)
     const upcomingActions: any[] = [];
     offers.forEach(o => {
-      if (o.stage === 'Onaya Gönderildi') {
+      if (o.stage === 'Teklif Gönderildi') {
         upcomingActions.push({ type: 'Teklif', title: `${o.clientName} - Müşteri Onayı Bekliyor`, sub: o.campaignName, value: o.value, color: 'text-amber-400' });
-      } else if (o.stage === 'Sözleşme Bekliyor') {
+      } else if (o.stage === 'Müşteri Onayı' || o.stage === 'Sözleşme Bekliyor') {
         upcomingActions.push({ type: 'Sözleşme', title: `${o.clientName} - İmza Bekliyor`, sub: o.campaignName, value: o.value, color: 'text-blue-400' });
       }
     });

@@ -194,11 +194,11 @@ export function MapDashboard() {
     });
 
     return {
-      hazirlandi: networkOffers.filter(o => o.stage === 'Teklif Hazırlandı').length,
-      onayaGonderildi: networkOffers.filter(o => o.stage === 'Onaya Gönderildi').length,
-      sozlesmeBekliyor: networkOffers.filter(o => o.stage === 'Sözleşme Bekliyor').length,
+      hazirlandi: networkOffers.filter(o => o.stage === 'Rezerve').length,
+      onayaGonderildi: networkOffers.filter(o => o.stage === 'Teklif Gönderildi').length,
+      sozlesmeBekliyor: networkOffers.filter(o => o.stage === 'Müşteri Onayı' || o.stage === 'Sözleşme Bekliyor').length,
       sozlesmeImzalandı: networkOffers.filter(o => o.stage === 'Sözleşme İmzalandı').length,
-      operasyonaAktarildi: networkOffers.filter(o => o.stage === 'Operasyona Aktarıldı').length,
+      operasyonaAktarildi: networkOffers.filter(o => o.stage === 'Yayında').length,
       iptal: networkOffers.filter(o => o.stage === 'İptal').length
     };
   }, [spaces, selectedNetwork]);
@@ -678,11 +678,11 @@ export function MapDashboard() {
         >
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3.5 pt-2">
             {[
-              { label: 'Teklif Hazırlandı', count: pipelineStats.hazirlandi, color: 'text-slate-400 border-white/5 bg-[#151B2D]' },
-              { label: 'Onaya Gönderildi', count: pipelineStats.onayaGonderildi, color: 'text-yellow-400 border-yellow-500/15 bg-yellow-500/5' },
-              { label: 'Sözleşme Bekliyor', count: pipelineStats.sozlesmeBekliyor, color: 'text-blue-400 border-blue-500/15 bg-blue-500/5' },
+              { label: 'Rezerve', count: pipelineStats.hazirlandi, color: 'text-slate-400 border-white/5 bg-[#151B2D]' },
+              { label: 'Teklif Gönderildi', count: pipelineStats.onayaGonderildi, color: 'text-yellow-400 border-yellow-500/15 bg-yellow-500/5' },
+              { label: 'Müşteri Onayı / Sözleşme Bekliyor', count: pipelineStats.sozlesmeBekliyor, color: 'text-blue-400 border-blue-500/15 bg-blue-500/5' },
               { label: 'Sözleşme İmzalandı', count: pipelineStats.sozlesmeImzalandı, color: 'text-emerald-400 border-emerald-500/15 bg-emerald-500/5' },
-              { label: 'Operasyona Aktarıldı', count: pipelineStats.operasyonaAktarildi, color: 'text-indigo-400 border-indigo-500/15 bg-indigo-500/5' },
+              { label: 'Yayında', count: pipelineStats.operasyonaAktarildi, color: 'text-indigo-400 border-indigo-500/15 bg-indigo-500/5' },
               { label: 'İptal', count: pipelineStats.iptal, color: 'text-red-400 border-red-500/15 bg-red-500/5' }
             ].map((step, idx) => (
               <div 
