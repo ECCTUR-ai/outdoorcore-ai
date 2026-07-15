@@ -243,21 +243,7 @@ export const digitalScreenRepository = {
   },
 
   calculateSlotPrice(screenId: string, durationSeconds: number, startDate: string, endDate: string): number {
-    const screens = this.listScreens();
-    const screen = screens.find(s => s.screenId === screenId);
-    if (!screen) return 0;
-    
-    // Base formula: monthlyBasePrice * (durationSeconds / loopDurationSeconds)
-    const baseMonthlyPrice = screen.monthlyBasePrice * (durationSeconds / screen.loopDurationSeconds);
-    
-    // Calculate date range proportion relative to 30 days
-    const diffDays = calculateCampaignDays(startDate, endDate);
-    if (diffDays > 0) {
-      const dayProportion = diffDays / 30;
-      return Math.round(baseMonthlyPrice * dayProportion);
-    }
-    
-    return Math.round(baseMonthlyPrice);
+    return 0; // Automatic slot pricing disabled in favor of manual budget entry
   },
 
   calculateEstimatedPlays(screenId: string): number {

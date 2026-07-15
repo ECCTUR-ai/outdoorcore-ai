@@ -581,12 +581,20 @@ const mapUiSpaceToDb = (id: string, organizationId: string, email: string, ui: a
 };
 
 const mapDbOfferToUi = (db: any): any => {
+  const gross = db.gross_amount !== undefined && db.gross_amount !== null ? parseFloat(db.gross_amount) : (db.grossAmount !== undefined ? db.grossAmount : (db.value_numeric ? parseFloat(db.value_numeric) : 0));
+  const discPct = db.discount_rate !== undefined && db.discount_rate !== null ? parseFloat(db.discount_rate) : (db.discountRate || 0);
+  const discAmt = db.discount_amount !== undefined && db.discount_amount !== null ? parseFloat(db.discount_amount) : (db.discountAmount || 0);
+  const net = db.net_amount !== undefined && db.net_amount !== null ? parseFloat(db.net_amount) : (db.netAmount || (gross - discAmt));
+  const vatPct = db.vat_rate !== undefined && db.vat_rate !== null ? parseFloat(db.vat_rate) : (db.vatRate || 20);
+  const vatAmt = db.vat_amount !== undefined && db.vat_amount !== null ? parseFloat(db.vat_amount) : (db.vatAmount || Math.round(net * (vatPct / 100)));
+  const total = db.total_amount !== undefined && db.total_amount !== null ? parseFloat(db.total_amount) : (db.totalAmount || (db.grand_total ? parseFloat(db.grand_total) : (net + vatAmt)));
+
   return {
     id: db.id,
     clientName: db.client_name,
     campaignName: db.campaign_name || '',
     value: db.budget || '₺0',
-    valueNumeric: db.value_numeric ? parseFloat(db.value_numeric) : 0,
+    valueNumeric: total,
     spacesList: Array.isArray(db.spaces_list) ? db.spaces_list : [],
     owner: db.owner || '-',
     lastActivity: 'Teklif detayları güncellendi',
@@ -602,11 +610,14 @@ const mapDbOfferToUi = (db: any): any => {
     notes: db.notes || '',
     deleted_at: db.deleted_at,
     deleted_by: db.deleted_by,
-    discountRate: db.discount_rate ? parseFloat(db.discount_rate) : 0,
-    discountAmount: db.discount_amount ? parseFloat(db.discount_amount) : 0,
-    netAmount: db.net_amount ? parseFloat(db.net_amount) : 0,
-    vatAmount: db.vat_amount ? parseFloat(db.vat_amount) : 0,
-    grandTotal: db.grand_total ? parseFloat(db.grand_total) : 0,
+    grossAmount: gross,
+    discountRate: discPct,
+    discountAmount: discAmt,
+    netAmount: net,
+    vatRate: vatPct,
+    vatAmount: vatAmt,
+    totalAmount: total,
+    grandTotal: total,
     customerBudget: db.customer_budget ? parseFloat(db.customer_budget) : 0
   };
 };
@@ -619,7 +630,7 @@ const mapUiOfferToDb = (id: string, organizationId: string, email: string, ui: a
     company_id: ui.companyId || null,
     campaign_name: ui.campaignName || null,
     budget: ui.value || null,
-    value_numeric: ui.valueNumeric || 0,
+    value_numeric: ui.totalAmount || ui.valueNumeric || 0,
     stage: ui.stage || 'Lead',
     probability: ui.closeProbability || 50,
     owner: ui.owner || '-',
@@ -631,11 +642,14 @@ const mapUiOfferToDb = (id: string, organizationId: string, email: string, ui: a
     details: ui.details || null,
     updated_at: new Date().toISOString(),
     updated_by: email,
+    gross_amount: ui.grossAmount || 0,
     discount_rate: ui.discountRate || 0,
     discount_amount: ui.discountAmount || 0,
     net_amount: ui.netAmount || 0,
+    vat_rate: ui.vatRate || 20,
     vat_amount: ui.vatAmount || 0,
-    grand_total: ui.grandTotal || 0,
+    total_amount: ui.totalAmount || ui.grandTotal || 0,
+    grand_total: ui.totalAmount || ui.grandTotal || 0,
     customer_budget: ui.customerBudget || 0
   };
 };
@@ -1853,10 +1867,27 @@ export const reservationRepository = {
   getAllSync() {
     this.checkAndExpireOptionsSync();
     const data = getLocalData('reservations', reservations);
-    return data.map((d: any) => ({
-      ...d,
-      status: normalizeReservationStatus(d.status)
-    }));
+    return data.map((d: any) => {
+      const gross = d.grossAmount !== undefined ? d.grossAmount : (parseFloat((d.budget || '').replace(/[^0-9]/g, '')) || 0);
+      const discPct = d.discountRate !== undefined ? d.discountRate : 0;
+      const discAmt = d.discountAmount !== undefined ? d.discountAmount : 0;
+      const net = d.netAmount !== undefined ? d.netAmount : (gross - discAmt);
+      const vatPct = d.vatRate !== undefined ? d.vatRate : 20;
+      const vatAmt = d.vatAmount !== undefined ? d.vatAmount : Math.round(net * (vatPct / 100));
+      const total = d.totalAmount !== undefined ? d.totalAmount : (net + vatAmt);
+
+      return {
+        ...d,
+        status: normalizeReservationStatus(d.status),
+        grossAmount: gross,
+        discountRate: discPct,
+        discountAmount: discAmt,
+        netAmount: net,
+        vatRate: vatPct,
+        vatAmount: vatAmt,
+        totalAmount: total
+      };
+    });
   },
   getConflictsSync() {
     return conflicts;
@@ -1902,7 +1933,14 @@ export const reservationRepository = {
             salesRevisionNote: d.sales_revision_note,
             confirmedAt: d.confirmed_at,
             confirmedBy: d.confirmed_by,
-            inventoryLockedAt: d.inventory_locked_at
+            inventoryLockedAt: d.inventory_locked_at,
+            grossAmount: d.gross_amount !== undefined && d.gross_amount !== null ? Number(d.gross_amount) : 0,
+            discountRate: d.discount_rate !== undefined && d.discount_rate !== null ? Number(d.discount_rate) : 0,
+            discountAmount: d.discount_amount !== undefined && d.discount_amount !== null ? Number(d.discount_amount) : 0,
+            netAmount: d.net_amount !== undefined && d.net_amount !== null ? Number(d.net_amount) : 0,
+            vatRate: d.vat_rate !== undefined && d.vat_rate !== null ? Number(d.vat_rate) : 20,
+            vatAmount: d.vat_amount !== undefined && d.vat_amount !== null ? Number(d.vat_amount) : 0,
+            totalAmount: d.total_amount !== undefined && d.total_amount !== null ? Number(d.total_amount) : 0
           }));
         }
       } catch (e) {
@@ -2132,6 +2170,9 @@ export const reservationRepository = {
         throw new Error('Seçilen mecra belirtilen tarihlerde dolu veya opsiyonludur.');
       }
     }
+    if (!input.grossAmount || Number(input.grossAmount) <= 0) {
+      throw new Error('Rezervasyon oluşturmak için satış bedelini girin.');
+    }
 
     const newRecord: any = {
       id: newId,
@@ -2144,7 +2185,7 @@ export const reservationRepository = {
       endDate: input.endDate || '',
       durationDays: input.durationDays || 30,
       status: defaultStatus,
-      budget: input.budget || '₺0',
+      budget: input.budget || `₺${(input.netAmount || 0).toLocaleString('tr-TR')}`,
       creativeFiles: input.creativeFiles || [],
       aiRecommendation: input.aiRecommendation || 'Planlama yapıldı.',
       companyId: input.companyId || '',
@@ -2154,6 +2195,13 @@ export const reservationRepository = {
       campaignId: input.campaignId || '',
       reservedNetworkCount: input.reservedNetworkCount,
       durationSeconds: input.durationSeconds,
+      grossAmount: input.grossAmount || 0,
+      discountRate: input.discountRate || 0,
+      discountAmount: input.discountAmount || 0,
+      netAmount: input.netAmount || 0,
+      vatRate: input.vatRate || 20,
+      vatAmount: input.vatAmount || 0,
+      totalAmount: input.totalAmount || 0,
       
       // Opsiyon verileri
       optionStartedAt,
@@ -2198,7 +2246,14 @@ export const reservationRepository = {
           contract_status: newRecord.contractStatus,
           sales_approval_status: newRecord.salesApprovalStatus,
           reserved_network_count: newRecord.reservedNetworkCount,
-          duration_seconds: newRecord.durationSeconds
+          duration_seconds: newRecord.durationSeconds,
+          gross_amount: newRecord.grossAmount,
+          discount_rate: newRecord.discountRate,
+          discount_amount: newRecord.discountAmount,
+          net_amount: newRecord.netAmount,
+          vat_rate: newRecord.vatRate,
+          vat_amount: newRecord.vatAmount,
+          total_amount: newRecord.totalAmount
         };
 
         const { error } = await supabase

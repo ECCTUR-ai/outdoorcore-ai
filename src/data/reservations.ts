@@ -49,6 +49,13 @@ export interface Reservation {
   seedVersion?: string;
   reservedNetworkCount?: number;
   durationSeconds?: number;
+  grossAmount?: number;
+  discountRate?: number;
+  discountAmount?: number;
+  netAmount?: number;
+  vatRate?: number;
+  vatAmount?: number;
+  totalAmount?: number;
 }
 
 export interface Conflict {

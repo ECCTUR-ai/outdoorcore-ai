@@ -235,7 +235,7 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
         status: 'Kurulum Bekliyor',
         startDate: reservation.startDate,
         endDate: reservation.endDate,
-        valueNumeric: parseFloat((reservation.budget || '').replace(/[^0-9]/g, '')) || 150000,
+        valueNumeric: reservation.totalAmount || parseFloat((reservation.budget || '').replace(/[^0-9]/g, '')) || 150000,
         companyId: reservation.companyId || 'CMP-0001',
         contractId: reservation.contractId || ''
       });
@@ -244,7 +244,7 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
       await financeRepository.createPaymentPlan(
         reservation.companyId || 'CMP-0001', 
         reservation.clientName, 
-        parseFloat((reservation.budget || '').replace(/[^0-9]/g, '')) || 150000,
+        reservation.totalAmount || parseFloat((reservation.budget || '').replace(/[^0-9]/g, '')) || 150000,
         reservation.contractId || 'CON-CONFIRMED'
       );
 
@@ -372,6 +372,33 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
           <Badge variant="warning">Soft Lock</Badge>
         </div>
       )}
+
+      {/* Bütçe ve Fiyatlandırma Detayları */}
+      <div className="p-3.5 bg-white/3 border border-white/5 rounded-2xl text-[10px] space-y-2">
+        <span className="text-[8px] font-black text-slate-550 uppercase tracking-widest block leading-none">Bütçe Detayları</span>
+        <div className="flex justify-between">
+          <span className="text-slate-450">Brüt Satış Bedeli:</span>
+          <span className="font-extrabold text-white">₺ {(reservation.grossAmount || 0).toLocaleString('tr-TR')}</span>
+        </div>
+        {Number(reservation.discountAmount || 0) > 0 && (
+          <div className="flex justify-between text-indigo-400 font-bold">
+            <span>İskonto (%{reservation.discountRate || 0}):</span>
+            <span>- ₺ {(reservation.discountAmount || 0).toLocaleString('tr-TR')}</span>
+          </div>
+        )}
+        <div className="flex justify-between font-bold text-white">
+          <span>Net Satış Tutarı:</span>
+          <span>₺ {(reservation.netAmount || 0).toLocaleString('tr-TR')}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-slate-450">KDV Tutarı (%{reservation.vatRate || 20}):</span>
+          <span>₺ {(reservation.vatAmount || 0).toLocaleString('tr-TR')}</span>
+        </div>
+        <div className="flex justify-between border-t border-white/5 pt-1.5 font-bold text-emerald-450 text-[10.5px]">
+          <span>Genel Toplam:</span>
+          <span>₺ {(reservation.totalAmount || 0).toLocaleString('tr-TR')}</span>
+        </div>
+      </div>
 
       {/* Contract & Approval state values details */}
       <div className="p-3.5 bg-white/3 border border-white/5 rounded-2xl text-[10px] space-y-2">

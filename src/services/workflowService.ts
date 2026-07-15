@@ -280,9 +280,15 @@ export const workflowService = {
     spaceIds: string[];
     reservedNetworkCount?: number;
     durationSeconds?: number;
-    unitPrice: number;
-    discountRate: number;
+    unitPrice?: number;
+    discountRate?: number;
     notes?: string;
+    grossAmount?: number;
+    discountAmount?: number;
+    netAmount?: number;
+    vatRate?: number;
+    vatAmount?: number;
+    totalAmount?: number;
   }): Promise<{ success: boolean; data?: any; error?: string }> {
     const idpKey = 'outdoorcore_idp_' + payload.workflowId;
     const cachedResult = localStorage.getItem(idpKey);
@@ -309,8 +315,8 @@ export const workflowService = {
     if (payload.spaceIds.length === 0) {
       return { success: false, error: 'Lütfen en az bir reklam alanı seçin.' };
     }
-    if (payload.unitPrice <= 0) {
-      return { success: false, error: 'Birim fiyat 0 veya daha küçük olamaz. Lütfen geçerli bir fiyat girin.' };
+    if (!payload.grossAmount || Number(payload.grossAmount) <= 0) {
+      return { success: false, error: 'Rezervasyon oluşturmak için satış bedelini girin.' };
     }
 
     const allSpaces = spaceRepository.getAllSync();
@@ -351,10 +357,13 @@ export const workflowService = {
     try {
       const diffDays = calculateCampaignDays(payload.startDate, payload.endDate) || 1;
 
-      const discountAmount = Math.round(payload.unitPrice * (payload.discountRate / 100));
-      const netAmount = Math.round(payload.unitPrice - discountAmount);
-      const vatAmount = Math.round(netAmount * 0.20);
-      const grandTotal = Math.round(netAmount + vatAmount);
+      const gross = Number(payload.grossAmount || 0);
+      const discPct = Number(payload.discountRate || 0);
+      const discAmt = Number(payload.discountAmount || 0);
+      const net = Number(payload.netAmount || (gross - discAmt));
+      const vatPct = Number(payload.vatRate || 20);
+      const vatAmt = Number(payload.vatAmount || Math.round(net * (vatPct / 100)));
+      const grandTotal = Number(payload.totalAmount || Math.round(net + vatAmt));
 
       const mockOfferId = 'OFF-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const mockContractId = 'CON-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -407,10 +416,17 @@ export const workflowService = {
           status: 'REZERVE',
           contractStatus: 'DRAFT',
           salesApprovalStatus: 'APPROVED',
-          budget: `₺${grandTotal.toLocaleString('tr-TR')}`,
+          budget: `₺${net.toLocaleString('tr-TR')}`,
           reservedNetworkCount: payload.productType === 'dijital' ? (payload.reservedNetworkCount || 1) : undefined,
           durationSeconds: payload.productType === 'dijital' ? (payload.durationSeconds || 15) : undefined,
-          notes: payload.notes || ''
+          notes: payload.notes || '',
+          grossAmount: gross,
+          discountRate: discPct,
+          discountAmount: discAmt,
+          netAmount: net,
+          vatRate: vatPct,
+          vatAmount: vatAmt,
+          totalAmount: grandTotal
         };
         resList.push(newRes);
         reservationIds.push(mockResId);
@@ -444,11 +460,13 @@ export const workflowService = {
         campaignEndDate: payload.endDate,
         owner: 'Cemil Sezgin',
         spaceIds: payload.spaceIds,
-        discountRate: payload.discountRate,
-        discountAmount,
-        netAmount,
-        vatAmount,
-        grandTotal,
+        grossAmount: gross,
+        discountRate: discPct,
+        discountAmount: discAmt,
+        netAmount: net,
+        vatRate: vatPct,
+        vatAmount: vatAmt,
+        totalAmount: grandTotal,
         details: payload.notes || 'Operasyonel rezervasyon teklifi.',
         notes: 'Sistem tarafından otomatik oluşturuldu.',
         contractId: mockContractId,
@@ -467,6 +485,13 @@ export const workflowService = {
         crmTier: company.crmStatus || 'Gold',
         value: `₺${grandTotal.toLocaleString('tr-TR')}`,
         valueNumeric: grandTotal,
+        grossAmount: gross,
+        discountRate: discPct,
+        discountAmount: discAmt,
+        netAmount: net,
+        vatRate: vatPct,
+        vatAmount: vatAmt,
+        totalAmount: grandTotal,
         daysLeft: 30,
         startDate: payload.startDate,
         endDate: payload.endDate,

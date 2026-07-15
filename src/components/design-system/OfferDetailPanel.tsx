@@ -190,19 +190,35 @@ export function OfferDetailPanel({ offer, onEdit, onDelete, onStageChange, actio
 
       {/* Booking Core Metadata */}
       <div className="grid grid-cols-2 gap-3.5 border-b border-white/5 pb-4 text-[10.5px] font-semibold text-slate-400">
-        <div className="flex items-center gap-2">
-          <Coins size={12} className="text-slate-500 shrink-0" />
-          <span>Net Tutar: <span className="text-emerald-450 font-bold">₺ {(offer.net_amount || offer.valueNumeric).toLocaleString('tr-TR')}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Sparkles size={12} className="text-slate-500 shrink-0" />
-          <span>İhtimal: <span className="text-blue-400 font-bold">%{offer.closeProbability}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>İndirim Oranı: <span className="text-indigo-400 font-bold">%{offer.discount_rate || 0}</span></span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span>Genel Toplam: <span className="text-white font-bold">₺ {(offer.grand_total || Math.round(offer.valueNumeric * 1.2)).toLocaleString('tr-TR')}</span></span>
+        {/* Bütçe ve Fiyatlandırma Detayları */}
+        <div className="p-3.5 bg-white/3 border border-white/5 rounded-2xl text-[10px] space-y-2 col-span-2">
+          <span className="text-[8px] font-black text-slate-555 uppercase tracking-widest block leading-none">Bütçe Detayları</span>
+          <div className="flex justify-between">
+            <span className="text-slate-450">Satış Bedeli (Brüt):</span>
+            <span className="font-extrabold text-white">₺ {(offer.grossAmount || 0).toLocaleString('tr-TR')}</span>
+          </div>
+          {Number(offer.discountAmount || 0) > 0 && (
+            <div className="flex justify-between text-indigo-400 font-bold">
+              <span>İskonto (%{offer.discountRate || 0}):</span>
+              <span>- ₺ {(offer.discountAmount || 0).toLocaleString('tr-TR')}</span>
+            </div>
+          )}
+          <div className="flex justify-between font-bold text-white">
+            <span>Net Satış:</span>
+            <span>₺ {(offer.netAmount || offer.valueNumeric || 0).toLocaleString('tr-TR')}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-450">KDV Tutarı (%{offer.vatRate || 20}):</span>
+            <span>₺ {(offer.vatAmount || 0).toLocaleString('tr-TR')}</span>
+          </div>
+          <div className="flex justify-between border-t border-white/5 pt-1.5 font-bold text-emerald-450 text-[10.5px]">
+            <span>Genel Toplam:</span>
+            <span>₺ {(offer.totalAmount || offer.grandTotal || offer.valueNumeric || 0).toLocaleString('tr-TR')}</span>
+          </div>
+          <div className="flex justify-between border-t border-white/3 pt-1.5 text-[9.5px]">
+            <span className="text-slate-500">Kapanış İhtimali:</span>
+            <span className="text-blue-400 font-bold">%{offer.closeProbability}</span>
+          </div>
         </div>
         {/* Dates Block */}
         <div className="col-span-2 space-y-2 border-t border-b border-white/3 py-2.5 my-1">

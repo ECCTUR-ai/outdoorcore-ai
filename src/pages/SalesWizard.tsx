@@ -47,10 +47,11 @@ export function SalesWizard() {
   const [reservedNetworkCount, setReservedNetworkCount] = useState(1);
   const [durationSeconds, setDurationSeconds] = useState(15);
   
-  // Pricing State
-  const [pricingModel, setPricingModel] = useState<'daily' | 'monthly' | 'period' | 'manual'>('manual');
-  const [manualUnitPrice, setManualUnitPrice] = useState<number | null>(null);
-  const [discountRate, setDiscountRate] = useState(0);
+  // Budget Pricing States
+  const [grossAmount, setGrossAmount] = useState<number>(0);
+  const [discountRate, setDiscountRate] = useState<number>(0);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [vatRate, setVatRate] = useState<number>(20);
 
   // UI state
   const [loading, setLoading] = useState(false);
@@ -107,7 +108,9 @@ export function SalesWizard() {
   // Reset spaces if product type changes
   useEffect(() => {
     setSelectedSpaceIds([]);
-    setManualUnitPrice(null);
+    setGrossAmount(0);
+    setDiscountRate(0);
+    setDiscountAmount(0);
   }, [productType]);
 
   // Day count calculation
@@ -176,52 +179,35 @@ export function SalesWizard() {
     return spaces.filter(s => selectedSpaceIds.includes(s.id));
   }, [spaces, selectedSpaceIds]);
 
-  // Base list price calculation
-  const listPriceTotal = useMemo(() => {
-    return selectedSpacesList.reduce((sum, s) => sum + (s.priceNumeric || 0), 0);
-  }, [selectedSpacesList]);
+  const handleGrossChange = (val: number) => {
+    setGrossAmount(val);
+    const amt = Math.round(val * (discountRate / 100));
+    setDiscountAmount(amt);
+  };
 
-  // Sum daily prices
-  const dailyPriceSum = useMemo(() => {
-    return selectedSpacesList.reduce((sum, s) => sum + (s.dailyPrice || 0), 0);
-  }, [selectedSpacesList]);
+  const handleDiscountRateChange = (rate: number) => {
+    setDiscountRate(rate);
+    const amt = Math.round(grossAmount * (rate / 100));
+    setDiscountAmount(amt);
+  };
 
-  // Sum monthly prices
-  const monthlyPriceSum = useMemo(() => {
-    return selectedSpacesList.reduce((sum, s) => sum + (s.monthlyPrice || 0), 0);
-  }, [selectedSpacesList]);
+  const handleDiscountAmountChange = (amt: number) => {
+    setDiscountAmount(amt);
+    const rate = grossAmount > 0 ? Math.round((amt / grossAmount) * 100) : 0;
+    setDiscountRate(rate);
+  };
 
-  // Sum period prices
-  const periodPriceSum = useMemo(() => {
-    return selectedSpacesList.reduce((sum, s) => sum + (s.priceNumeric || 0), 0);
-  }, [selectedSpacesList]);
+  const netAmount = useMemo(() => {
+    return Math.max(0, grossAmount - discountAmount);
+  }, [grossAmount, discountAmount]);
 
-  // Calculated base price based on model
-  const calculatedBasePrice = useMemo(() => {
-    if (pricingModel === 'daily') {
-      return dailyPriceSum * dayCount;
-    }
-    if (pricingModel === 'monthly') {
-      const months = dayCount / 30;
-      return Math.round(monthlyPriceSum * months);
-    }
-    if (pricingModel === 'period') {
-      return periodPriceSum;
-    }
-    // 'manual'
-    return manualUnitPrice !== null ? manualUnitPrice : 0;
-  }, [pricingModel, dailyPriceSum, monthlyPriceSum, periodPriceSum, dayCount, manualUnitPrice]);
+  const vatAmount = useMemo(() => {
+    return Math.round(netAmount * (vatRate / 100));
+  }, [netAmount, vatRate]);
 
-  // Unit Price (editable)
-  const unitPrice = pricingModel === 'manual' 
-    ? (manualUnitPrice !== null ? manualUnitPrice : 0) 
-    : calculatedBasePrice;
-
-  // Pricing math calculations
-  const discountAmount = Math.round(unitPrice * (discountRate / 100));
-  const netAmount = Math.round(unitPrice - discountAmount);
-  const vatAmount = Math.round(netAmount * 0.20);
-  const grandTotal = Math.round(netAmount + vatAmount);
+  const grandTotal = useMemo(() => {
+    return netAmount + vatAmount;
+  }, [netAmount, vatAmount]);
 
   // Space item checkbox toggle
   const handleSpaceToggle = (spaceId: string) => {
@@ -230,7 +216,6 @@ export function SalesWizard() {
     } else {
       setSelectedSpaceIds(prev => [...prev, spaceId]);
     }
-    setManualUnitPrice(null); // Recalculate
   };
 
   const handleCreateReservation = () => {
@@ -255,8 +240,8 @@ export function SalesWizard() {
       showToast("Eksik Seçim", "Lütfen en az bir reklam alanı seçin.", "error");
       return;
     }
-    if (grandTotal <= 0) {
-      showToast("Fiyat Hatası", "Nihai genel toplam bütçe ₺0 olamaz.", "error");
+    if (!grossAmount || Number(grossAmount) <= 0) {
+      showToast("Hata", "Rezervasyon oluşturmak için satış bedelini girin.", "error");
       return;
     }
 
@@ -298,8 +283,13 @@ export function SalesWizard() {
         spaceIds: selectedSpaceIds,
         reservedNetworkCount: productType === 'dijital' ? reservedNetworkCount : undefined,
         durationSeconds: productType === 'dijital' ? durationSeconds : undefined,
-        unitPrice,
+        grossAmount,
         discountRate,
+        discountAmount,
+        netAmount,
+        vatRate,
+        vatAmount,
+        totalAmount: grandTotal,
         notes
       });
 
@@ -312,8 +302,9 @@ export function SalesWizard() {
         setEndDate('');
         setSelectedSpaceIds([]);
         setNotes('');
-        setManualUnitPrice(null);
+        setGrossAmount(0);
         setDiscountRate(0);
+        setDiscountAmount(0);
         setTimeout(() => {
           window.location.href = '/rezervasyonlar';
         }, 1500);
@@ -572,107 +563,87 @@ export function SalesWizard() {
             </div>
           )}
 
-          {/* Section 5: Pricing Calculation Controls */}
+          {/* Section 5: Bütçe ve Finans Bölümü */}
           <div className="bg-[#12192B]/40 border border-white/5 p-6 rounded-3xl space-y-4">
             <h3 className="text-xs font-black text-white uppercase tracking-wider border-b border-white/5 pb-2 flex items-center gap-2">
               <Coins size={14} className="text-blue-400" />
-              Fiyat Tarifesi ve Bütçe Yönetimi
+              Bütçe Yönetimi
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Fiyat Tarifesi Modeli</label>
-                <select
-                  value={pricingModel}
-                  onChange={(e) => {
-                    setPricingModel(e.target.value as any);
-                    if (e.target.value !== 'manual') {
-                      setManualUnitPrice(null);
-                    }
-                  }}
-                  className="w-full h-10 px-3 bg-[#151B2D] border border-white/5 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-blue-500/50"
-                >
-                  <option value="daily">Günlük Tarife (dailyPrice × gün)</option>
-                  <option value="monthly">Aylık Tarife (monthlyPrice × ay)</option>
-                  <option value="period">Dönem Fiyatı (Tanımlı fiyat)</option>
-                  <option value="manual">Manuel Net Dönem Fiyatı</option>
-                </select>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Fiyat Kaynak Değeri</label>
-                <div className="w-full h-10 px-3 bg-[#151B2D]/55 border border-white/5 rounded-xl text-xs font-mono text-slate-300 flex items-center justify-between font-extrabold">
-                  {pricingModel === 'daily' && (
-                    <>
-                      <span>Toplam Günlük Fiyat:</span>
-                      <span className="text-emerald-450">₺ {dailyPriceSum.toLocaleString('tr-TR')}</span>
-                    </>
-                  )}
-                  {pricingModel === 'monthly' && (
-                    <>
-                      <span>Toplam Aylık Fiyat:</span>
-                      <span className="text-emerald-450">₺ {monthlyPriceSum.toLocaleString('tr-TR')}</span>
-                    </>
-                  )}
-                  {pricingModel === 'period' && (
-                    <>
-                      <span>Toplam Dönem Fiyatı:</span>
-                      <span className="text-emerald-450">₺ {periodPriceSum.toLocaleString('tr-TR')}</span>
-                    </>
-                  )}
-                  {pricingModel === 'manual' && (
-                    <>
-                      <span>Manuel Değer:</span>
-                      <span className="text-slate-400">Giriş Yapılıyor...</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {pricingModel === 'manual' && (
-              <div className="space-y-1.5">
-                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Birim Bütçe Fiyatı (Manuel Giriş)</label>
+                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Brüt Satış Tutarı / Anlaşılan Satış Bedeli *</label>
                 <div className="relative">
                   <input
                     type="number"
-                    value={manualUnitPrice !== null ? manualUnitPrice : ''}
-                    placeholder="Bütçe girin..."
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setManualUnitPrice(v === '' ? 0 : Number(v));
-                    }}
+                    value={grossAmount || ''}
+                    placeholder="Satış bedeli girin..."
+                    onChange={(e) => handleGrossChange(Number(e.target.value))}
                     className="w-full h-10 pl-8 pr-3 bg-[#151B2D] border border-white/5 rounded-xl text-xs font-mono text-emerald-450 font-extrabold focus:outline-none focus:border-blue-500/50"
                   />
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] font-extrabold">₺</span>
                 </div>
               </div>
-            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">İndirim Oranı (%)</label>
-                <div className="relative flex items-center gap-3">
+                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">KDV Oranı (%)</label>
+                <div className="relative">
                   <input
-                    type="range"
+                    type="number"
                     min="0"
                     max="100"
-                    step="1"
-                    value={discountRate}
-                    onChange={(e) => setDiscountRate(Number(e.target.value))}
-                    className="flex-1 accent-blue-500 h-1 bg-[#151B2D] rounded-lg cursor-pointer"
+                    value={vatRate}
+                    placeholder="KDV Oranı..."
+                    onChange={(e) => setVatRate(Number(e.target.value))}
+                    className="w-full h-10 px-3 bg-[#151B2D] border border-white/5 rounded-xl text-xs font-mono text-white font-extrabold focus:outline-none focus:border-blue-500/50"
                   />
-                  <span className="w-12 h-10 bg-[#151B2D] border border-white/5 rounded-xl text-xs font-mono text-white flex items-center justify-center font-extrabold">
-                    %{discountRate}
-                  </span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">KDV Oranı</label>
-                <div className="w-full h-10 px-3 bg-[#151B2D]/40 border border-white/5 rounded-xl text-xs font-mono text-slate-400 flex items-center justify-center font-extrabold">
-                  %20 KDV
+                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">İskonto Oranı (%)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={discountRate || ''}
+                    placeholder="Oran..."
+                    onChange={(e) => handleDiscountRateChange(Number(e.target.value))}
+                    className="w-full h-10 px-3 bg-[#151B2D] border border-white/5 rounded-xl text-xs font-mono text-white font-extrabold focus:outline-none focus:border-blue-500/50"
+                  />
                 </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">İskonto Tutarı (₺)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    value={discountAmount || ''}
+                    placeholder="Tutar..."
+                    onChange={(e) => handleDiscountAmountChange(Number(e.target.value))}
+                    className="w-full h-10 pl-8 pr-3 bg-[#151B2D] border border-white/5 rounded-xl text-xs font-mono text-white font-extrabold focus:outline-none focus:border-blue-500/50"
+                  />
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] font-extrabold">₺</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Otomatik hesaplanan ciro özet önizlemesi */}
+            <div className="p-3.5 bg-[#151B2D]/40 border border-white/5 rounded-2xl grid grid-cols-3 gap-2.5 text-center font-mono select-none">
+              <div className="p-1 rounded-xl">
+                <span className="text-[8px] text-slate-550 uppercase font-black tracking-wider block">Net Satış</span>
+                <span className="text-white font-extrabold block mt-0.5 text-[11px]">₺ {netAmount.toLocaleString('tr-TR')}</span>
+              </div>
+              <div className="p-1 rounded-xl">
+                <span className="text-[8px] text-slate-550 uppercase font-black tracking-wider block">KDV Tutarı (%{vatRate})</span>
+                <span className="text-white font-extrabold block mt-0.5 text-[11px]">₺ {vatAmount.toLocaleString('tr-TR')}</span>
+              </div>
+              <div className="p-1 rounded-xl">
+                <span className="text-[8px] text-slate-555 uppercase font-black tracking-wider block">Genel Toplam</span>
+                <span className="text-emerald-450 font-black block mt-0.5 text-[11px]">₺ {grandTotal.toLocaleString('tr-TR')}</span>
               </div>
             </div>
           </div>
@@ -768,30 +739,26 @@ export function SalesWizard() {
 
             {/* Price breakdown */}
             <div className="space-y-2.5 pt-3.5 border-t border-white/5 text-xs text-slate-400">
-              <div className="flex justify-between items-center">
-                <span>Liste Fiyatı Toplamı:</span>
-                <span className="font-mono">₺ {listPriceTotal.toLocaleString('tr-TR')}</span>
+              <div className="flex justify-between items-center text-white">
+                <span>Satış Bedeli:</span>
+                <span className="font-mono text-emerald-450 font-black">₺ {grossAmount.toLocaleString('tr-TR')}</span>
               </div>
-              <div className="flex justify-between items-center font-bold text-white">
-                <span>Birim Bütçe Fiyatı:</span>
-                <span className="font-mono text-emerald-450 font-black">₺ {unitPrice.toLocaleString('tr-TR')}</span>
-              </div>
-              {discountRate > 0 && (
+              {discountAmount > 0 && (
                 <div className="flex justify-between items-center text-indigo-400 font-extrabold">
-                  <span>İndirim Tutarı (%{discountRate}):</span>
+                  <span>İskonto (%{discountRate}):</span>
                   <span className="font-mono">- ₺ {discountAmount.toLocaleString('tr-TR')}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-[11px] font-extrabold text-white">
-                <span>Net Tutar:</span>
+                <span>Net Satış:</span>
                 <span className="font-mono">₺ {netAmount.toLocaleString('tr-TR')}</span>
               </div>
               <div className="flex justify-between items-center text-[10.5px]">
-                <span>KDV Tutarı (%20):</span>
+                <span>KDV Tutarı (%{vatRate}):</span>
                 <span className="font-mono">₺ {vatAmount.toLocaleString('tr-TR')}</span>
               </div>
               <div className="flex justify-between items-center border-t border-white/5 pt-3.5">
-                <span className="text-xs font-black uppercase text-white">Genel Toplam Bütçe:</span>
+                <span className="text-xs font-black uppercase text-white">Genel Toplam:</span>
                 <span className="text-base font-black text-emerald-450 font-mono">₺ {grandTotal.toLocaleString('tr-TR')}</span>
               </div>
             </div>

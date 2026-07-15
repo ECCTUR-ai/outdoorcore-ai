@@ -32,6 +32,14 @@ export interface Offer {
   vat_amount?: number;
   grand_total?: number;
   customer_budget?: number;
+  grossAmount?: number;
+  discountRate?: number;
+  discountAmount?: number;
+  netAmount?: number;
+  vatRate?: number;
+  vatAmount?: number;
+  totalAmount?: number;
+  grandTotal?: number;
 }
 
 export const offers: Offer[] = [];
