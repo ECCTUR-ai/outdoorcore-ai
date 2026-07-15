@@ -6,7 +6,8 @@ import {
   financeRepository,
   activityLogRepository,
   reservationRepository,
-  reservationAuditRepository
+  reservationAuditRepository,
+  digitalScreenRepository
 } from '@/repositories';
 
 function safeBackgroundTask(name: string, fn: () => Promise<any>) {
@@ -62,6 +63,24 @@ export const workflowService = {
       const mockReservationId = 'RES-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const mockCampaignId = 'CAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const mockInvoiceId = 'INV-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+      // 2b. If LED mode, create playlist slots in DigitalSignage DB
+      if (state.data.reklamTipi === 'led' && state.data.ledSlots) {
+        await Promise.all(
+          state.data.ledSlots.map(slot => 
+            digitalScreenRepository.createPlaylistSlot({
+              screenId: slot.screenId,
+              companyId: company.id,
+              companyName: company.name,
+              campaignId: mockCampaignId,
+              startDate: reservation.startDate,
+              endDate: reservation.endDate,
+              durationSeconds: slot.durationSeconds,
+              notes: 'Satış sihirbazı ile oluşturuldu.'
+            })
+          )
+        );
+      }
 
       // 3. Save Reservation to Calendar (Kritik)
       const startRes = performance.now();

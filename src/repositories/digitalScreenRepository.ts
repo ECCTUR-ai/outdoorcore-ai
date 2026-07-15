@@ -89,7 +89,7 @@ export const digitalScreenRepository = {
         resolution: res,
         loopDurationSeconds: loopDuration,
         status: s.status === 'bakim' ? 'maintenance' : (s.isActive ? 'active' : 'inactive'),
-        monthlyBasePrice: s.priceNumeric || 0,
+        monthlyBasePrice: s.priceNumeric || (s.isDigital || String(s.type || '').toUpperCase() === 'LED' ? 120000 : 45000),
         dailyTraffic: s.traffic || 0,
         visibility: s.visibility === 'Yüksek' ? 'Yüksek' : (s.visibility === 'Çok Yüksek' ? 'Çok Yüksek' : 'Orta'),
         notes: s.notes || ''

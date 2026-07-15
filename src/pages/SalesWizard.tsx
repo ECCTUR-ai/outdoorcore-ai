@@ -924,8 +924,14 @@ export function SalesWizard() {
       const calculatedPrice = currentScreen ? digitalScreenRepository.calculateSlotPrice(selectedLedScreenId, ledDurationSeconds, state.data.dates?.startDate || '06.07.2026', state.data.dates?.endDate || '06.08.2026') : 0;
 
       const handleAddLedSlot = () => {
-        if (ledDurationSeconds > availability.availableSeconds) {
-          alert(`Bu LED ekranda seçilen tarih aralığında sadece ${availability.availableSeconds} saniye boş slot var.`);
+        const existingSessionSeconds = (state.data.ledSlots || [])
+          .filter(s => s.screenId === currentScreen.screenId)
+          .reduce((sum, s) => sum + s.durationSeconds, 0);
+        
+        const trueAvailableSeconds = availability.availableSeconds - existingSessionSeconds;
+        
+        if (ledDurationSeconds > trueAvailableSeconds) {
+          alert(`Bu LED ekranda seçilen tarih aralığında sadece ${trueAvailableSeconds} saniye boş slot var.`);
           return;
         }
 
@@ -941,11 +947,18 @@ export function SalesWizard() {
         };
 
         const updatedSlots = [...(state.data.ledSlots || []), newSlot];
+        const updatedSpaces = [...state.data.selectedSpaces];
+        const spaceObj = spacesList.find(s => s.id === currentScreen.screenId);
+        if (spaceObj && !updatedSpaces.some(s => s.id === spaceObj.id)) {
+          updatedSpaces.push(spaceObj);
+        }
+
         setState(prev => ({
           ...prev,
           data: {
             ...prev.data,
             ledSlots: updatedSlots,
+            selectedSpaces: updatedSpaces,
             offer: prev.data.offer ? {
               ...prev.data.offer,
               valueNumeric: updatedSlots.reduce((sum, s) => sum + s.price, 0),
@@ -956,12 +969,23 @@ export function SalesWizard() {
       };
 
       const handleRemoveLedSlot = (index: number) => {
+        const removedSlot = (state.data.ledSlots || [])[index];
         const updatedSlots = (state.data.ledSlots || []).filter((_, idx) => idx !== index);
+        
+        let updatedSpaces = [...state.data.selectedSpaces];
+        if (removedSlot) {
+          const hasOther = updatedSlots.some(s => s.screenId === removedSlot.screenId);
+          if (!hasOther) {
+            updatedSpaces = updatedSpaces.filter(s => s.id !== removedSlot.screenId);
+          }
+        }
+
         setState(prev => ({
           ...prev,
           data: {
             ...prev.data,
             ledSlots: updatedSlots,
+            selectedSpaces: updatedSpaces,
             offer: prev.data.offer ? {
               ...prev.data.offer,
               valueNumeric: updatedSlots.reduce((sum, s) => sum + s.price, 0),
@@ -2269,10 +2293,6 @@ export function SalesWizard() {
                       size="sm"
                       type="button"
                       onClick={goToNextStep}
-                      disabled={
-                        (state.currentStep === 'dates' && (!state.data.dates?.startDate || !state.data.dates?.endDate)) ||
-                        (state.currentStep === 'spaces' && state.data.selectedSpaces.length === 0)
-                      }
                       rightIcon={<ChevronRight size={13} />}
                     >
                       İleri
