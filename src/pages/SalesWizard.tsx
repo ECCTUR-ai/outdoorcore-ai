@@ -912,10 +912,16 @@ export function SalesWizard() {
       const currentScreen = screens.find(s => s.screenId === selectedLedScreenId) || screens[0];
       const availability = digitalScreenRepository.getAvailability(selectedLedScreenId, state.data.dates?.startDate || '06.07.2026', state.data.dates?.endDate || '06.08.2026');
 
-      const share = parseFloat(((ledDurationSeconds / currentScreen.loopDurationSeconds) * 100).toFixed(1));
-      const plays = digitalScreenRepository.calculateEstimatedPlays(selectedLedScreenId);
-      const playsTotal = plays * (state.data.dates ? Math.ceil(Math.abs(parseStringDate(state.data.dates.endDate)!.getTime() - parseStringDate(state.data.dates.startDate)!.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 30);
-      const calculatedPrice = digitalScreenRepository.calculateSlotPrice(selectedLedScreenId, ledDurationSeconds, state.data.dates?.startDate || '06.07.2026', state.data.dates?.endDate || '06.08.2026');
+      const loopDuration = currentScreen?.loopDurationSeconds || 120;
+      const share = parseFloat(((ledDurationSeconds / loopDuration) * 100).toFixed(1));
+      const plays = currentScreen ? digitalScreenRepository.calculateEstimatedPlays(selectedLedScreenId) : 0;
+      
+      const endD = parseStringDate(state.data.dates?.endDate || '');
+      const startD = parseStringDate(state.data.dates?.startDate || '');
+      const daysCount = (endD && startD) ? Math.ceil(Math.abs(endD.getTime() - startD.getTime()) / (1000 * 60 * 60 * 24)) + 1 : 30;
+      const playsTotal = plays * daysCount;
+      
+      const calculatedPrice = currentScreen ? digitalScreenRepository.calculateSlotPrice(selectedLedScreenId, ledDurationSeconds, state.data.dates?.startDate || '06.07.2026', state.data.dates?.endDate || '06.08.2026') : 0;
 
       const handleAddLedSlot = () => {
         if (ledDurationSeconds > availability.availableSeconds) {
@@ -1295,7 +1301,7 @@ export function SalesWizard() {
                     </div>
                     <div className="flex justify-between items-center mt-0.5 text-[8.5px]">
                       <span className="text-slate-400 font-bold uppercase">Günlük Akış:</span>
-                      <span className="text-indigo-400 font-black">{s.traffic.toLocaleString('tr-TR')}</span>
+                      <span className="text-indigo-400 font-black">{(s.traffic || 0).toLocaleString('tr-TR')}</span>
                     </div>
                   </div>
                 </button>
@@ -1342,7 +1348,7 @@ export function SalesWizard() {
                         <div className="flex justify-between"><span>Tip:</span><span className="text-slate-300 font-semibold">{s.type}</span></div>
                         <div className="flex justify-between"><span>Ölçü:</span><span className="text-slate-300 font-semibold">{s.size}</span></div>
                         <div className="flex justify-between"><span>Görünürlük:</span><span className="text-indigo-400 font-bold">{s.visibility}</span></div>
-                        <div className="flex justify-between"><span>Yolcu Akışı:</span><span className="text-white font-extrabold">{s.traffic.toLocaleString('tr-TR')} / Gün</span></div>
+                        <div className="flex justify-between"><span>Yolcu Akışı:</span><span className="text-white font-extrabold">{(s.traffic || 0).toLocaleString('tr-TR')} / Gün</span></div>
                       </div>
 
                       <Button

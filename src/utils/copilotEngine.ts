@@ -97,7 +97,7 @@ export function runCopilotQuery(query: string): CopilotResponse {
 
     let answer = `Şu anda kiralama için müsait durumda olan **premium boş reklam alanları** tespit edildi:\n\n`;
     topPremium.forEach(s => {
-      answer += `*   **${s.code}** | ${s.name} | ${s.location} — **${s.price} / Ay** (Günlük Trafik: ${s.traffic.toLocaleString('tr-TR')} yolcu)\n`;
+      answer += `*   **${s.code}** | ${s.name} | ${s.location} — **${s.price} / Ay** (Günlük Trafik: ${(s.traffic || 0).toLocaleString('tr-TR')} yolcu)\n`;
     });
     answer += `\nBu alanlar yüksek görünürlük skoruna sahiptir ve yeni kampanya teklifleri için uygundur.`;
 
@@ -320,7 +320,7 @@ export function runCopilotQuery(query: string): CopilotResponse {
 
     let answer = `Yüksek yolcu trafiğine rağmen **fiyatlandırması düşük kalan (yenileme döneminde fiyat artırılması gereken)** alanlar:\n\n`;
     highlyPopulated.slice(0, 3).forEach(s => {
-      answer += `*   **${s.code}** | ${s.name} — Trafik: **${s.traffic.toLocaleString('tr-TR')}/gün** — Mevcut: **${s.price}** (Tavsiye Edilen Artış: **+%15-20**)\n`;
+      answer += `*   **${s.code}** | ${s.name} — Trafik: **{(s.traffic || 0).toLocaleString('tr-TR')}/gün** — Mevcut: **${s.price}** (Tavsiye Edilen Artış: **+%15-20**)\n`;
     });
     answer += `\nBu alanlar yüksek talep görmektedir ve fiyat güncellemesi gelir artışına doğrudan katkı sağlayacaktır.`;
 
@@ -342,14 +342,14 @@ export function runCopilotQuery(query: string): CopilotResponse {
         const term = s.terminal || (s.location.includes('İç') ? 'İç Hatlar' : 'Dış Hatlar');
         return term.includes('İç');
       })
-      .reduce((sum, s) => sum + s.traffic, 0);
+      .reduce((sum, s) => sum + (s.traffic || 0), 0);
 
     const outerTraffic = spaces
       .filter(s => {
         const term = s.terminal || (s.location.includes('İç') ? 'İç Hatlar' : 'Dış Hatlar');
         return term.includes('Dış');
       })
-      .reduce((sum, s) => sum + s.traffic, 0);
+      .reduce((sum, s) => sum + (s.traffic || 0), 0);
 
     let answer = `İstanbul Havalimanı terminal grubu yolcu sirkülasyon analiz sonucu:\n\n`;
     answer += `*   **Dış Hatlar Terminali**: Günlük ortalama **${outerTraffic.toLocaleString('tr-TR')}** yolcu hareketi\n`;
