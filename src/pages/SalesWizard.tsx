@@ -27,6 +27,7 @@ import { Button } from '@/components/design-system/Button';
 import { Badge } from '@/components/design-system/Badge';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { ToastContainer, ToastItem } from '@/components/ui/Toast';
+import { calculateCampaignDays } from '@/utils/dateHelper';
 
 export function SalesWizard() {
   // Master Lists
@@ -47,6 +48,7 @@ export function SalesWizard() {
   const [durationSeconds, setDurationSeconds] = useState(15);
   
   // Pricing State
+  const [pricingModel, setPricingModel] = useState<'daily' | 'monthly' | 'period' | 'manual'>('manual');
   const [manualUnitPrice, setManualUnitPrice] = useState<number | null>(null);
   const [discountRate, setDiscountRate] = useState(0);
 
@@ -110,12 +112,7 @@ export function SalesWizard() {
 
   // Day count calculation
   const dayCount = useMemo(() => {
-    if (!startDate || !endDate) return 0;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (end < start) return 0;
-    const diff = Math.abs(end.getTime() - start.getTime());
-    return Math.ceil(diff / (1000 * 60 * 60 * 24)) || 1;
+    return calculateCampaignDays(startDate, endDate);
   }, [startDate, endDate]);
 
   // Dynamic available network capacities for LED screens
@@ -144,6 +141,36 @@ export function SalesWizard() {
     return map;
   }, [filteredSpacesByType, startDate, endDate]);
 
+  // If dates or spaces availability change, validate selected space ids
+  useEffect(() => {
+    if (!startDate || !endDate) return;
+    
+    const invalidIds: string[] = [];
+    selectedSpaceIds.forEach(id => {
+      const info = spaceAvailabilityMap[id];
+      if (!info) return;
+      if (productType === 'dijital') {
+        if (reservedNetworkCount > (info.availableNet || 0)) {
+          invalidIds.push(id);
+        }
+      } else {
+        if (!info.available) {
+          invalidIds.push(id);
+        }
+      }
+    });
+
+    if (invalidIds.length > 0) {
+      setSelectedSpaceIds(prev => prev.filter(id => !invalidIds.includes(id)));
+      const invalidCodes = invalidIds.map(id => spaces.find(s => s.id === id)?.code).filter(Boolean).join(', ');
+      showToast(
+        "Mecra Seçimi Kaldırıldı", 
+        `Seçilen tarihlerde müsait olmayan mecralar (${invalidCodes}) seçimden otomatik olarak çıkarıldı.`, 
+        "warning"
+      );
+    }
+  }, [startDate, endDate, spaceAvailabilityMap, productType, reservedNetworkCount, spaces]);
+
   // Selected spaces objects list
   const selectedSpacesList = useMemo(() => {
     return spaces.filter(s => selectedSpaceIds.includes(s.id));
@@ -154,8 +181,41 @@ export function SalesWizard() {
     return selectedSpacesList.reduce((sum, s) => sum + (s.priceNumeric || 0), 0);
   }, [selectedSpacesList]);
 
+  // Sum daily prices
+  const dailyPriceSum = useMemo(() => {
+    return selectedSpacesList.reduce((sum, s) => sum + (s.dailyPrice || 0), 0);
+  }, [selectedSpacesList]);
+
+  // Sum monthly prices
+  const monthlyPriceSum = useMemo(() => {
+    return selectedSpacesList.reduce((sum, s) => sum + (s.monthlyPrice || 0), 0);
+  }, [selectedSpacesList]);
+
+  // Sum period prices
+  const periodPriceSum = useMemo(() => {
+    return selectedSpacesList.reduce((sum, s) => sum + (s.priceNumeric || 0), 0);
+  }, [selectedSpacesList]);
+
+  // Calculated base price based on model
+  const calculatedBasePrice = useMemo(() => {
+    if (pricingModel === 'daily') {
+      return dailyPriceSum * dayCount;
+    }
+    if (pricingModel === 'monthly') {
+      const months = dayCount / 30;
+      return Math.round(monthlyPriceSum * months);
+    }
+    if (pricingModel === 'period') {
+      return periodPriceSum;
+    }
+    // 'manual'
+    return manualUnitPrice !== null ? manualUnitPrice : 0;
+  }, [pricingModel, dailyPriceSum, monthlyPriceSum, periodPriceSum, dayCount, manualUnitPrice]);
+
   // Unit Price (editable)
-  const unitPrice = manualUnitPrice !== null ? manualUnitPrice : listPriceTotal;
+  const unitPrice = pricingModel === 'manual' 
+    ? (manualUnitPrice !== null ? manualUnitPrice : 0) 
+    : calculatedBasePrice;
 
   // Pricing math calculations
   const discountAmount = Math.round(unitPrice * (discountRate / 100));
@@ -187,8 +247,8 @@ export function SalesWizard() {
       showToast("Eksik Bilgi", "Lütfen yayın başlangıç ve bitiş tarihlerini girin.", "error");
       return;
     }
-    if (new Date(endDate) < new Date(startDate)) {
-      showToast("Hata", "Kampanya bitiş tarihi başlangıç tarihinden önce olamaz.", "error");
+    if (calculateCampaignDays(startDate, endDate) <= 0) {
+      showToast("Hata", "Kampanya süresi en az 1 gün olmalıdır.", "error");
       return;
     }
     if (selectedSpaceIds.length === 0) {
@@ -402,23 +462,16 @@ export function SalesWizard() {
                 
                 // LED Screen properties
                 const isDijital = productType === 'dijital';
-                const statusLabel = isDijital 
-                  ? `Müsait: ${info.availableNet} / ${info.netCapacity} Network` 
-                  : (info.available ? 'Müsait' : 'Dolu');
-                
+                const usedNet = (info.netCapacity || 0) - (info.availableNet || 0);
                 const statusColor = isDijital
                   ? ((info.availableNet || 0) > 0 ? 'text-emerald-400' : 'text-red-400')
                   : (info.available ? 'text-emerald-400' : 'text-red-400');
-
-                const priceText = space.priceNumeric > 0 
-                  ? `₺${space.priceNumeric.toLocaleString('tr-TR')}` 
-                  : 'Fiyat tanımlı değil';
 
                 return (
                   <div
                     key={space.id}
                     onClick={() => handleSpaceToggle(space.id)}
-                    className={`p-3.5 rounded-2xl border cursor-pointer select-none transition-all flex flex-col justify-between h-28 relative ${
+                    className={`p-4 rounded-2xl border cursor-pointer select-none transition-all flex flex-col justify-between min-h-[140px] h-auto relative text-left ${
                       isSelected 
                         ? 'bg-blue-600/5 border-blue-500/40 ring-2 ring-blue-500/25 text-white' 
                         : 'bg-[#151B2D] border-white/5 text-slate-350 hover:border-white/12 hover:bg-[#182035]'
@@ -426,22 +479,49 @@ export function SalesWizard() {
                   >
                     {/* Checkbox indicator overlay */}
                     {isSelected && (
-                      <div className="absolute top-3.5 right-3.5 w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center border border-white text-[8px] font-black text-white">
+                      <div className="absolute top-3.5 right-3.5 w-5.5 h-5.5 rounded-full bg-blue-500 flex items-center justify-center border border-white text-[9px] font-black text-white">
                         ✓
                       </div>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[8.5px] font-black text-blue-400 uppercase tracking-wider">#{space.code}</span>
-                        <span className="text-[8px] text-slate-555 font-bold uppercase shrink-0 truncate max-w-[100px]">{space.location}</span>
+                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-wider">#{space.code}</span>
+                        <span className="text-[9px] text-slate-400 font-bold uppercase shrink-0 truncate max-w-[120px]">{space.location}</span>
                       </div>
-                      <h4 className="text-[10px] font-black text-white truncate uppercase tracking-wide leading-none">{space.name}</h4>
-                      <span className="text-[8px] text-slate-500 font-bold block uppercase">{space.dimensions || space.size}</span>
+                      <h4 className="text-[11px] font-black text-white truncate uppercase tracking-wide leading-none">{space.name}</h4>
+                      {startDate && endDate ? (
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">
+                          Dönem: {startDate} → {endDate}
+                        </div>
+                      ) : (
+                        <div className="text-[9px] text-yellow-500 font-bold uppercase">
+                          Lütfen tarih seçin
+                        </div>
+                      )}
+                      
+                      {isDijital ? (
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9px] pt-1 text-slate-400 font-semibold border-t border-white/3">
+                          <div>Toplam Kapasite: <span className="text-white font-extrabold">{info.netCapacity} Network</span></div>
+                          <div>Rezerve: <span className="text-white font-extrabold">{usedNet} Network</span></div>
+                          <div>Müsait: <span className={`${statusColor} font-extrabold`}>{info.availableNet} Network</span></div>
+                          {isSelected && (
+                            <>
+                              <div>Talep: <span className="text-blue-400 font-bold">{reservedNetworkCount} Network</span></div>
+                              <div>Slot: <span className="text-blue-400 font-bold">{durationSeconds} Sn</span></div>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center text-[9px] pt-1 text-slate-400 font-semibold border-t border-white/3">
+                          <span>Durum: <span className={`${statusColor} font-extrabold`}>{info.available ? 'MÜSAİT' : 'DOLU'}</span></span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex justify-between items-center border-t border-white/3 pt-2 mt-auto text-[9.5px] font-black leading-none">
-                      <span className={statusColor}>{statusLabel}</span>
+                    
+                    <div className="flex justify-between items-center border-t border-white/3 pt-2 mt-2 text-[10px] font-black leading-none">
+                      <span className="text-slate-500 text-[8px] uppercase">GÜNLÜK BAZ FİYAT</span>
                       <span className={space.priceNumeric > 0 ? 'text-emerald-450' : 'text-yellow-500'}>
-                        {priceText}
+                        {space.priceNumeric > 0 ? `₺${space.priceNumeric.toLocaleString('tr-TR')}` : 'Fiyat tanımsız'}
                       </span>
                     </div>
                   </div>
@@ -496,25 +576,68 @@ export function SalesWizard() {
           <div className="bg-[#12192B]/40 border border-white/5 p-6 rounded-3xl space-y-4">
             <h3 className="text-xs font-black text-white uppercase tracking-wider border-b border-white/5 pb-2 flex items-center gap-2">
               <Coins size={14} className="text-blue-400" />
-              Bütçe ve Fiyatlandırma Yönetimi
+              Fiyat Tarifesi ve Bütçe Yönetimi
             </h3>
-            
-            {/* If any selected space has priceNumeric = 0, show defined warning */}
-            {selectedSpaceIds.length > 0 && selectedSpacesList.some(s => !s.priceNumeric) && (
-              <div className="flex items-center gap-2.5 p-3 bg-yellow-500/10 border border-yellow-500/15 rounded-xl text-[10px] text-yellow-400 font-extrabold uppercase tracking-wide">
-                <AlertTriangle size={13} className="shrink-0" />
-                <span>Seçilen mecralardan bazılarının fiyatı tanımlı değil. Lütfen birim fiyatı manuel giriniz.</span>
-              </div>
-            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Birim Fiyat (Manuel Giriş / Güncelle)</label>
+                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Fiyat Tarifesi Modeli</label>
+                <select
+                  value={pricingModel}
+                  onChange={(e) => {
+                    setPricingModel(e.target.value as any);
+                    if (e.target.value !== 'manual') {
+                      setManualUnitPrice(null);
+                    }
+                  }}
+                  className="w-full h-10 px-3 bg-[#151B2D] border border-white/5 rounded-xl text-xs font-semibold text-white focus:outline-none focus:border-blue-500/50"
+                >
+                  <option value="daily">Günlük Tarife (dailyPrice × gün)</option>
+                  <option value="monthly">Aylık Tarife (monthlyPrice × ay)</option>
+                  <option value="period">Dönem Fiyatı (Tanımlı fiyat)</option>
+                  <option value="manual">Manuel Net Dönem Fiyatı</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Fiyat Kaynak Değeri</label>
+                <div className="w-full h-10 px-3 bg-[#151B2D]/55 border border-white/5 rounded-xl text-xs font-mono text-slate-300 flex items-center justify-between font-extrabold">
+                  {pricingModel === 'daily' && (
+                    <>
+                      <span>Toplam Günlük Fiyat:</span>
+                      <span className="text-emerald-450">₺ {dailyPriceSum.toLocaleString('tr-TR')}</span>
+                    </>
+                  )}
+                  {pricingModel === 'monthly' && (
+                    <>
+                      <span>Toplam Aylık Fiyat:</span>
+                      <span className="text-emerald-450">₺ {monthlyPriceSum.toLocaleString('tr-TR')}</span>
+                    </>
+                  )}
+                  {pricingModel === 'period' && (
+                    <>
+                      <span>Toplam Dönem Fiyatı:</span>
+                      <span className="text-emerald-450">₺ {periodPriceSum.toLocaleString('tr-TR')}</span>
+                    </>
+                  )}
+                  {pricingModel === 'manual' && (
+                    <>
+                      <span>Manuel Değer:</span>
+                      <span className="text-slate-400">Giriş Yapılıyor...</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {pricingModel === 'manual' && (
+              <div className="space-y-1.5">
+                <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">Birim Bütçe Fiyatı (Manuel Giriş)</label>
                 <div className="relative">
                   <input
                     type="number"
-                    value={manualUnitPrice !== null ? manualUnitPrice : (listPriceTotal > 0 ? listPriceTotal : '')}
-                    placeholder="Fiyat girin..."
+                    value={manualUnitPrice !== null ? manualUnitPrice : ''}
+                    placeholder="Bütçe girin..."
                     onChange={(e) => {
                       const v = e.target.value;
                       setManualUnitPrice(v === '' ? 0 : Number(v));
@@ -524,7 +647,9 @@ export function SalesWizard() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[11px] font-extrabold">₺</span>
                 </div>
               </div>
-              
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[9.5px] font-black text-slate-400 uppercase tracking-wider block">İndirim Oranı (%)</label>
                 <div className="relative flex items-center gap-3">

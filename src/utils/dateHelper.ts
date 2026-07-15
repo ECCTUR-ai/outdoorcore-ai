@@ -59,3 +59,70 @@ export const formatAnyDate = (dateStr: string): string => {
   const year = d.getFullYear();
   return `${day}.${month}.${year}`;
 };
+
+export const calculateCampaignDays = (startDate: string | Date | null | undefined, endDate: string | Date | null | undefined): number => {
+  if (!startDate || !endDate) return 0;
+  const start = typeof startDate === 'string' ? parseAnyDate(startDate) : startDate;
+  const end = typeof endDate === 'string' ? parseAnyDate(endDate) : endDate;
+  if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) return 0;
+  
+  const startZero = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const endZero = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  
+  if (endZero < startZero) return 0;
+  const diffTime = endZero.getTime() - startZero.getTime();
+  return Math.round(diffTime / (1000 * 60 * 60 * 24));
+};
+
+export const calculateSpaceOccupancy = (
+  reservations: any[],
+  spaceId: string,
+  spaceCode: string,
+  isDigital: boolean,
+  networkCapacity: number,
+  periodDays: number
+): number => {
+  const today = new Date();
+  const startPeriod = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endPeriod = new Date(startPeriod.getTime() + periodDays * 24 * 60 * 60 * 1000);
+
+  let reservedUnitsDays = 0;
+
+  for (const r of reservations) {
+    const status = (r.status || '').toUpperCase();
+    const isCancelledOrMuted = status === 'CANCELLED' || status === 'İPTAL' || status === 'TAMAMLANDI' || status === 'OPTION_EXPIRED' || status === 'DRAFT';
+    if (isCancelledOrMuted) continue;
+
+    const matchSpace = (r.spaceId && r.spaceId === spaceId) || (r.spaceCode && r.spaceCode === spaceCode);
+    if (matchSpace) {
+      const startB = r.startDate ? (typeof r.startDate === 'string' ? parseAnyDate(r.startDate) : r.startDate) : null;
+      const endB = r.endDate ? (typeof r.endDate === 'string' ? parseAnyDate(r.endDate) : r.endDate) : null;
+      if (startB && endB) {
+        const startBZero = new Date(startB.getFullYear(), startB.getMonth(), startB.getDate());
+        const endBZero = new Date(endB.getFullYear(), endB.getMonth(), endB.getDate());
+        const intersectStart = new Date(Math.max(startPeriod.getTime(), startBZero.getTime()));
+        const intersectEnd = new Date(Math.min(endPeriod.getTime(), endBZero.getTime()));
+        
+        if (intersectStart < intersectEnd) {
+          const overlapDays = Math.round((intersectEnd.getTime() - intersectStart.getTime()) / (1000 * 60 * 60 * 24));
+          if (isDigital) {
+            const count = r.reservedNetworkCount || 1;
+            reservedUnitsDays += count * overlapDays;
+          } else {
+            reservedUnitsDays += overlapDays;
+          }
+        }
+      }
+    }
+  }
+
+  if (isDigital) {
+    const totalCap = (networkCapacity || 6) * periodDays;
+    if (totalCap <= 0) return 0;
+    return Math.min(100, Math.round((reservedUnitsDays / totalCap) * 100));
+  } else {
+    if (periodDays <= 0) return 0;
+    return Math.min(100, Math.round((reservedUnitsDays / periodDays) * 100));
+  }
+};
+

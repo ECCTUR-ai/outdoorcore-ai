@@ -4,6 +4,7 @@ import { createWorkflowEvent } from '@/automation/workflowEvents';
 import { workflowEngine } from '@/automation/workflowEngine';
 import { notificationRepository } from '@/notifications/notificationRepository';
 import { auditLogRepository, activityLogRepository, spaceRepository } from './index';
+import { calculateCampaignDays } from '@/utils/dateHelper';
 
 const SCREENS_STORAGE_KEY = 'outdoorcore_digital_screens';
 const SLOTS_STORAGE_KEY = 'outdoorcore_playlist_slots';
@@ -197,7 +198,7 @@ export const digitalScreenRepository = {
           const slotStart = parseDDMMYYYY(s.startDate);
           const slotEnd = parseDDMMYYYY(s.endDate);
           if (slotStart && slotEnd) {
-            return slotStart <= filterEnd && slotEnd >= filterStart;
+            return slotStart < filterEnd && slotEnd > filterStart;
           }
           return true;
         });
@@ -205,6 +206,17 @@ export const digitalScreenRepository = {
     }
     
     return slots;
+  },
+
+  cancelPlaylistSlots(campaignId: string, screenId?: string) {
+    let slots = getLocalData<PlaylistSlot>(SLOTS_STORAGE_KEY, defaultSlots);
+    slots = slots.map(s => {
+      if (s.campaignId === campaignId && (!screenId || s.screenId === screenId)) {
+        return { ...s, status: 'cancelled' };
+      }
+      return s;
+    });
+    setLocalData(SLOTS_STORAGE_KEY, slots);
   },
 
   getAvailability(screenId: string, startDate: string, endDate: string): DigitalScreenAvailability {
@@ -239,11 +251,8 @@ export const digitalScreenRepository = {
     const baseMonthlyPrice = screen.monthlyBasePrice * (durationSeconds / screen.loopDurationSeconds);
     
     // Calculate date range proportion relative to 30 days
-    const start = parseDDMMYYYY(startDate);
-    const end = parseDDMMYYYY(endDate);
-    if (start && end) {
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // inclusive
+    const diffDays = calculateCampaignDays(startDate, endDate);
+    if (diffDays > 0) {
       const dayProportion = diffDays / 30;
       return Math.round(baseMonthlyPrice * dayProportion);
     }

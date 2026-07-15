@@ -16,6 +16,7 @@ import { notificationRepository as newNotifRepo } from '@/notifications/notifica
 import { taskRepository as newTaskRepo } from '@/notifications/taskRepository';
 
 import resetTimeConfig from '@/data/resetTime.json';
+import { parseAnyDate, calculateCampaignDays } from '@/utils/dateHelper';
 
 if (typeof window !== 'undefined') {
   const isDemoRecord = (r: any): boolean => {
@@ -519,6 +520,9 @@ const mapDbSpaceToUi = (db: any): any => {
     status: db.status || 'bos',
     client: '-',
     price: db.price || '₺0',
+    priceNumeric: db.price_numeric !== undefined && db.price_numeric !== null ? db.price_numeric : (db.priceNumeric || 0),
+    dailyPrice: db.daily_price !== undefined && db.daily_price !== null ? db.daily_price : (db.dailyPrice || 0),
+    monthlyPrice: db.monthly_price !== undefined && db.monthly_price !== null ? db.monthly_price : (db.monthlyPrice || 0),
     visibility: db.visibility || 'Yüksek',
     resolution: db.resolution || '-',
     pitch: db.pitch || '-',
@@ -556,6 +560,9 @@ const mapUiSpaceToDb = (id: string, organizationId: string, email: string, ui: a
     terminal: ui.terminal || null,
     floor: ui.floor || null,
     price: ui.price || null,
+    price_numeric: ui.priceNumeric || 0,
+    daily_price: ui.dailyPrice || 0,
+    monthly_price: ui.monthlyPrice || 0,
     visibility: ui.visibility || null,
     notes: ui.notes || null,
     resolution: ui.resolution || null,
@@ -855,10 +862,6 @@ export const spaceRepository = {
     const userAdded = getLocalData('advertisingSpaces', []).filter((s: any) => !s.deleted_at && !s.importFingerprint);
     return [...(mgaSpaces as any[]), ...userAdded];
   },
-  getByIdSync(id: string) {
-    const all = this.getAllSync();
-    return all.find((s: any) => (s.id === id || s.code === id)) || all[0];
-  },
   async list() {
     const { organizationId } = getSessionInfo();
     if (isSupabaseConfigured()) {
@@ -879,6 +882,33 @@ export const spaceRepository = {
     const userAdded = getLocalData('advertisingSpaces', []).filter((s: any) => !s.deleted_at && !s.importFingerprint);
     return [...mgaSpaces, ...userAdded] as any[];
   },
+  getByIdSync(id: string) {
+    const all = this.getAllSync();
+    return all.find((s: any) => s.id === id) || null;
+  },
+  getByInventoryCodeSync(code: string) {
+    const all = this.getAllSync();
+    return all.find((s: any) => s.code === code) || null;
+  },
+  async getByInventoryCode(code: string) {
+    const { organizationId } = getSessionInfo();
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('spaces')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .eq('code', code)
+          .is('deleted_at', null)
+          .single();
+        if (error) throw error;
+        if (data) return mapDbSpaceToUi(data);
+      } catch (e) {
+        console.warn(`Supabase getSpaceByCode(${code}) failed, falling back:`, e);
+      }
+    }
+    return this.getByInventoryCodeSync(code);
+  },
   async getById(id: string) {
     const { organizationId } = getSessionInfo();
     if (isSupabaseConfigured()) {
@@ -887,7 +917,7 @@ export const spaceRepository = {
           .from('spaces')
           .select('*')
           .eq('organization_id', organizationId)
-          .or(`id.eq.${id},code.eq.${id}`)
+          .eq('id', id)
           .is('deleted_at', null)
           .single();
         if (error) throw error;
@@ -1886,6 +1916,15 @@ export const reservationRepository = {
     }));
   },
   isSpaceAvailableSync(spaceId: string, spaceCode: string, startDateStr: string, endDateStr: string, excludeReservationId?: string): boolean {
+    let space = spaceRepository.getByIdSync(spaceId);
+    if (!space && spaceCode) {
+      space = spaceRepository.getByInventoryCodeSync(spaceCode);
+    }
+    if (space && (space.isDigital || String(space.type || '').toUpperCase() === 'LED')) {
+      const cap = this.getAvailableNetworkCapacity(spaceId, spaceCode, startDateStr, endDateStr, excludeReservationId);
+      return cap > 0;
+    }
+
     const startA = parseDDMMYYYY(startDateStr);
     const endA = parseDDMMYYYY(endDateStr);
     if (!startA || !endA) return true;
@@ -1898,21 +1937,15 @@ export const reservationRepository = {
       if (excludeReservationId && r.id === excludeReservationId) continue;
       
       const normalizedStatus = normalizeReservationStatus(r.status);
-      // Müsaitliği engelleyen statüler: OPTIONED, CONTRACT_PENDING, SALES_APPROVAL_PENDING, CONFIRMED, REZERVE, YAYINDA
-      const consumesCapacity = normalizedStatus === 'OPTIONED' || 
-                               normalizedStatus === 'CONTRACT_PENDING' || 
-                               normalizedStatus === 'SALES_APPROVAL_PENDING' || 
-                               normalizedStatus === 'CONFIRMED' ||
-                               normalizedStatus === 'REZERVE' ||
-                               normalizedStatus === 'YAYINDA';
-      if (!consumesCapacity) continue;
+      const isCancelledOrMuted = normalizedStatus === 'CANCELLED' || normalizedStatus === 'İPTAL' || normalizedStatus === 'TAMAMLANDI' || normalizedStatus === 'OPTION_EXPIRED' || normalizedStatus === 'DRAFT';
+      if (isCancelledOrMuted) continue;
 
       const matchSpace = (r.spaceId && r.spaceId === spaceId) || (r.spaceCode && r.spaceCode === spaceCode);
       if (matchSpace) {
         const startB = parseDDMMYYYY(r.startDate);
         const endB = parseDDMMYYYY(r.endDate);
         if (startB && endB) {
-          if (startA <= endB && endA >= startB) {
+          if (startA < endB && endA > startB) {
             return false;
           }
         }
@@ -1921,7 +1954,10 @@ export const reservationRepository = {
     return true;
   },
   getAvailableNetworkCapacity(spaceId: string, spaceCode: string, startDateStr: string, endDateStr: string, excludeReservationId?: string): number {
-    const space = spaceRepository.getByIdSync(spaceId);
+    let space = spaceRepository.getByIdSync(spaceId);
+    if (!space && spaceCode) {
+      space = spaceRepository.getByInventoryCodeSync(spaceCode);
+    }
     if (!space) return 0;
     
     const capacity = space.networkCapacity || space.network_capacity || 0;
@@ -1938,15 +1974,15 @@ export const reservationRepository = {
       if (excludeReservationId && r.id === excludeReservationId) continue;
       
       const normalizedStatus = normalizeReservationStatus(r.status);
-      const isReserved = normalizedStatus === 'REZERVE' || normalizedStatus === 'YAYINDA' || normalizedStatus === 'CONFIRMED';
-      if (!isReserved) continue;
+      const isCancelledOrMuted = normalizedStatus === 'CANCELLED' || normalizedStatus === 'İPTAL' || normalizedStatus === 'TAMAMLANDI' || normalizedStatus === 'OPTION_EXPIRED' || normalizedStatus === 'DRAFT';
+      if (isCancelledOrMuted) continue;
       
       const matchSpace = (r.spaceId && r.spaceId === spaceId) || (r.spaceCode && r.spaceCode === spaceCode);
       if (matchSpace) {
         const startB = parseDDMMYYYY(r.startDate);
         const endB = parseDDMMYYYY(r.endDate);
         if (startB && endB) {
-          if (startA <= endB && endA >= startB) {
+          if (startA < endB && endA > startB) {
             reservedCount += r.reservedNetworkCount || 0;
           }
         }
@@ -2029,6 +2065,27 @@ export const reservationRepository = {
         reservationAuditRepository.log(id, oldStatus, newStatus, desc, email);
       }
 
+      // Deactivate playlist slots in background if cancelled
+      if (newStatus === 'CANCELLED' && oldRecord.campaignId) {
+        try {
+          const slotsStr = localStorage.getItem('outdoorcore_playlist_slots');
+          if (slotsStr) {
+            const slots = JSON.parse(slotsStr);
+            if (Array.isArray(slots)) {
+              const updatedSlots = slots.map((s: any) => {
+                if (s.campaignId === oldRecord.campaignId && (!oldRecord.spaceId || s.screenId === oldRecord.spaceId)) {
+                  return { ...s, status: 'cancelled' };
+                }
+                return s;
+              });
+              localStorage.setItem('outdoorcore_playlist_slots', JSON.stringify(updatedSlots));
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to cancel playlist slots during reservation update:', e);
+        }
+      }
+
       window.dispatchEvent(new Event('storage'));
       return updatedRecord;
     }
@@ -2050,17 +2107,30 @@ export const reservationRepository = {
 
     const defaultStatus = normalizeReservationStatus(input.status || 'OPTIONED');
 
-    // Müsaitlik kontrolü (Super Admin override edebilmeli)
-    const isAvail = this.isSpaceAvailableSync(
-      input.spaceId || '', 
-      input.spaceCode || '', 
-      input.startDate || '', 
-      input.endDate || '', 
-      newId
-    );
-
-    if (!isAvail && !input.overrideConflict) {
-      throw new Error('Seçilen mecra belirtilen tarihlerde dolu veya opsiyonludur.');
+    // Müsaitlik ve Kapasite kontrolü (Super Admin override edebilmeli)
+    let space = spaceRepository.getByIdSync(input.spaceId || '');
+    if (!space && input.spaceCode) {
+      space = spaceRepository.getByInventoryCodeSync(input.spaceCode);
+    }
+    const isDigital = space ? (space.isDigital || String(space.type || '').toUpperCase() === 'LED') : false;
+    
+    if (isDigital) {
+      const reqNetwork = input.reservedNetworkCount || 1;
+      const cap = this.getAvailableNetworkCapacity(input.spaceId || '', input.spaceCode || '', input.startDate || '', input.endDate || '', newId);
+      if (reqNetwork > cap && !input.overrideConflict) {
+        throw new Error('Seçilen mecra belirtilen tarihlerde dolu veya opsiyonludur.');
+      }
+    } else {
+      const isAvail = this.isSpaceAvailableSync(
+        input.spaceId || '', 
+        input.spaceCode || '', 
+        input.startDate || '', 
+        input.endDate || '', 
+        newId
+      );
+      if (!isAvail && !input.overrideConflict) {
+        throw new Error('Seçilen mecra belirtilen tarihlerde dolu veya opsiyonludur.');
+      }
     }
 
     const newRecord: any = {
@@ -2082,6 +2152,8 @@ export const reservationRepository = {
       offerId: input.offerId || '',
       contractId: input.contractId || '',
       campaignId: input.campaignId || '',
+      reservedNetworkCount: input.reservedNetworkCount,
+      durationSeconds: input.durationSeconds,
       
       // Opsiyon verileri
       optionStartedAt,
@@ -2124,7 +2196,9 @@ export const reservationRepository = {
           option_duration_hours: newRecord.optionDurationHours,
           option_created_by: newRecord.optionCreatedBy,
           contract_status: newRecord.contractStatus,
-          sales_approval_status: newRecord.salesApprovalStatus
+          sales_approval_status: newRecord.salesApprovalStatus,
+          reserved_network_count: newRecord.reservedNetworkCount,
+          duration_seconds: newRecord.durationSeconds
         };
 
         const { error } = await supabase

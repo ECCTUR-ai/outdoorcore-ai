@@ -11,7 +11,7 @@ import {
   campaignRepository
 } from '@/repositories';
 
-import { parseDDMMYYYY } from '@/utils/dateHelper';
+import { parseDDMMYYYY, calculateCampaignDays } from '@/utils/dateHelper';
 
 function safeBackgroundTask(name: string, fn: () => Promise<any>) {
   setTimeout(() => {
@@ -349,8 +349,7 @@ export const workflowService = {
     }
 
     try {
-      const diffTime = Math.abs(endD.getTime() - startD.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+      const diffDays = calculateCampaignDays(payload.startDate, payload.endDate) || 1;
 
       const discountAmount = Math.round(payload.unitPrice * (payload.discountRate / 100));
       const netAmount = Math.round(payload.unitPrice - discountAmount);

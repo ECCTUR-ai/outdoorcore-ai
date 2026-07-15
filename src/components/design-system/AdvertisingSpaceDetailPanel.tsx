@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { AdvertisingSpace } from '@/data/advertisingSpaces';
 import { SpaceStatusBadge } from './SpaceStatusBadge';
 import { Label } from './Form';
+import { calculateSpaceOccupancy } from '@/utils/dateHelper';
+import { reservationRepository } from '@/repositories';
 import { Button } from './Button';
 import { 
   Tv, 
@@ -43,6 +45,19 @@ export function AdvertisingSpaceDetailPanel({ space, onEdit, onDelete }: Adverti
   ] as const;
 
   const [activeTab, setActiveTab] = useState<typeof tabs[number]['key']>('general');
+  const [allReservations, setAllReservations] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    setAllReservations(reservationRepository.getAllSync());
+  }, [space.id]);
+
+  const isDigital = space.isDigital || String(space.type || '').toUpperCase() === 'LED';
+  const networkCapacity = space.networkCapacity || space.network_capacity || 0;
+
+  const occToday = calculateSpaceOccupancy(allReservations, space.id, space.code, isDigital, networkCapacity, 1);
+  const occ30 = calculateSpaceOccupancy(allReservations, space.id, space.code, isDigital, networkCapacity, 30);
+  const occ90 = calculateSpaceOccupancy(allReservations, space.id, space.code, isDigital, networkCapacity, 90);
+  const occYearly = calculateSpaceOccupancy(allReservations, space.id, space.code, isDigital, networkCapacity, 365);
 
   return (
     <div className="dark-glass-card border border-white/5 rounded-2xl p-5 space-y-5 text-left lg:sticky lg:top-[95px] lg:max-h-[calc(100vh-130px)] overflow-y-auto">
@@ -70,6 +85,29 @@ export function AdvertisingSpaceDetailPanel({ space, onEdit, onDelete }: Adverti
           {space.code}
         </span>
         <h4 className="text-sm font-black text-white leading-tight uppercase truncate">{space.name}</h4>
+      </div>
+
+      {/* Dönemsel Doluluk Raporu */}
+      <div className="p-3.5 bg-white/3 border border-white/5 rounded-2xl space-y-2.5">
+        <span className="text-[8px] font-black text-slate-555 uppercase tracking-widest block leading-none">Dönemsel Envanter Doluluk Analizi</span>
+        <div className="grid grid-cols-4 gap-1.5 text-center font-mono">
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">Bugün</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occToday}%</span>
+          </div>
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">30 Gün</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occ30}%</span>
+          </div>
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">90 Gün</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occ90}%</span>
+          </div>
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">Yıllık</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occYearly}%</span>
+          </div>
+        </div>
       </div>
 
       {/* Tabs list navigation */}

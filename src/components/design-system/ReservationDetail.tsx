@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Reservation } from '@/data/reservations';
+import { calculateSpaceOccupancy } from '@/utils/dateHelper';
 import { Badge } from './Badge';
 import { Label } from './Form';
 import { Button } from './Button';
@@ -55,9 +56,24 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  const [allReservations, setAllReservations] = useState<any[]>([]);
+  const [spaceObj, setSpaceObj] = useState<any | null>(null);
+
   useEffect(() => {
     setLogs(reservationAuditRepository.getLogs().filter(l => l.reservationId === reservation.id));
-  }, [reservation.id]);
+    setAllReservations(reservationRepository.getAllSync());
+    if (reservation.spaceId) {
+      setSpaceObj(spaceRepository.getByIdSync(reservation.spaceId));
+    }
+  }, [reservation.id, reservation.spaceId]);
+
+  const isDigital = spaceObj ? (spaceObj.isDigital || String(spaceObj.type || '').toUpperCase() === 'LED') : (reservation.reservedNetworkCount ? true : false);
+  const networkCapacity = spaceObj ? (spaceObj.networkCapacity || spaceObj.network_capacity || 0) : (reservation.reservedNetworkCount || 0);
+
+  const occToday = calculateSpaceOccupancy(allReservations, reservation.spaceId || '', reservation.spaceCode || '', isDigital, networkCapacity, 1);
+  const occ30 = calculateSpaceOccupancy(allReservations, reservation.spaceId || '', reservation.spaceCode || '', isDigital, networkCapacity, 30);
+  const occ90 = calculateSpaceOccupancy(allReservations, reservation.spaceId || '', reservation.spaceCode || '', isDigital, networkCapacity, 90);
+  const occYearly = calculateSpaceOccupancy(allReservations, reservation.spaceId || '', reservation.spaceCode || '', isDigital, networkCapacity, 365);
 
   const handleRefresh = () => {
     window.location.reload();
@@ -317,6 +333,29 @@ export function ReservationDetail({ reservation }: ReservationDetailProps) {
         <div className="col-span-2 flex items-center gap-2 border-t border-white/3 pt-2">
           <Building2 size={12} className="text-slate-500 shrink-0" />
           <span>Medya Ajansı: <span className="text-white font-bold">{reservation.agencyName}</span></span>
+        </div>
+      </div>
+
+      {/* Dönemsel Doluluk Raporu */}
+      <div className="p-3.5 bg-white/3 border border-white/5 rounded-2xl space-y-2.5">
+        <span className="text-[8px] font-black text-slate-550 uppercase tracking-widest block leading-none">Dönemsel Envanter Doluluk Analizi</span>
+        <div className="grid grid-cols-4 gap-1.5 text-center font-mono">
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">Bugün</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occToday}%</span>
+          </div>
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">30 Gün</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occ30}%</span>
+          </div>
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">90 Gün</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occ90}%</span>
+          </div>
+          <div className="p-1 bg-white/2 rounded-xl border border-white/3">
+            <span className="text-[7.5px] text-slate-500 uppercase font-black tracking-wider block">Yıllık</span>
+            <span className="text-white font-extrabold block mt-0.5 text-[10px]">{occYearly}%</span>
+          </div>
         </div>
       </div>
 
