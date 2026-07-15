@@ -260,18 +260,9 @@ rawRows.forEach((row, idx) => {
     networkDistribution[key] = (networkDistribution[key] || 0) + 1;
 
     if (cls.isStatic) {
-      // Statik + network → flag for review, don't create slots
-      salesModel = 'physical_unit';
       networkInterpretationStatus = 'needs_review';
       stats.needsReviewRows++;
       console.warn(`  ⚠ NEEDS_REVIEW Row ${idx + 2}: "${name}" — STATIC media with Network Adedi="${networkRaw}"`);
-    } else {
-      // Digital or unclassified but has network — create playlist slots
-      salesModel = 'playlist_slot';
-      slotCount = networkCount;
-      screenSlotCapacity = totalFaceCount * slotCount;
-      stats.totalPlaylistSlots += slotCount;
-      stats.totalFaceSlotCapacity += screenSlotCapacity;
     }
 
     networkAudit.push({
@@ -284,26 +275,26 @@ rawRows.forEach((row, idx) => {
       faceAdet: totalFaceCount,
       networkRaw,
       networkCount,
-      salesModel,
-      slotCount: salesModel === 'playlist_slot' ? slotCount : 0,
-      screenSlotCapacity,
+      salesModel: 'physical_unit',
+      slotCount: 0,
+      screenSlotCapacity: 0,
       networkInterpretationStatus: networkInterpretationStatus || 'ok',
     });
   }
 
   // ── How many records to create ───────────────────────────────────────────
-  // playlist_slot → slotCount records  (NOT physicalUnitCount)
-  // physical_unit → physicalUnitCount records
-  const recordCount = salesModel === 'playlist_slot' ? slotCount : physicalUnitCount;
+  // Under the new model, we always generate physicalUnitCount records
+  const recordCount = physicalUnitCount;
 
   if (cls.isDigital)     stats.digital += recordCount;
   else if (cls.isStatic) stats.static  += recordCount;
   else                   stats.other   += recordCount;
 
-  if (salesModel === 'playlist_slot') stats.playlistSlotRecords += recordCount;
-  else                                stats.physicalUnitRecords  += recordCount;
-
+  stats.physicalUnitRecords += recordCount;
   stats.totalPhysicalUnits += physicalUnitCount;
+
+  const baseFace = Math.floor(totalFaceCount / physicalUnitCount);
+  const remainder = totalFaceCount % physicalUnitCount;
 
   // ── Create records ───────────────────────────────────────────────────────
   for (let i = 1; i <= recordCount; i++) {
@@ -315,10 +306,11 @@ rawRows.forEach((row, idx) => {
     const codeNum  = String(currentSeq).padStart(6, '0');
     const idxLabel = String(i).padStart(3, '0');
 
-    // Display name: for slots show "SLOT-01", for physical show "— 001"
-    const unitLabel = salesModel === 'playlist_slot'
-      ? `SLOT-${idxLabel}`
-      : `— ${idxLabel}`;
+    // Display name: e.g. "— 001"
+    const unitLabel = `— ${idxLabel}`;
+    
+    // Deterministik face dağıtımı
+    const faceCount = baseFace + (i <= remainder ? 1 : 0);
 
     spaces.push({
       id:                       `SPC-MGA${codeNum}`,
@@ -340,13 +332,15 @@ rawRows.forEach((row, idx) => {
       // ── Physical / slot counts ─────────────────────────────────────────
       physicalUnitCount,        // Adet — gerçek fiziksel ekran sayısı
       totalFaceCount,           // Face adet — toplam yüz sayısı
-      slotCount:                salesModel === 'playlist_slot' ? slotCount : null,
-      slotIndex:                salesModel === 'playlist_slot' ? i         : null,
-      screenSlotCapacity:       salesModel === 'playlist_slot' ? screenSlotCapacity : null,
+      slotCount:                null,
+      slotIndex:                null,
+      screenSlotCapacity:       null,
       // Legacy compat
-      faceCount:                totalFaceCount,
+      faceCount,
       networkName:              networkRaw || '',
       networkCount:             networkCount,
+      network_capacity:         networkCount,
+      networkCapacity:          networkCount,
 
       screenType:               screenType || '',
       type:                     cls.spaceType,
@@ -354,7 +348,7 @@ rawRows.forEach((row, idx) => {
       notes:                    notes || '',
 
       // ── Sales model ────────────────────────────────────────────────────
-      salesModel,               // 'playlist_slot' | 'physical_unit'
+      salesModel,               // 'physical_unit'
       networkInterpretationStatus: networkInterpretationStatus || null,
 
       status:                   'bos',
@@ -371,8 +365,8 @@ rawRows.forEach((row, idx) => {
       sourceFile:               'MGA REKLAM ALANLARI.xlsx',
       sourceRow:                idx + 2,
       importFingerprint:        fp,
-      importBatchId:            'STATIC_JSON_v2',
-      created_at:               '2026-07-11T00:00:00.000Z',
+      importBatchId:            'STATIC_JSON_v3',
+      created_at:               '2026-07-15T00:00:00.000Z',
     });
   }
 });
@@ -478,6 +472,8 @@ export interface MgaSpace {
   faceCount: number;
   networkName: string;
   networkCount: number;
+  network_capacity?: number;
+  networkCapacity?: number;
 
   screenType: string;
   type: string;

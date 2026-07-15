@@ -533,7 +533,11 @@ const mapDbSpaceToUi = (db: any): any => {
     deleted_at: db.deleted_at,
     deleted_by: db.deleted_by,
     terminal: db.terminal || '',
-    floor: db.floor || ''
+    floor: db.floor || '',
+    faceCount: db.face_count !== undefined && db.face_count !== null ? db.face_count : 1,
+    networkCount: db.network_capacity !== undefined && db.network_capacity !== null ? db.network_capacity : 0,
+    network_capacity: db.network_capacity !== undefined && db.network_capacity !== null ? db.network_capacity : 0,
+    networkCapacity: db.network_capacity !== undefined && db.network_capacity !== null ? db.network_capacity : 0
   };
 };
 
@@ -563,7 +567,9 @@ const mapUiSpaceToDb = (id: string, organizationId: string, email: string, ui: a
     max_file_size: ui.maxFileSize || null,
     update_interval: ui.updateInterval || null,
     updated_at: new Date().toISOString(),
-    updated_by: email
+    updated_by: email,
+    face_count: ui.faceCount !== undefined && ui.faceCount !== null ? ui.faceCount : 1,
+    network_capacity: ui.networkCount !== undefined && ui.networkCount !== null ? ui.networkCount : (ui.network_capacity || 0)
   };
 };
 

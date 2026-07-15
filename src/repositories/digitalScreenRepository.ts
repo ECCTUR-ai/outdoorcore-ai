@@ -3,7 +3,7 @@ import { digitalScreens as defaultScreens, playlistSlots as defaultSlots } from 
 import { createWorkflowEvent } from '@/automation/workflowEvents';
 import { workflowEngine } from '@/automation/workflowEngine';
 import { notificationRepository } from '@/notifications/notificationRepository';
-import { auditLogRepository, activityLogRepository } from './index';
+import { auditLogRepository, activityLogRepository, spaceRepository } from './index';
 
 const SCREENS_STORAGE_KEY = 'outdoorcore_digital_screens';
 const SLOTS_STORAGE_KEY = 'outdoorcore_playlist_slots';
@@ -44,7 +44,57 @@ const parseDDMMYYYY = (dateStr: string): Date | null => {
 
 export const digitalScreenRepository = {
   listScreens(): DigitalScreen[] {
-    return getLocalData(SCREENS_STORAGE_KEY, defaultScreens);
+    const spaces = spaceRepository.getAllSync();
+    const storedScreens = getLocalData<DigitalScreen>(SCREENS_STORAGE_KEY, defaultScreens);
+    const storedMap = new Map(storedScreens.map(s => [s.screenCode, s]));
+
+    // Filter digital/LED spaces
+    const digitalSpaces = spaces.filter((s: any) => 
+      s.isDigital || 
+      String(s.type || '').toUpperCase() === 'LED' ||
+      String(s.mediaType || '').toLowerCase().includes('dijital')
+    );
+
+    return digitalSpaces.map((s: any) => {
+      const stored = storedMap.get(s.code);
+      const res = s.resolution && s.resolution !== '-' ? s.resolution : (stored?.resolution || '3840x2160 (4K UHD)');
+      const loopDuration = stored?.loopDurationSeconds || 120;
+      
+      // Total M2
+      let totalM2 = 0;
+      if (s.width && s.height) {
+        totalM2 = parseFloat((s.width * s.height).toFixed(2));
+      } else if (s.size) {
+        const match = s.size.match(/([\d,.]+)\s*[*x×]\s*([\d,.]+)/);
+        if (match) {
+          const w = parseFloat(match[1].replace(',', '.'));
+          const h = parseFloat(match[2].replace(',', '.'));
+          if (!isNaN(w) && !isNaN(h)) {
+            totalM2 = parseFloat((w * h).toFixed(2));
+          }
+        }
+      }
+      if (!totalM2 && stored?.totalM2) {
+        totalM2 = stored.totalM2;
+      }
+
+      return {
+        screenId: s.id,
+        screenCode: s.code,
+        name: s.name,
+        location: s.location || '-',
+        terminal: s.terminal || s.location || '-',
+        floor: s.floor || '-',
+        totalM2: totalM2 || 0,
+        resolution: res,
+        loopDurationSeconds: loopDuration,
+        status: s.status === 'bakim' ? 'maintenance' : (s.isActive ? 'active' : 'inactive'),
+        monthlyBasePrice: s.priceNumeric || 0,
+        dailyTraffic: s.traffic || 0,
+        visibility: s.visibility === 'Yüksek' ? 'Yüksek' : (s.visibility === 'Çok Yüksek' ? 'Çok Yüksek' : 'Orta'),
+        notes: s.notes || ''
+      };
+    });
   },
 
   createScreen(input: {

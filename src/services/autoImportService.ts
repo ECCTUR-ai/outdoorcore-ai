@@ -129,8 +129,24 @@ export const autoImportService = {
         };
 
         const parsedDim = parseDimensions(dimensions);
-        const faceCount = parseInt(faceRaw, 10) || 1;
-        const networkCount = parseInt(networkRaw, 10) || 1;
+
+        // Network count parsing matching generate-mga-json.cjs
+        let networkCount = 0;
+        const netStr = String(networkRaw).trim();
+        if (netStr) {
+          const match = netStr.match(/^(\d+)/);
+          if (match) {
+            const n = parseInt(match[1], 10);
+            if (!isNaN(n) && n > 0) {
+              networkCount = n;
+            }
+          }
+        }
+
+        // Deterministik face dağıtımı
+        const faceCountTotal = parseInt(faceRaw, 10) || quantity;
+        const baseFace = Math.floor(faceCountTotal / quantity);
+        const remainder = faceCountTotal % quantity;
 
         for (let i = 1; i <= quantity; i++) {
           const fingerprint = generateFingerprint(groupFingerprintKey, i);
@@ -143,6 +159,8 @@ export const autoImportService = {
           const codeNumber = String(currentMaxNumber).padStart(6, '0');
           const spaceCode = `MGA-${codeNumber}`;
           const displayIndex = String(i).padStart(3, '0');
+          
+          const itemFaceCount = baseFace + (i <= remainder ? 1 : 0);
 
           spacesToInsert.push({
             id: `SPC-MGA${codeNumber}`,
@@ -169,8 +187,10 @@ export const autoImportService = {
             source: 'excel_import',
             sourceFile: 'MGA REKLAM ALANLARI.xlsx',
             sourceRow: rowNum,
-            faceCount,
+            faceCount: itemFaceCount,
             networkCount,
+            network_capacity: networkCount,
+            networkCapacity: networkCount,
             networkName: networkRaw ? String(networkRaw) : ''
           });
         }

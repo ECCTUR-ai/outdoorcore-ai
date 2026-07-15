@@ -68,6 +68,8 @@ export interface AdvertisingSpace {
   screenType?: string;
   mediaType?: string;
   networkCount?: number;
+  networkCapacity?: number;
+  network_capacity?: number;
   description?: string;
   salesStatus?: string;
   isDigital?: boolean;

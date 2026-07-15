@@ -87,6 +87,14 @@ export function normalizeMediaType(value: string | undefined): string {
  * Calculates dynamic count and face fields based on space name, location, or direction.
  */
 export function getSpaceAdetAndFace(space: AdvertisingSpace): { adet: number; face: number } {
+  // If it's an imported space (individual physical unit record)
+  if (space.source === 'excel_import' || space.unitIndex !== undefined || space.importFingerprint !== undefined) {
+    return {
+      adet: 1,
+      face: space.faceCount !== undefined && space.faceCount !== null ? space.faceCount : 1
+    };
+  }
+
   let adet = 1;
   let face = 1;
 
