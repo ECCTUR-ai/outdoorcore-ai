@@ -74,6 +74,7 @@ export interface AdvertisingSpace {
   salesStatus?: string;
   isDigital?: boolean;
   isStatic?: boolean;
+  isSpecial?: boolean;
   isActive?: boolean;
   dailyPrice?: number;
   monthlyPrice?: number;

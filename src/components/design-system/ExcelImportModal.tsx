@@ -223,7 +223,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
 
       // Classification
       const classification = classifyMedia(name, screenType);
-      if (classification.typeLabel === 'Diğer') {
+      if (classification.typeLabel === 'Özel') {
         unclassifiedCount += quantity;
       }
       
@@ -268,6 +268,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
           size: dimensions || 'Muhtelif',
           faceCount,
           screenType,
+          type: classification.spaceType,
           mediaType: classification.typeLabel,
           networkName: networkRaw ? String(networkRaw) : '',
           networkCount,
@@ -278,6 +279,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
           currency: 'TRY',
           isDigital: classification.isDigital,
           isStatic: classification.isStatic,
+          isSpecial: classification.isSpecial,
           isActive: true,
           source: 'excel_import',
           sourceFile: file?.name || 'MGA REKLAM ALANLARI.xlsx',
@@ -377,7 +379,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
         name: item.displayName,
         groupName: item.groupName,
         location: item.terminal,
-        type: item.mediaType === 'Dijital' ? 'LED' : (item.mediaType === 'Statik' ? 'LIGHTBOX' : 'Diğer'),
+        type: item.type,
         size: item.dimensions || 'Muhtelif',
         price: '₺0',
         priceNumeric: 0,
@@ -387,6 +389,7 @@ export function ExcelImportModal({ isOpen, onClose, onSuccess }: ExcelImportModa
         workingHours: item.isDigital ? '24 Saat' : 'Statik Görünüm',
         isDigital: item.isDigital,
         isStatic: item.isStatic,
+        isSpecial: item.isSpecial,
         isActive: true,
         terminal: item.terminal,
         notes: item.notes,

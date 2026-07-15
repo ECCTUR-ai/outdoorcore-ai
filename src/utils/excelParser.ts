@@ -84,28 +84,55 @@ export function parseDimensions(dimStr: string) {
 }
 
 // Classifies the media as digital, static, or other
-export function classifyMedia(name: string, screenType: string): { isDigital: boolean; isStatic: boolean; typeLabel: 'Dijital' | 'Statik' | 'Diğer' } {
-  const text = `${name} ${screenType}`.toLowerCase();
-  
-  const digitalKeywords = ['led', 'dijital', 'ekran', 'lcd', 'video wall', 'videowall', 'digital', 'network ekran'];
-  const staticKeywords = ['duratrans', 'clp', 'billboard', 'raket', 'lightbox', 'pano', 'statik', 'totem', 'cephe giydirme'];
-  
-  let isDigital = digitalKeywords.some(kw => text.includes(kw));
-  let isStatic = staticKeywords.some(kw => text.includes(kw));
-  
-  // If both exist, screenType takes precedence or LED keyword
-  if (isDigital && isStatic) {
-    if (screenType.toLowerCase().includes('led') || screenType.toLowerCase().includes('digital')) {
-      isStatic = false;
-    } else {
-      isDigital = false;
-    }
+export function classifyMedia(name: string, screenType: string): { 
+  isDigital: boolean; 
+  isStatic: boolean; 
+  isSpecial: boolean;
+  typeLabel: 'Dijital' | 'Statik' | 'Özel'; 
+  spaceType: string;
+} {
+  const stLower = String(screenType || '').toLowerCase().trim();
+  const nameLower = String(name || '').toLowerCase().trim();
+
+  let exactType = 'Other';
+  if (stLower.includes('led') || stLower.includes('dijital') || stLower.includes('digital')) {
+    exactType = 'LED';
+  } else if (stLower.includes('lightbox')) {
+    exactType = 'Lightbox';
+  } else if (stLower.includes('duratrans')) {
+    exactType = 'Duratrans';
+  } else if (stLower.includes('megalight')) {
+    exactType = 'Megalight';
+  } else if (stLower.includes('folyo')) {
+    exactType = 'Foil';
+  } else if (stLower.includes('statik')) {
+    exactType = 'Static Panel';
+  } else if (stLower.includes('stand')) {
+    exactType = 'Stand';
+  } else if (stLower.includes('sponsor')) {
+    exactType = 'Sponsorship';
+  } else {
+    // Fallback to name keywords
+    if (nameLower.includes('led') || nameLower.includes('dijital')) exactType = 'LED';
+    else if (nameLower.includes('lightbox')) exactType = 'Lightbox';
+    else if (nameLower.includes('duratrans')) exactType = 'Duratrans';
+    else if (nameLower.includes('megalight')) exactType = 'Megalight';
+    else if (nameLower.includes('folyo')) exactType = 'Foil';
+    else if (nameLower.includes('pano') || nameLower.includes('statik')) exactType = 'Static Panel';
+    else if (nameLower.includes('stand')) exactType = 'Stand';
+    else if (nameLower.includes('sponsor')) exactType = 'Sponsorship';
   }
+
+  const isDigital = (exactType === 'LED');
+  const isStatic = ['Lightbox', 'Duratrans', 'Megalight', 'Foil', 'Static Panel'].includes(exactType);
+  const isSpecial = ['Stand', 'Sponsorship'].includes(exactType);
 
   return {
     isDigital,
-    isStatic: !isDigital && isStatic,
-    typeLabel: isDigital ? 'Dijital' : (isStatic ? 'Statik' : 'Diğer')
+    isStatic,
+    isSpecial,
+    typeLabel: isDigital ? 'Dijital' : (isStatic ? 'Statik' : 'Özel'),
+    spaceType: exactType,
   };
 }
 

@@ -88,24 +88,48 @@ function normalizeHeaders(headers) {
 
 // ── Media classification ──────────────────────────────────────────────────────
 function classifyMedia(name, screenType) {
-  const text = `${name} ${screenType}`.toLowerCase();
-  const digitalKw = ['led', 'dijital', 'ekran', 'lcd', 'video wall', 'videowall', 'digital'];
-  const staticKw  = ['duratrans', 'clp', 'billboard', 'raket', 'lightbox', 'pano', 'statik', 'totem'];
+  const stLower = String(screenType || '').toLowerCase().trim();
+  const nameLower = String(name || '').toLowerCase().trim();
 
-  let isDigital = digitalKw.some(kw => text.includes(kw));
-  let isStatic  = staticKw.some(kw => text.includes(kw));
-
-  if (isDigital && isStatic) {
-    const st = screenType.toLowerCase();
-    if (st.includes('led') || st.includes('digital') || st.includes('screen')) isStatic = false;
-    else isDigital = false;
+  let exactType = 'Other';
+  if (stLower.includes('led') || stLower.includes('dijital') || stLower.includes('digital')) {
+    exactType = 'LED';
+  } else if (stLower.includes('lightbox')) {
+    exactType = 'Lightbox';
+  } else if (stLower.includes('duratrans')) {
+    exactType = 'Duratrans';
+  } else if (stLower.includes('megalight')) {
+    exactType = 'Megalight';
+  } else if (stLower.includes('folyo')) {
+    exactType = 'Foil';
+  } else if (stLower.includes('statik')) {
+    exactType = 'Static Panel';
+  } else if (stLower.includes('stand')) {
+    exactType = 'Stand';
+  } else if (stLower.includes('sponsor')) {
+    exactType = 'Sponsorship';
+  } else {
+    // Fallback to name keywords
+    if (nameLower.includes('led') || nameLower.includes('dijital')) exactType = 'LED';
+    else if (nameLower.includes('lightbox')) exactType = 'Lightbox';
+    else if (nameLower.includes('duratrans')) exactType = 'Duratrans';
+    else if (nameLower.includes('megalight')) exactType = 'Megalight';
+    else if (nameLower.includes('folyo')) exactType = 'Foil';
+    else if (nameLower.includes('pano') || nameLower.includes('statik')) exactType = 'Static Panel';
+    else if (nameLower.includes('stand')) exactType = 'Stand';
+    else if (nameLower.includes('sponsor')) exactType = 'Sponsorship';
   }
+
+  const isDigital = (exactType === 'LED');
+  const isStatic = ['Lightbox', 'Duratrans', 'Megalight', 'Foil', 'Static Panel'].includes(exactType);
+  const isSpecial = ['Stand', 'Sponsorship'].includes(exactType);
 
   return {
     isDigital,
-    isStatic: !isDigital && isStatic,
-    typeLabel: isDigital ? 'Dijital' : (isStatic ? 'Statik' : 'Diğer'),
-    spaceType: isDigital ? 'LED' : (isStatic ? 'LIGHTBOX' : 'Diğer'),
+    isStatic,
+    isSpecial,
+    typeLabel: isDigital ? 'Dijital' : (isStatic ? 'Statik' : 'Özel'),
+    spaceType: exactType,
   };
 }
 
@@ -355,6 +379,7 @@ rawRows.forEach((row, idx) => {
       salesStatus:              'available',
       isDigital:                cls.isDigital,
       isStatic:                 cls.isStatic,
+      isSpecial:                cls.isSpecial,
       isActive:                 true,
       price:                    '₺0',
       priceNumeric:             0,
@@ -489,6 +514,7 @@ export interface MgaSpace {
   salesStatus: string;
   isDigital: boolean;
   isStatic: boolean;
+  isSpecial: boolean;
   isActive: boolean;
   price: string;
   priceNumeric: number;
